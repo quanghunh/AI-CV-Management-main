@@ -1,0 +1,466 @@
+{
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "jobs": "Mô tả công việc",
+    "candidates": "Ứng viên",
+    "interviews": "Lịch phỏng vấn",
+    "reviews": "Đánh giá phỏng vấn",
+    "email": "Quản lý email",
+    "settings": "Cài đặt"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "subtitle": "Hệ thống quản lý tuyển dụng",
+    "systemOverview": "Tổng quan hệ thống",
+    "refresh": "Làm mới",
+    "realTimeData": "Dashboard hiện đang hiển thị dữ liệu thực từ hệ thống của bạn.",
+    "stats": {
+      "totalCV": "Tổng CV",
+      "openJobs": "Vị trí đang tuyển",
+      "interviewingCV": "CV phỏng vấn",
+      "avgTime": "Thời gian tuyển TB",
+      "comparedToLastMonth": "so với tháng trước"
+    },
+    "charts": {
+      "cvTrend": "Xu hướng CV theo thời gian",
+      "candidateSources": "Nguồn ứng viên",
+      "topJobs": "Top vị trí tuyển dụng",
+      "recentActivities": "Hoạt động gần đây",
+      "cvCount": "Số CV"
+    },
+    "topJobs": {
+      "hot": "Hot",
+      "normal": "Bình thường",
+      "candidates": "ứng viên"
+    },
+    "noData": "Chưa có dữ liệu",
+    "noDataSources": "Chưa có dữ liệu nguồn ứng viên",
+    "addSourceColumn": "Thêm cột \"source\" vào cv_candidates",
+    "noJobsData": "Chưa có dữ liệu vị trí tuyển dụng",
+    "noActivities": "Chưa có hoạt động nào",
+    "loading": "Đang tải..."
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "company": {
+      "title": "Thông tin công ty",
+      "description": "Cập nhật thông tin cơ bản về công ty của bạn",
+      "name": "Tên công ty",
+      "website": "Website",
+      "address": "Địa chỉ văn phòng",
+      "email": "Email liên hệ",
+      "description_label": "Mô tả công ty",
+      "description_placeholder": "Nhập mô tả về công ty, văn hóa làm việc, giá trị cốt lõi..."
+    },
+    "language": {
+      "title": "Ngôn ngữ hệ thống",
+      "description": "Chọn ngôn ngữ hiển thị cho toàn bộ hệ thống",
+      "vietnamese": "Tiếng Việt",
+      "english": "English"
+    },
+    "logo": {
+      "title": "Logo công ty",
+      "description": "Tải lên logo để hiển thị trên hệ thống",
+      "change": "Thay đổi logo",
+      "format": "Định dạng file: JPG, PNG, GIF, SVG. Kích thước tối đa: 2MB"
+    },
+    "colors": {
+      "title": "Màu sắc giao diện",
+      "description": "Màu sắc sẽ được áp dụng cho toàn bộ giao diện",
+      "button": "Màu button",
+      "menu": "Màu menu",
+      "preview": "Xem trước màu sắc",
+      "primaryButton": "Màu button chính",
+      "menuBackground": "Màu nền menu"
+    },
+    "save": "Lưu thay đổi",
+    "saving": "Đang lưu...",
+    "saved": "Đã lưu thành công!"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "register": "Đăng ký",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "profileSettings": "Cài đặt tài khoản"
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "export": "Xuất",
+    "import": "Nhập",
+    "quantity": "Số lượng"
+  },
+  "jobs": {
+    "title": "Mô tả công việc",
+    "subtitle": "Quản lý và tạo mô tả công việc",
+    "createNew": "Tạo JD mới",
+    "stats": {
+      "totalJDs": "Tổng JDs",
+      "openJDs": "JDs đang mở",
+      "totalCandidates": "Tổng ứng viên",
+      "views": "Lượt xem",
+      "comparedToLastMonth": "so với tháng trước",
+      "willUpdateLater": "Sẽ cập nhật sau"
+    },
+    "list": {
+      "title": "Danh sách JD",
+      "searchPlaceholder": "Tìm kiếm theo tiêu đề, phòng ban, vị trí...",
+      "allStatus": "Tất cả trạng thái",
+      "allDepartments": "Tất cả phòng ban",
+      "loading": "Đang tải dữ liệu..."
+    },
+    "table": {
+      "position": "Vị trí",
+      "department": "Phòng ban",
+      "location": "Địa điểm",
+      "status": "Trạng thái",
+      "candidates": "Ứng viên",
+      "views": "Lượt xem",
+      "createdDate": "Ngày tạo",
+      "actions": "Hành động"
+    },
+    "status": {
+      "published": "Đã đăng",
+      "draft": "Nháp",
+      "closed": "Đã đóng"
+    },
+    "actions": {
+      "title": "Hành động",
+      "viewDetails": "Xem chi tiết",
+      "edit": "Chỉnh sửa",
+      "copy": "Sao chép",
+      "share": "Chia sẻ",
+      "delete": "Xóa"
+    },
+    "jobTypes": {
+      "fulltime": "Full-time",
+      "parttime": "Part-time",
+      "contract": "Hợp đồng",
+      "remote": "Remote"
+    }
+  },
+  "candidates": {
+    "title": "Quản lý ứng viên",
+    "subtitle": "Quản lý và theo dõi tất cả ứng viên",
+    "refresh": "Làm mới",
+    "addCandidate": "Thêm ứng viên",
+    "stats": {
+      "totalCandidates": "Tổng ứng viên",
+      "interviewing": "Đang phỏng vấn",
+      "screened": "Đã qua sàng lọc",
+      "successRate": "Tỷ lệ thành công",
+      "comparedToLastMonth": "so với tháng trước"
+    },
+    "info": {
+      "showing": "Hiển thị",
+      "of": "/",
+      "candidates": "ứng viên",
+      "lastUpdate": "Cập nhật lần cuối:",
+      "synced": "Đã đồng bộ"
+    },
+    "search": {
+      "placeholder": "Tìm kiếm theo tên, email hoặc vị trí...",
+      "allStatus": "Tất cả trạng thái",
+      "allPositions": "Tất cả vị trí",
+      "allLevels": "Tất cả cấp độ"
+    },
+    "table": {
+      "candidate": "Ứng viên",
+      "position": "Vị trí",
+      "status": "Trạng thái",
+      "level": "Cấp độ",
+      "appliedDate": "Ngày ứng tuyển",
+      "actions": "Thao tác",
+      "loading": "Đang tải dữ liệu...",
+      "noData": "Chưa có ứng viên nào",
+      "noDataDesc": "Hãy bắt đầu bằng cách thêm ứng viên đầu tiên!",
+      "noExperience": "Chưa có kinh nghiệm",
+      "source": "Nguồn:"
+    },
+    "status": {
+      "new": "Mới",
+      "screening": "Sàng lọc",
+      "interviewing": "Phỏng vấn",
+      "offered": "Đã offer",
+      "hired": "Đã tuyển",
+      "rejected": "Từ chối"
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "aiAnalysis": "AI Analysis",
+      "aiAnalysisDesc": "Phân tích tất cả CV",
+      "export": "Xuất dữ liệu",
+      "exportDesc": "Tải xuống Excel",
+      "bulkActions": "Hành động hàng loạt",
+      "bulkActionsDesc": "Cập nhật nhiều ứng viên",
+      "reports": "Báo cáo",
+      "reportsDesc": "Thông kê chi tiết"
+    }
+  },
+  "interviews": {
+    "title": "Lịch phỏng vấn",
+    "subtitle": "Quản lý và theo dõi lịch phỏng vấn",
+    "createInterview": "Tạo lịch phỏng vấn",
+    "stats": {
+      "totalThisMonth": "Tổng số (tháng này)",
+      "pending": "Đang chờ",
+      "completed": "Hoàn thành",
+      "cancelled": "Đã hủy",
+      "comparedToLastMonth": "so với tháng trước"
+    },
+    "list": {
+      "title": "Danh sách lịch phỏng vấn",
+      "loading": "Đang tải dữ liệu...",
+      "noData": "Chưa có lịch phỏng vấn nào"
+    },
+    "table": {
+      "candidate": "Ứng viên",
+      "position": "Vị trí ứng tuyển",
+      "round": "Vòng phỏng vấn",
+      "dateTime": "Ngày & Giờ",
+      "interviewer": "Người phỏng vấn",
+      "status": "Trạng thái",
+      "actions": "Hành động"
+    },
+    "status": {
+      "pending": "Đang chờ",
+      "scheduled": "Đã lên lịch",
+      "completed": "Hoàn thành",
+      "cancelled": "Đã hủy",
+      "rescheduled": "Đã đổi lịch"
+    },
+    "rounds": {
+      "round1": "Vòng 1",
+      "round2": "Vòng 2",
+      "round3": "Vòng 3",
+      "final": "Vòng cuối"
+    },
+    "actions": {
+      "viewDetails": "Xem chi tiết",
+      "edit": "Chỉnh sửa",
+      "cancel": "Hủy lịch",
+      "reschedule": "Đổi lịch"
+    }
+  },
+  "reviews": {
+    "title": "Đánh giá phỏng vấn",
+    "subtitle": "Quản lý và theo dõi đánh giá phỏng vấn",
+    "refresh": "Làm mới",
+    "stats": {
+      "totalReviews": "Tổng số đánh giá",
+      "averageRating": "Đánh giá trung bình",
+      "recommendationRate": "Tỷ lệ khuyên nghị"
+    },
+    "list": {
+      "title": "Danh sách đánh giá",
+      "loading": "Đang tải dữ liệu...",
+      "noData": "Chưa có đánh giá nào"
+    },
+    "table": {
+      "candidate": "Ứng viên",
+      "position": "Vị trí",
+      "round": "Vòng",
+      "interviewer": "Người PV",
+      "interviewDate": "Ngày PV",
+      "rating": "Đánh giá",
+      "actions": "Hành động"
+    },
+    "actions": {
+      "viewDetails": "Xem chi tiết",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa"
+    },
+    "outcome": {
+      "nextRound": "Vòng tiếp theo",
+      "hired": "Đã tuyển",
+      "rejected": "Từ chối"
+    }
+  },
+  "settings": {
+    "title": "Cài đặt hệ thống",
+    "subtitle": "Quản lý cấu hình và tùy chỉnh hệ thống",
+    "tabs": {
+      "company": "Công ty",
+      "ai": "AI",
+      "email": "Email",
+      "notifications": "Thông báo",
+      "categories": "Danh mục",
+      "users": "Người dùng",
+      "permissions": "Phân quyền"
+    },
+    "buttons": {
+      "cancel": "Hủy",
+      "save": "Lưu thay đổi",
+      "saving": "Đang lưu..."
+    },
+    "messages": {
+      "nameRequired": "⚠️ Vui lòng nhập tên công ty!",
+      "saveError": "❌ Lỗi! Không thể lưu thay đổi:",
+      "saveSuccess": "✅ Đã lưu thay đổi thành công! Tên công ty sẽ được cập nhật trên sidebar.",
+      "unexpectedError": "❌ Có lỗi xảy ra:"
+    },
+    "company": {
+      "title": "Thông tin công ty",
+      "description": "Cập nhật thông tin cơ bản về công ty của bạn",
+      "name": "Tên công ty",
+      "website": "Website",
+      "address": "Địa chỉ văn phòng",
+      "email": "Email liên hệ",
+      "description_label": "Mô tả công ty",
+      "description_placeholder": "Nhập mô tả về công ty, văn hóa làm việc, giá trị cốt lõi..."
+    },
+    "language": {
+      "title": "Ngôn ngữ hệ thống",
+      "description": "Chọn ngôn ngữ hiển thị cho toàn bộ hệ thống",
+      "vietnamese": "Tiếng Việt",
+      "english": "English"
+    },
+    "logo": {
+      "title": "Logo công ty",
+      "description": "Tải lên logo để hiển thị trên hệ thống",
+      "change": "Thay đổi logo",
+      "format": "Định dạng file: JPG, PNG, GIF, SVG. Kích thước tối đa: 2MB"
+    },
+    "colors": {
+      "title": "Màu sắc giao diện",
+      "description": "Màu sắc sẽ được áp dụng cho toàn bộ giao diện",
+      "button": "Màu button",
+      "menu": "Màu menu",
+      "preview": "Xem trước màu sắc",
+      "primaryButton": "Màu button chính",
+      "menuBackground": "Màu nền menu"
+    }
+  },
+  "ai": {
+    "title": "Cài đặt AI",
+    "loading": "Đang tải cấu hình...",
+    "openai": {
+      "title": "Cài đặt AI",
+      "description": "Cấu hình OpenAI để sử dụng các tính năng AI trong hệ thống",
+      "apiKey": "OpenAI API Key",
+      "apiKeyPlaceholder": "sk-...",
+      "endpoint": "OpenAI Endpoint",
+      "endpointPlaceholder": "https://api.openai.com/v1",
+      "endpointDescription": "Endpoint mặc định của OpenAI API",
+      "getKeyFrom": "Lấy API key từ",
+      "configured": "Đã lưu cấu hình",
+      "invalid": "Key không hợp lệ",
+      "enable": "Kích hoạt OpenAI",
+      "enableDescription": "Bật/tắt các tính năng OpenAI trong hệ thống"
+    },
+    "gemini": {
+      "title": "Google Gemini AI",
+      "description": "Cấu hình Google Gemini AI cho tính năng AI Job Matching và phân tích CV",
+      "apiKey": "Gemini API Key",
+      "apiKeyPlaceholder": "AIza...",
+      "getKeyFrom": "Lấy API key từ",
+      "configured": "Đã cấu hình và kết nối thành công",
+      "connectionFailed": "Kết nối thất bại",
+      "quickSetup": "Cài đặt nhanh",
+      "quickSetupDescription": "Sử dụng API key mặc định để test tính năng",
+      "useDefaultKey": "Dùng key mặc định",
+      "enable": "Kích hoạt Gemini AI",
+      "enableDescription": "Bật/tắt tính năng AI Job Matching với Gemini"
+    },
+    "buttons": {
+      "save": "Lưu cài đặt AI",
+      "saving": "Đang lưu...",
+      "testOpenAI": "Test OpenAI",
+      "testGemini": "Test Gemini AI",
+      "testing": "Đang test..."
+    },
+    "status": {
+      "title": "Trạng thái AI Services",
+      "description": "Tổng quan tình trạng cấu hình các dịch vụ AI",
+      "configured": "Đã cấu hình",
+      "notConfigured": "Chưa cấu hình",
+      "error": "Lỗi",
+      "enabled": "Đã kích hoạt",
+      "disabled": "Chưa kích hoạt"
+    },
+    "services": {
+      "openai": {
+        "name": "OpenAI",
+        "description": "AI Evaluation, Phân tích CV, Tạo câu hỏi phỏng vấn"
+      },
+      "gemini": {
+        "name": "Gemini AI",
+        "description": "AI Job Matching, Phân tích độ phù hợp CV-JD"
+      }
+    },
+    "testFeatures": {
+      "title": "Test tính năng"
+    },
+    "configDetails": {
+      "title": "Chi tiết cấu hình",
+      "openaiKey": "OpenAI API Key:",
+      "geminiKey": "Gemini API Key:"
+    },
+    "availableFeatures": {
+      "title": "Tính năng AI có sẵn",
+      "aiEvaluation": "Đánh giá ứng viên với AI",
+      "cvAnalysis": "Phân tích CV tự động",
+      "smartJD": "Gợi ý JD thông minh"
+    },
+    "messages": {
+      "enterOpenAIKey": "Vui lòng nhập OpenAI API Key và Endpoint",
+      "invalidOpenAIKey": "❌ OpenAI API Key không hợp lệ. Key phải bắt đầu bằng \"sk-\"",
+      "invalidEndpoint": "❌ OpenAI Endpoint không hợp lệ. Endpoint phải bắt đầu bằng \"https://\"",
+      "openAISuccess": "✅ Kết nối OpenAI thành công!",
+      "openAIFailed": "❌ Kết nối OpenAI thất bại:",
+      "openAIError": "❌ Lỗi khi kết nối OpenAI:",
+      "enterGeminiKey": "Vui lòng nhập Gemini API Key",
+      "geminiSuccess": "✅ Kết nối Gemini AI thành công!",
+      "geminiFailed": "❌ Kết nối Gemini AI thất bại:",
+      "geminiError": "❌ Lỗi khi kết nối Gemini AI:",
+      "saveError": "❌ Lỗi! Không thể lưu cài đặt AI.",
+      "saveSuccess": "✅ Đã lưu cài đặt AI thành công!"
+    }
+  },
+  "profile": {
+    "title": "Thông tin cá nhân",
+    "subtitle": "Quản lý thông tin tài khoản của bạn",
+    "personalInfo": {
+      "title": "Thông tin cá nhân",
+      "description": "Cập nhật thông tin cá nhân và ảnh đại diện",
+      "fullName": "Họ và tên",
+      "fullNamePlaceholder": "Nhập họ và tên",
+      "email": "Email",
+      "emailNote": "Email không thể thay đổi",
+      "phone": "Số điện thoại",
+      "phonePlaceholder": "Nhập số điện thoại",
+      "avatar": "Ảnh đại diện",
+      "changeAvatar": "Thay đổi ảnh",
+      "uploadAvatar": "Tải ảnh lên"
+    },
+    "security": {
+      "title": "Bảo mật",
+      "description": "Quản lý mật khẩu và bảo mật tài khoản",
+      "changePassword": "Đổi mật khẩu",
+      "currentPassword": "Mật khẩu hiện tại",
+      "newPassword": "Mật khẩu mới",
+      "confirmPassword": "Xác nhận mật khẩu mới",
+      "passwordRequirements": "Mật khẩu phải có ít nhất 6 ký tự"
+    },
+    "buttons": {
+      "backToHome": "Quay lại trang chủ",
+      "save": "Lưu thay đổi",
+      "saving": "Đang lưu...",
+      "cancel": "Hủy"
+    },
+    "messages": {
+      "saveSuccess": "✅ Đã lưu thông tin thành công!",
+      "saveError": "❌ Lỗi! Không thể lưu thông tin.",
+      "passwordChangeSuccess": "✅ Đã đổi mật khẩu thành công!",
+      "passwordChangeError": "❌ Lỗi! Không thể đổi mật khẩu.",
+      "passwordMismatch": "❌ Mật khẩu xác nhận không khớp!",
+      "nameRequired": "⚠️ Vui lòng nhập họ và tên!"
+    }
+  }
+}

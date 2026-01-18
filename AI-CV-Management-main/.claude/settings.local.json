@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill:*)",
+      "Bash(wmic process where \"ProcessId=4020\" delete:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(findstr LISTENING)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

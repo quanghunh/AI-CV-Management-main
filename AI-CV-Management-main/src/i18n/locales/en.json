@@ -1,0 +1,466 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "jobs": "Job Descriptions",
+    "candidates": "Candidates",
+    "interviews": "Interviews",
+    "reviews": "Interview Reviews",
+    "email": "Email Management",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Recruitment Management System",
+    "systemOverview": "System Overview",
+    "refresh": "Refresh",
+    "realTimeData": "Dashboard is displaying real-time data from your system.",
+    "stats": {
+      "totalCV": "Total CVs",
+      "openJobs": "Open Positions",
+      "interviewingCV": "Interviewing CVs",
+      "avgTime": "Avg Hiring Time",
+      "comparedToLastMonth": "compared to last month"
+    },
+    "charts": {
+      "cvTrend": "CV Trend Over Time",
+      "candidateSources": "Candidate Sources",
+      "topJobs": "Top Hiring Positions",
+      "recentActivities": "Recent Activities",
+      "cvCount": "CV Count"
+    },
+    "topJobs": {
+      "hot": "Hot",
+      "normal": "Normal",
+      "candidates": "candidates"
+    },
+    "noData": "No data available",
+    "noDataSources": "No candidate source data",
+    "addSourceColumn": "Add \"source\" column to cv_candidates",
+    "noJobsData": "No job positions data",
+    "noActivities": "No activities yet",
+    "loading": "Loading..."
+  },
+  "settings": {
+    "title": "Settings",
+    "company": {
+      "title": "Company Information",
+      "description": "Update basic information about your company",
+      "name": "Company Name",
+      "website": "Website",
+      "address": "Office Address",
+      "email": "Contact Email",
+      "description_label": "Company Description",
+      "description_placeholder": "Enter company description, work culture, core values..."
+    },
+    "language": {
+      "title": "System Language",
+      "description": "Select display language for the entire system",
+      "vietnamese": "Vietnamese",
+      "english": "English"
+    },
+    "logo": {
+      "title": "Company Logo",
+      "description": "Upload logo to display on the system",
+      "change": "Change Logo",
+      "format": "File format: JPG, PNG, GIF, SVG. Max size: 2MB"
+    },
+    "colors": {
+      "title": "Interface Colors",
+      "description": "Colors will be applied to the entire interface",
+      "button": "Button Color",
+      "menu": "Menu Color",
+      "preview": "Color Preview",
+      "primaryButton": "Primary Button Color",
+      "menuBackground": "Menu Background Color"
+    },
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "saved": "Saved successfully!"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "profileSettings": "Profile Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "quantity": "Quantity"
+  },
+  "jobs": {
+    "title": "Job Descriptions",
+    "subtitle": "Manage and create job descriptions",
+    "createNew": "Create New JD",
+    "stats": {
+      "totalJDs": "Total JDs",
+      "openJDs": "Open JDs",
+      "totalCandidates": "Total Candidates",
+      "views": "Views",
+      "comparedToLastMonth": "compared to last month",
+      "willUpdateLater": "Will update later"
+    },
+    "list": {
+      "title": "JD List",
+      "searchPlaceholder": "Search by title, department, position...",
+      "allStatus": "All Status",
+      "allDepartments": "All Departments",
+      "loading": "Loading data..."
+    },
+    "table": {
+      "position": "Position",
+      "department": "Department",
+      "location": "Location",
+      "status": "Status",
+      "candidates": "Candidates",
+      "views": "Views",
+      "createdDate": "Created Date",
+      "actions": "Actions"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft",
+      "closed": "Closed"
+    },
+    "actions": {
+      "title": "Actions",
+      "viewDetails": "View Details",
+      "edit": "Edit",
+      "copy": "Copy",
+      "share": "Share",
+      "delete": "Delete"
+    },
+    "jobTypes": {
+      "fulltime": "Full-time",
+      "parttime": "Part-time",
+      "contract": "Contract",
+      "remote": "Remote"
+    }
+  },
+  "candidates": {
+    "title": "Candidate Management",
+    "subtitle": "Manage and track all candidates",
+    "refresh": "Refresh",
+    "addCandidate": "Add Candidate",
+    "stats": {
+      "totalCandidates": "Total Candidates",
+      "interviewing": "Interviewing",
+      "screened": "Screened",
+      "successRate": "Success Rate",
+      "comparedToLastMonth": "compared to last month"
+    },
+    "info": {
+      "showing": "Showing",
+      "of": "/",
+      "candidates": "candidates",
+      "lastUpdate": "Last update:",
+      "synced": "Synced"
+    },
+    "search": {
+      "placeholder": "Search by name, email or position...",
+      "allStatus": "All Status",
+      "allPositions": "All Positions",
+      "allLevels": "All Levels"
+    },
+    "table": {
+      "candidate": "Candidate",
+      "position": "Position",
+      "status": "Status",
+      "level": "Level",
+      "appliedDate": "Applied Date",
+      "actions": "Actions",
+      "loading": "Loading data...",
+      "noData": "No candidates yet",
+      "noDataDesc": "Get started by adding your first candidate!",
+      "noExperience": "No experience",
+      "source": "Source:"
+    },
+    "status": {
+      "new": "New",
+      "screening": "Screening",
+      "interviewing": "Interviewing",
+      "offered": "Offered",
+      "hired": "Hired",
+      "rejected": "Rejected"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "aiAnalysis": "AI Analysis",
+      "aiAnalysisDesc": "Analyze all CVs",
+      "export": "Export Data",
+      "exportDesc": "Download Excel",
+      "bulkActions": "Bulk Actions",
+      "bulkActionsDesc": "Update multiple candidates",
+      "reports": "Reports",
+      "reportsDesc": "Detailed statistics"
+    }
+  },
+  "interviews": {
+    "title": "Interview Schedule",
+    "subtitle": "Manage and track interview schedules",
+    "createInterview": "Create Interview",
+    "stats": {
+      "totalThisMonth": "Total (This Month)",
+      "pending": "Pending",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "comparedToLastMonth": "compared to last month"
+    },
+    "list": {
+      "title": "Interview Schedule List",
+      "loading": "Loading data...",
+      "noData": "No interviews scheduled yet"
+    },
+    "table": {
+      "candidate": "Candidate",
+      "position": "Applied Position",
+      "round": "Interview Round",
+      "dateTime": "Date & Time",
+      "interviewer": "Interviewer",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "pending": "Pending",
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rescheduled": "Rescheduled"
+    },
+    "rounds": {
+      "round1": "Round 1",
+      "round2": "Round 2",
+      "round3": "Round 3",
+      "final": "Final Round"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "reschedule": "Reschedule"
+    }
+  },
+  "reviews": {
+    "title": "Interview Reviews",
+    "subtitle": "Manage and track interview reviews",
+    "refresh": "Refresh",
+    "stats": {
+      "totalReviews": "Total Reviews",
+      "averageRating": "Average Rating",
+      "recommendationRate": "Recommendation Rate"
+    },
+    "list": {
+      "title": "Review List",
+      "loading": "Loading data...",
+      "noData": "No reviews yet"
+    },
+    "table": {
+      "candidate": "Candidate",
+      "position": "Position",
+      "round": "Round",
+      "interviewer": "Interviewer",
+      "interviewDate": "Interview Date",
+      "rating": "Rating",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "outcome": {
+      "nextRound": "Next Round",
+      "hired": "Hired",
+      "rejected": "Rejected"
+    }
+  },
+  "settings": {
+    "title": "System Settings",
+    "subtitle": "Manage configuration and customize system",
+    "tabs": {
+      "company": "Company",
+      "ai": "AI",
+      "email": "Email",
+      "notifications": "Notifications",
+      "categories": "Categories",
+      "users": "Users",
+      "permissions": "Permissions"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "saving": "Saving..."
+    },
+    "messages": {
+      "nameRequired": "⚠️ Please enter company name!",
+      "saveError": "❌ Error! Cannot save changes:",
+      "saveSuccess": "✅ Changes saved successfully! Company name will be updated on sidebar.",
+      "unexpectedError": "❌ An error occurred:"
+    },
+    "company": {
+      "title": "Company Information",
+      "description": "Update basic information about your company",
+      "name": "Company Name",
+      "website": "Website",
+      "address": "Office Address",
+      "email": "Contact Email",
+      "description_label": "Company Description",
+      "description_placeholder": "Enter company description, work culture, core values..."
+    },
+    "language": {
+      "title": "System Language",
+      "description": "Select display language for the entire system",
+      "vietnamese": "Vietnamese",
+      "english": "English"
+    },
+    "logo": {
+      "title": "Company Logo",
+      "description": "Upload logo to display on the system",
+      "change": "Change Logo",
+      "format": "File format: JPG, PNG, GIF, SVG. Max size: 2MB"
+    },
+    "colors": {
+      "title": "Interface Colors",
+      "description": "Colors will be applied to the entire interface",
+      "button": "Button Color",
+      "menu": "Menu Color",
+      "preview": "Color Preview",
+      "primaryButton": "Primary Button Color",
+      "menuBackground": "Menu Background Color"
+    }
+  },
+  "ai": {
+    "title": "AI Settings",
+    "loading": "Loading configuration...",
+    "openai": {
+      "title": "AI Settings",
+      "description": "Configure OpenAI to use AI features in the system",
+      "apiKey": "OpenAI API Key",
+      "apiKeyPlaceholder": "sk-...",
+      "endpoint": "OpenAI Endpoint",
+      "endpointPlaceholder": "https://api.openai.com/v1",
+      "endpointDescription": "Default OpenAI API endpoint",
+      "getKeyFrom": "Get API key from",
+      "configured": "Configuration saved",
+      "invalid": "Invalid key",
+      "enable": "Enable OpenAI",
+      "enableDescription": "Enable/disable OpenAI features in the system"
+    },
+    "gemini": {
+      "title": "Google Gemini AI",
+      "description": "Configure Google Gemini AI for AI Job Matching and CV analysis",
+      "apiKey": "Gemini API Key",
+      "apiKeyPlaceholder": "AIza...",
+      "getKeyFrom": "Get API key from",
+      "configured": "Configured and connected successfully",
+      "connectionFailed": "Connection failed",
+      "quickSetup": "Quick Setup",
+      "quickSetupDescription": "Use default API key for testing",
+      "useDefaultKey": "Use default key",
+      "enable": "Enable Gemini AI",
+      "enableDescription": "Enable/disable AI Job Matching with Gemini"
+    },
+    "buttons": {
+      "save": "Save AI Settings",
+      "saving": "Saving...",
+      "testOpenAI": "Test OpenAI",
+      "testGemini": "Test Gemini AI",
+      "testing": "Testing..."
+    },
+    "status": {
+      "title": "AI Services Status",
+      "description": "Overview of AI services configuration status",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "error": "Error",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "services": {
+      "openai": {
+        "name": "OpenAI",
+        "description": "AI Evaluation, CV Analysis, Interview Questions"
+      },
+      "gemini": {
+        "name": "Gemini AI",
+        "description": "AI Job Matching, CV-JD Compatibility Analysis"
+      }
+    },
+    "testFeatures": {
+      "title": "Test Features"
+    },
+    "configDetails": {
+      "title": "Configuration Details",
+      "openaiKey": "OpenAI API Key:",
+      "geminiKey": "Gemini API Key:"
+    },
+    "availableFeatures": {
+      "title": "Available AI Features",
+      "aiEvaluation": "AI Candidate Evaluation",
+      "cvAnalysis": "Automatic CV Analysis",
+      "smartJD": "Smart JD Suggestions"
+    },
+    "messages": {
+      "enterOpenAIKey": "Please enter OpenAI API Key and Endpoint",
+      "invalidOpenAIKey": "❌ Invalid OpenAI API Key. Key must start with \"sk-\"",
+      "invalidEndpoint": "❌ Invalid OpenAI Endpoint. Endpoint must start with \"https://\"",
+      "openAISuccess": "✅ OpenAI connection successful!",
+      "openAIFailed": "❌ OpenAI connection failed:",
+      "openAIError": "❌ Error connecting to OpenAI:",
+      "enterGeminiKey": "Please enter Gemini API Key",
+      "geminiSuccess": "✅ Gemini AI connection successful!",
+      "geminiFailed": "❌ Gemini AI connection failed:",
+      "geminiError": "❌ Error connecting to Gemini AI:",
+      "saveError": "❌ Error! Cannot save AI settings.",
+      "saveSuccess": "✅ AI settings saved successfully!"
+    }
+  },
+  "profile": {
+    "title": "Profile Settings",
+    "subtitle": "Manage your account information",
+    "personalInfo": {
+      "title": "Personal Information",
+      "description": "Update your personal information and avatar",
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Enter full name",
+      "email": "Email",
+      "emailNote": "Email cannot be changed",
+      "phone": "Phone Number",
+      "phonePlaceholder": "Enter phone number",
+      "avatar": "Avatar",
+      "changeAvatar": "Change Avatar",
+      "uploadAvatar": "Upload Avatar"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage password and account security",
+      "changePassword": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "passwordRequirements": "Password must be at least 6 characters"
+    },
+    "buttons": {
+      "backToHome": "Back to Home",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "saveSuccess": "✅ Information saved successfully!",
+      "saveError": "❌ Error! Cannot save information.",
+      "passwordChangeSuccess": "✅ Password changed successfully!",
+      "passwordChangeError": "❌ Error! Cannot change password.",
+      "passwordMismatch": "❌ Password confirmation doesn't match!",
+      "nameRequired": "⚠️ Please enter your full name!"
+    }
+  }
+}

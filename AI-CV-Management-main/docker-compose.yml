@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  frontend:
+    container_name: ai-cv-frontend
+    build:
+      context: .                     
+      dockerfile: ./Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    container_name: ai-cv-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@db:5432/dbname}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

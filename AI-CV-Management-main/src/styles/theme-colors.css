@@ -1,0 +1,420 @@
+/* src/styles/theme-colors.css */
+
+/* ============================================
+   SIDEBAR STYLING
+   ============================================ */
+
+/* Sidebar text color utility */
+.text-sidebar-text {
+  color: var(--sidebar-text, hsl(var(--primary-foreground))) !important;
+}
+
+/* Sidebar background utilities */
+.bg-sidebar {
+  background-color: var(--sidebar-bg, hsl(var(--primary))) !important;
+}
+
+/* Custom scrollbar cho sidebar */
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+aside::-webkit-scrollbar-track,
+nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+aside::-webkit-scrollbar-thumb,
+nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+aside::-webkit-scrollbar-thumb:hover,
+nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Tailwind utility để dùng cho scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   BUTTONS STYLING - FORCE VISIBLE TEXT
+   ============================================ */
+
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+.btn,
+.button {
+  font-weight: 500 !important;
+  text-rendering: optimizeLegibility !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Primary buttons - TEXT PHẢI TRẮNG */
+.btn-primary,
+button[class*="bg-primary"]:not([class*="outline"]),
+button[class*="btn-primary"],
+[role="button"][class*="bg-primary"],
+.bg-primary button,
+button.bg-primary {
+  background-color: hsl(var(--primary)) !important;
+  color: #FFFFFF !important;
+  border-color: hsl(var(--primary)) !important;
+  font-weight: 600 !important;
+}
+
+/* Force white text on primary buttons - OVERRIDE MỌI STYLE */
+button[class*="bg-primary"] *,
+.bg-primary button *,
+button.bg-primary * {
+  color: #FFFFFF !important;
+}
+
+/* Hover state */
+.btn-primary:hover,
+button[class*="bg-primary"]:hover,
+button[class*="btn-primary"]:hover {
+  opacity: 0.92 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsla(var(--primary) / 0.4);
+}
+
+/* Disabled state - VẪN PHẢI THẤY TEXT */
+button:disabled,
+button[disabled],
+.btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  color: #FFFFFF !important;
+}
+
+button[class*="bg-primary"]:disabled,
+button[class*="bg-primary"][disabled] {
+  background-color: hsl(var(--primary)) !important;
+  color: #FFFFFF !important;
+  opacity: 0.7 !important;
+}
+
+/* Secondary buttons */
+.btn-secondary,
+button[class*="bg-secondary"],
+[role="button"][class*="bg-secondary"] {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+  border-color: hsl(var(--secondary)) !important;
+  font-weight: 600 !important;
+}
+
+/* Outline buttons - TEXT PHẢI RÕ */
+.btn-outline,
+button[class*="outline"],
+button[variant="outline"],
+.variant-outline {
+  border: 2px solid hsl(var(--primary)) !important;
+  color: hsl(var(--primary)) !important;
+  background-color: transparent !important;
+  font-weight: 600 !important;
+}
+
+.btn-outline:hover,
+button[class*="outline"]:hover {
+  background-color: hsl(var(--primary)) !important;
+  color: #FFFFFF !important;
+}
+
+/* Ghost buttons */
+button[variant="ghost"],
+.btn-ghost,
+.variant-ghost {
+  color: hsl(var(--primary)) !important;
+  background-color: transparent !important;
+  font-weight: 600 !important;
+}
+
+button[variant="ghost"]:hover {
+  background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+/* Default button (shadcn/ui) */
+button[data-slot="button"],
+[role="button"] {
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Specific button colors - OVERRIDE */
+button[style*="background-color"],
+button[style*="backgroundColor"] {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+/* shadcn/ui Button component với bg-primary */
+[data-radix-button],
+[data-radix-trigger] {
+  font-weight: 600 !important;
+}
+
+[data-radix-button][class*="bg-primary"],
+[data-radix-trigger][class*="bg-primary"] {
+  color: #FFFFFF !important;
+}
+
+/* ============================================
+   LINKS & TEXT COLORS
+   ============================================ */
+
+/* Primary text color */
+.text-primary,
+[class*="text-primary"] {
+  color: hsl(var(--primary)) !important;
+}
+
+/* Links */
+a:not(.sidebar a):not(aside a):not(nav a) {
+  color: hsl(var(--primary));
+  transition: opacity 0.2s ease;
+}
+
+a:not(.sidebar a):not(aside a):not(nav a):hover {
+  opacity: 0.8;
+}
+
+/* ============================================
+   CARDS & CONTAINERS
+   ============================================ */
+
+/* Cards với highlight màu secondary */
+.card-highlight,
+[data-highlight="true"] {
+  background-color: var(--card-highlight, hsl(var(--secondary))) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Card borders */
+.card,
+[class*="card"] {
+  border-color: hsl(var(--border));
+}
+
+/* ============================================
+   BADGES & LABELS
+   ============================================ */
+
+/* Primary badge */
+.badge-primary,
+[class*="badge"][class*="primary"] {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Secondary badge */
+.badge-secondary,
+[class*="badge"][class*="secondary"] {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+}
+
+/* ============================================
+   CHARTS & GRAPHS
+   ============================================ */
+
+/* Chart primary color */
+.recharts-surface [class*="primary"],
+.chart-primary,
+[data-chart="primary"] {
+  fill: hsl(var(--primary)) !important;
+  stroke: hsl(var(--primary)) !important;
+}
+
+/* ============================================
+   FOCUS STATES
+   ============================================ */
+
+/* Focus ring sử dụng màu primary */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   TABS & NAVIGATION
+   ============================================ */
+
+/* Active tab */
+[role="tab"][data-state="active"],
+.tab-active,
+[class*="tab"][class*="active"] {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Tab hover */
+[role="tab"]:hover,
+.tab:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* ============================================
+   DROPDOWN & MENUS
+   ============================================ */
+
+/* Menu items hover */
+[role="menuitem"]:hover,
+.menu-item:hover,
+[class*="menu"] [class*="item"]:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* ============================================
+   PROGRESS & LOADING
+   ============================================ */
+
+/* Progress bar */
+.progress-bar,
+[role="progressbar"],
+progress {
+  background-color: hsl(var(--primary)) !important;
+}
+
+/* Loading spinner */
+.spinner,
+.loading,
+[class*="animate-spin"] {
+  border-color: hsl(var(--primary)) !important;
+  border-right-color: transparent !important;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+/* Custom scrollbar với màu primary */
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Smooth transition cho tất cả màu sắc */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Disable transition khi apply màu lần đầu */
+.no-transition,
+.no-transition * {
+  transition: none !important;
+}
+
+/* ============================================
+   UTILITY CLASSES - DỄ SỬ DỤNG
+   ============================================ */
+
+/* Button với text luôn hiển thị */
+.btn-visible,
+.button-visible {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  background-color: hsl(var(--primary)) !important;
+}
+
+.btn-visible:hover {
+  opacity: 0.9 !important;
+}
+
+/* Button text must be white */
+.text-white-force,
+.text-white-force * {
+  color: #FFFFFF !important;
+}
+
+/* Background utilities */
+.bg-primary-light {
+  background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+.bg-primary-lighter {
+  background-color: hsl(var(--primary) / 0.05) !important;
+}
+
+/* Border utilities */
+.border-primary {
+  border-color: hsl(var(--primary)) !important;
+}
+
+.border-primary-light {
+  border-color: hsl(var(--primary) / 0.3) !important;
+}
+
+/* Hover utilities */
+.hover-primary:hover {
+  background-color: hsl(var(--primary)) !important;
+  color: #FFFFFF !important;
+}
+
+/* Text always visible utility */
+.always-visible,
+.always-visible * {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ============================================
+   SPECIFIC COMPONENT OVERRIDES
+   ============================================ */
+
+/* Sidebar menu item với class cụ thể */
+.sidebar-menu-item,
+.nav-item,
+[class*="sidebar"] [class*="menu-item"] {
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0.5rem;
+}
+
+/* Dashboard cards */
+.dashboard-card,
+.stat-card,
+[class*="dashboard"] [class*="card"] {
+  border: 2px solid hsl(var(--border));
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover,
+.stat-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+  transform: translateY(-2px);
+}

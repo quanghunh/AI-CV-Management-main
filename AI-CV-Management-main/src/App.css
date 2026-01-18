@@ -1,0 +1,34 @@
+
+/* Style cho Switch khi bật (checked) */
+.switch[data-state="checked"] {
+  background-color: #22c55e; /* Màu xanh lá (bg-green-500) */
+}
+
+/* Style cho Switch khi tắt (unchecked) */
+.switch[data-state="unchecked"] {
+  background-color: #d1d5db; /* Màu xám nhạt (bg-gray-300) */
+}
+
+/* Style cho thumb (nút trượt) */
+.switch[data-state="checked"] .switch-thumb {
+  background-color: #ffffff; /* Màu trắng cho thumb khi bật */
+}
+
+.switch[data-state="unchecked"] .switch-thumb {
+  background-color: #9ca3af; /* Màu xám đậm (gray-400) cho thumb khi tắt */
+}
+
+/* Đảm bảo switch có kích thước rõ ràng (tùy chọn) */
+.switch {
+  width: 42px;
+  height: 24px;
+  border-radius: 9999px; /* Đảm bảo bo góc tròn */
+}
+
+/* Đảm bảo thumb có kích thước và chuyển động mượt mà (tùy chọn) */
+.switch-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transition: transform 0.2s ease-in-out;
+}
