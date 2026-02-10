@@ -23,7 +23,7 @@ export default function FloatingChatbot() {
       {/* Floating Chatbot Button with Pulse Animation */}
       <button
         onClick={() => setShowChatbot(!showChatbot)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center z-40 group"
+        className="fixed bottom-20 lg:bottom-6 right-6 w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center z-40 group"
         aria-label="AI Assistant"
       >
         {/* Pulse rings animation */}
@@ -166,7 +166,7 @@ Trả lời chuyên nghiệp, hữu ích bằng tiếng Việt:`;
   return (
     <>
       {/* Chatbot Popup with slide-in animation */}
-      <div className="fixed bottom-24 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-200 animate-slide-in">
+      <div className="fixed bottom-20 left-2 right-2 lg:bottom-24 lg:left-auto lg:right-6 lg:w-96 w-auto h-[calc(100vh-120px)] lg:h-[600px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-200 animate-slide-in">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
