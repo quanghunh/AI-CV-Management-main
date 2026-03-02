@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -686,21 +687,21 @@ export function JobsPage() {
   // ==================== RENDER ====================
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mô tả công việc</h1>
-          <p className="text-sm text-gray-500">Quản lý và tạo mô tả công việc</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Mô tả công việc</h1>
+          <p className="text-xs sm:text-sm text-gray-500 truncate">Quản lý và tạo mô tả công việc</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm" onClick={() => setIsDialogOpen(true)}>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0" onClick={() => setIsDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           {t('jobs.createNew')}
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           <Card className="border-blue-100 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-700">Tổng JDs</CardTitle>
@@ -753,43 +754,46 @@ export function JobsPage() {
           <CardTitle className="text-gray-900">Danh sách JD ({filteredJobs.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input 
-                placeholder="Tìm kiếm theo tiêu đề, phòng ban, vị trí..." 
-                className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              <Input
+                placeholder="Tìm kiếm theo tiêu đề, phòng ban, vị trí..."
+                className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] border-gray-300">
-                <SelectValue placeholder="Tất cả trạng thái" />
-              </SelectTrigger>
-              <SelectContent className="min-w-[180px] bg-white z-50 shadow-lg border border-gray-200" align="start" sideOffset={4}>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="Đã đăng">Đã xuất bản</SelectItem>
-                <SelectItem value="Bản nháp">Bản nháp</SelectItem>
-                <SelectItem value="Đã đóng">Đã đóng</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-[180px] border-gray-300">
-                <SelectValue placeholder="Tất cả phòng ban" />
-              </SelectTrigger>
-              <SelectContent className="min-w-[180px] bg-white z-50 shadow-lg border border-gray-200" align="start" sideOffset={4}>
-                <SelectItem value="all">Tất cả phòng ban</SelectItem>
-                <SelectItem value="Engineering">Engineering</SelectItem>
-                <SelectItem value="Design">Design</SelectItem>
-                <SelectItem value="Product">Product</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
-                <SelectItem value="Sales">Sales</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] border-gray-300 text-sm">
+                  <SelectValue placeholder="Tất cả" />
+                </SelectTrigger>
+                <SelectContent className="min-w-[140px] sm:min-w-[180px] bg-white z-50 shadow-lg border border-gray-200" align="start" sideOffset={4}>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="Đã đăng">Đã xuất bản</SelectItem>
+                  <SelectItem value="Bản nháp">Bản nháp</SelectItem>
+                  <SelectItem value="Đã đóng">Đã đóng</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] border-gray-300 text-sm">
+                  <SelectValue placeholder="Phòng ban" />
+                </SelectTrigger>
+                <SelectContent className="min-w-[140px] sm:min-w-[180px] bg-white z-50 shadow-lg border border-gray-200" align="start" sideOffset={4}>
+                  <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                  <SelectItem value="Engineering">Engineering</SelectItem>
+                  <SelectItem value="Design">Design</SelectItem>
+                  <SelectItem value="Product">Product</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="Sales">Sales</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="border rounded-lg border-gray-200">
+          {/* Desktop Table View - shows only on desktop (sm and up) */}
+          <div className="hidden sm:block border rounded-lg border-gray-200">
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
@@ -881,17 +885,120 @@ export function JobsPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Mobile Card Layout - shows only on mobile */}
+          <div className="sm:hidden space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-gray-500">
+                Đang tải dữ liệu...
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                Chưa có JD nào. Hãy tạo JD đầu tiên!
+              </div>
+            ) : (
+              filteredJobs.map((job) => (
+                <div key={job.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base truncate">{job.title}</h3>
+                      <p className="text-sm text-gray-500 mt-0.5">{job.level} • {job.job_type || 'Full-time'}</p>
+                    </div>
+                    {getStatusBadge(job.status)}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Phòng ban:</span>
+                      <span className="text-gray-900">{job.department}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Địa điểm:</span>
+                      <span className="text-gray-900">{job.work_location || job.location || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Ứng viên:</span>
+                      <span className="text-gray-900 font-medium">{job.cv_candidates[0]?.count || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Ngày tạo:</span>
+                      <span className="text-gray-900">{new Date(job.created_at).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetails(job)}
+                      className="text-gray-700 hover:text-blue-600"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Xem
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewCandidates(job)}
+                      className="text-blue-700 hover:text-blue-800 border-blue-200"
+                    >
+                      <Users className="h-4 w-4 mr-1" />
+                      Ứng viên
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="bottom" className="w-48 bg-white z-50 shadow-lg border border-gray-200">
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleEdit(job)}>
+                          <Edit className="mr-2 h-4 w-4 text-gray-600" />
+                          <span>Chỉnh sửa</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleCopy(job)}>
+                          <Copy className="mr-2 h-4 w-4 text-gray-600" />
+                          <span>Sao chép</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleShare(job)}>
+                          <Share2 className="mr-2 h-4 w-4 text-gray-600" />
+                          <span>Chia sẻ</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleGenerateAIQuestions(job)}>
+                          <Sparkles className="mr-2 h-4 w-4 text-purple-600" />
+                          <span>Tạo câu hỏi AI</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer" onClick={() => handleDelete(job)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          <span>Xóa</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
+      {/* Mobile FAB - Add Candidate */}
+      <Button
+        className="sm:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white z-50"
+        onClick={() => window.location.href = '/candidates'}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+
       {/* ==================== DIALOG TẠO JD MỚI ==================== */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-xl font-bold">Tạo mô tả công việc mới</DialogTitle>
-                <p className="text-sm text-gray-500 mt-1">Sử dụng AI để tạo JD hoặc tạo thủ công</p>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg sm:text-xl font-bold truncate">Tạo mô tả công việc mới</DialogTitle>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">Sử dụng AI để tạo JD hoặc tạo thủ công</p>
               </div>
             </div>
           </DialogHeader>
@@ -900,37 +1007,37 @@ export function JobsPage() {
           <div className="flex gap-2 mt-4">
             <button
               onClick={() => setActiveTab('ai')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium text-sm sm:text-base transition-colors ${
                 activeTab === 'ai'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               AI Generate
             </button>
             <button
               onClick={() => setActiveTab('manual')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium text-sm sm:text-base transition-colors ${
                 activeTab === 'manual'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              <PenTool className="w-4 h-4" />
+              <PenTool className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Manual
             </button>
           </div>
 
-          <div className="space-y-4 mt-4">
+          <div className="space-y-3 sm:space-y-4 mt-4">
             {activeTab === 'ai' ? (
               <>
                 {/* AI Tab Content */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                   <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Tạo JD tự động với AI</p>
+                      <p className="text-xs sm:text-sm font-medium text-blue-900">Tạo JD tự động với AI</p>
                       <p className="text-xs text-blue-700 mt-1">
                         AI sẽ giúp bạn tạo mô tả công việc chuyên nghiệp dựa trên các thông tin cơ bản
                       </p>
@@ -938,7 +1045,7 @@ export function JobsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Tiêu đề vị trí <span className="text-red-500">*</span>
@@ -1058,7 +1165,7 @@ export function JobsPage() {
             ) : (
               <>
                 {/* Manual Tab Content */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Tiêu đề vị trí <span className="text-red-500">*</span>
@@ -1207,10 +1314,10 @@ export function JobsPage() {
                   </p>
                 </div>
 
-                <div className="flex gap-3 mt-6 pt-4 border-t">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6 pt-4 border-t">
                   <Button
                     variant="outline"
-                    className="px-6"
+                    className="w-full sm:w-auto px-4 sm:px-6"
                     onClick={handleReset}
                   >
                     <X className="w-4 h-4 mr-2" />
@@ -1218,13 +1325,13 @@ export function JobsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="px-6"
+                    className="w-full sm:w-auto px-4 sm:px-6"
                     onClick={() => setIsDialogOpen(false)}
                   >
                     Hủy
                   </Button>
                   <Button
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                   >
@@ -1240,18 +1347,18 @@ export function JobsPage() {
 
       {/* Dialog Xem chi tiết */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">{selectedJob?.title}</DialogTitle>
-            <div className="flex gap-2 mt-2">
+            <DialogTitle className="text-lg sm:text-xl font-bold truncate">{selectedJob?.title}</DialogTitle>
+            <div className="flex flex-wrap gap-2 mt-2">
               {selectedJob && getStatusBadge(selectedJob.status)}
-              <Badge variant="outline">{selectedJob?.department}</Badge>
-              <Badge variant="outline">{selectedJob?.level}</Badge>
+              <Badge variant="outline" className="text-xs sm:text-sm">{selectedJob?.department}</Badge>
+              <Badge variant="outline" className="text-xs sm:text-sm">{selectedJob?.level}</Badge>
             </div>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
               <div>
                 <p className="text-sm text-gray-600">Loại hình</p>
                 <p className="font-medium">{selectedJob?.job_type || 'N/A'}</p>
@@ -1316,86 +1423,61 @@ export function JobsPage() {
       </Dialog>
 {/* ==================== ✅ NEW DIALOG - DANH SÁCH ỨNG VIÊN ==================== */}
 <Dialog open={isCandidatesDialogOpen} onOpenChange={setIsCandidatesDialogOpen}>
-  <DialogContent className="max-w-[98vw] w-[98vw] max-h-[90vh] overflow-y-auto">
+  <DialogContent className="max-w-5xl w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto sm:max-h-[90vh] p-4 sm:p-6">
     <DialogHeader>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+          <DialogTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
             Danh sách ứng viên
           </DialogTitle>
           {selectedJob && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               {selectedJob.title} • {selectedJob.department} • {selectedJob.level}
             </p>
           )}
         </div>
-        <Badge className="bg-blue-100 text-blue-700 text-lg px-3 py-1">
+        <Badge className="bg-blue-100 text-blue-700 text-base sm:text-lg px-2 sm:px-3 py-1">
           {jobCandidates.length} ứng viên
         </Badge>
       </div>
     </DialogHeader>
-    
+
     <div className="space-y-4 mt-4">
       {loadingCandidates ? (
-        // Loading State
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 rounded-full" />
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
+        // Loading State - more compact for mobile
+        <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+          <div className="relative w-12 h-12 sm:w-16 sm:h-16">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-200 rounded-full" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
           </div>
-          <p className="text-gray-600 mt-6 font-medium">Đang tải danh sách ứng viên...</p>
+          <p className="text-gray-600 mt-4 sm:mt-6 font-medium text-sm sm:text-base">Đang tải danh sách ứng viên...</p>
         </div>
       ) : jobCandidates.length === 0 ? (
         // Empty State
-        <div className="text-center py-16">
-          <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <div className="text-center py-12 sm:py-16">
+          <Users className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
             Chưa có ứng viên nào
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs sm:text-sm text-gray-500">
             Vị trí này chưa nhận được hồ sơ ứng tuyển nào
           </p>
         </div>
       ) : (
-        // Candidates Table
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader className="bg-gray-50">
-              <TableRow>
-                <TableHead className="font-semibold">Ứng viên</TableHead>
-                <TableHead className="font-semibold">Liên hệ</TableHead>
-                <TableHead className="font-semibold">Trạng thái</TableHead>
-                <TableHead className="font-semibold">Kỹ năng</TableHead>
-                <TableHead className="font-semibold">Ngày ứng tuyển</TableHead>
-                <TableHead className="text-right font-semibold">Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jobCandidates.map((candidate) => (
-                <TableRow key={candidate.id} className="hover:bg-gray-50">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                        {candidate.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{candidate.full_name}</div>
-                        <div className="text-sm text-gray-500">
-                          {candidate.university || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div className="text-sm">
-                      <div className="text-gray-900">{candidate.email}</div>
-                      <div className="text-gray-500">{candidate.phone_number || 'N/A'}</div>
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
+        // Candidates List - Card Layout (mobile-first)
+        <div className="space-y-3 sm:space-y-4">
+          {jobCandidates.map((candidate) => (
+            <div key={candidate.id} className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 hover:border-blue-300 transition-colors shadow-sm">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10 border-2 border-blue-200 shrink-0">
+                  <AvatarFallback className="text-xs sm:text-sm bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                    {candidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{candidate.full_name}</h3>
                     <Badge className={
                       candidate.status === 'Chấp nhận' ? 'bg-green-100 text-green-700' :
                       candidate.status === 'Từ chối' ? 'bg-red-100 text-red-700' :
@@ -1405,60 +1487,67 @@ export function JobsPage() {
                     }>
                       {candidate.status}
                     </Badge>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {candidate.cv_candidate_skills?.slice(0, 3).map((item: any, idx: number) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {item.cv_skills.name}
-                        </Badge>
-                      ))}
-                      {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{candidate.cv_candidate_skills.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell className="text-sm text-gray-600">
-                    {new Date(candidate.created_at).toLocaleDateString('vi-VN')}
-                  </TableCell>
-                  
-                  <TableCell className="text-right">
-  <div className="flex items-center justify-end gap-2">
-    {candidate.cv_url && (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => window.open(candidate.cv_url, '_blank')}
-      >
-        <FileText className="w-4 h-4 mr-1" />
-        CV
-      </Button>
-    )}
-  </div>
-</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">{candidate.email}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{candidate.phone_number || 'N/A'}</p>
+                </div>
+              </div>
+
+              {candidate.university && (
+                <div className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-600">
+                  {candidate.university}
+                </div>
+              )}
+
+              {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 0 && (
+                <div className="mt-2 sm:mt-3 flex flex-wrap gap-1 sm:gap-1.5">
+                  {candidate.cv_candidate_skills.slice(0, 4).map((item: any, idx: number) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {item.cv_skills.name}
+                    </Badge>
+                  ))}
+                  {candidate.cv_candidate_skills.length > 4 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{candidate.cv_candidate_skills.length - 4}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                <div className="text-xs text-gray-500">
+                  Ngày ứng tuyển: {new Date(candidate.created_at).toLocaleDateString('vi-VN')}
+                </div>
+                {candidate.cv_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(candidate.cv_url, '_blank')}
+                    className="text-gray-700 hover:text-blue-600"
+                  >
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                    <span className="text-xs sm:text-sm">Xem CV</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {/* Footer Actions */}
-      <div className="flex justify-between items-center pt-4 border-t">
-        <div className="text-sm text-gray-600">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t">
+        <div className="text-xs sm:text-sm text-gray-600">
           Tổng cộng: <span className="font-semibold">{jobCandidates.length}</span> ứng viên
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
               // Export to CSV
               const csvContent = [
                 ['Họ tên', 'Email', 'SĐT', 'Trạng thái', 'Ngày ứng tuyển'].join(','),
-                ...jobCandidates.map(c => 
+                ...jobCandidates.map(c =>
                   [
                     c.full_name,
                     c.email,
@@ -1468,7 +1557,7 @@ export function JobsPage() {
                   ].join(',')
                 )
               ].join('\n');
-              
+
               const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
@@ -1483,6 +1572,7 @@ export function JobsPage() {
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
               setIsCandidatesDialogOpen(false);
               setJobCandidates([]);
@@ -1497,14 +1587,14 @@ export function JobsPage() {
 </Dialog>
       {/* Dialog Chỉnh sửa */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Chỉnh sửa Job Description</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl font-bold">Chỉnh sửa Job Description</DialogTitle>
           </DialogHeader>
-          
+
           {editFormData && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Tiêu đề vị trí <span className="text-red-500">*</span>
@@ -1645,16 +1735,16 @@ export function JobsPage() {
                 </p>
               </div>
 
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6 pt-4 border-t">
                 <Button
                   variant="outline"
-                  className="px-6"
+                  className="w-full sm:w-auto px-4 sm:px-6"
                   onClick={() => setIsEditDialogOpen(false)}
                 >
                   Hủy
                 </Button>
                 <Button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={handleUpdateJob}
                   disabled={isSubmitting}
                 >
@@ -1669,28 +1759,28 @@ export function JobsPage() {
 
       {/* ==================== ✅ NEW DIALOG - AI INTERVIEW QUESTIONS ==================== */}
       <Dialog open={isAIQuestionsDialogOpen} onOpenChange={setIsAIQuestionsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  Câu hỏi phỏng vấn AI
+            <div className="flex items-start sm:items-center justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                  <span className="truncate">Câu hỏi phỏng vấn AI</span>
                 </DialogTitle>
                 {selectedJob && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
                     {selectedJob.title} • {selectedJob.department} • {selectedJob.level}
                   </p>
                 )}
               </div>
-              
+
               {/* Language selector - only show before generating */}
               {!generatingQuestions && !aiQuestions && (
-                <Select 
-                  value={aiQuestionLanguage} 
+                <Select
+                  value={aiQuestionLanguage}
                   onValueChange={(val) => setAiQuestionLanguage(val as 'vietnamese' | 'english')}
                 >
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[100px] sm:w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
@@ -1700,9 +1790,9 @@ export function JobsPage() {
                 </Select>
               )}
             </div>
-            
+
             {selectedJob && !generatingQuestions && (
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-3">
                 <Badge variant="outline" className="text-xs">
                   {selectedJob.department}
                 </Badge>
@@ -1715,17 +1805,17 @@ export function JobsPage() {
               </div>
             )}
           </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
+
+          <div className="space-y-3 sm:space-y-4 mt-4">
             {generatingQuestions ? (
               // Loading State
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="relative">
-                  <div className="w-16 h-16 border-4 border-purple-200 rounded-full" />
-                  <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
+              <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                <div className="relative w-12 h-12 sm:w-16 sm:h-16">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-200 rounded-full" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
                 </div>
-                <p className="text-gray-600 mt-6 font-medium">Đang tạo câu hỏi với AI...</p>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-gray-600 mt-4 sm:mt-6 font-medium text-sm sm:text-base">Đang tạo câu hỏi với AI...</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-2">
                   AI đang phân tích JD và tạo câu hỏi phù hợp
                 </p>
                 <div className="flex gap-2 mt-4">
@@ -1738,15 +1828,15 @@ export function JobsPage() {
               // Questions Display State
               <>
                 {/* Info banner */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-purple-900">
+                      <p className="text-xs sm:text-sm font-medium text-purple-900">
                         Câu hỏi được tạo tự động bởi AI
                       </p>
                       <p className="text-xs text-purple-700 mt-1">
-                        Vui lòng xem xét và điều chỉnh cho phù hợp với nhu cầu thực tế của công ty. 
+                        Vui lòng xem xét và điều chỉnh cho phù hợp với nhu cầu thực tế của công ty.
                         Các câu hỏi này chỉ mang tính tham khảo.
                       </p>
                     </div>
@@ -1755,13 +1845,13 @@ export function JobsPage() {
 
                 {/* Questions display with markdown formatting */}
                 <div className="border rounded-lg bg-white overflow-hidden">
-                  <div className="p-6 max-h-[500px] overflow-y-auto">
-                    <div className="prose prose-sm max-w-none">
+                  <div className="p-3 sm:p-6 max-h-[400px] sm:max-h-[500px] overflow-y-auto">
+                    <div className="prose prose-xs sm:prose-sm max-w-none">
                       {aiQuestions.split('\n').map((line, index) => {
                         // Heading 1
                         if (line.startsWith('# ')) {
                           return (
-                            <h1 key={index} className="text-2xl font-bold mt-6 mb-4 text-gray-900 first:mt-0">
+                            <h1 key={index} className="text-lg sm:text-2xl font-bold mt-4 sm:mt-6 mb-3 sm:mb-4 text-gray-900 first:mt-0">
                               {line.replace('# ', '')}
                             </h1>
                           );
@@ -1769,7 +1859,7 @@ export function JobsPage() {
                         // Heading 2
                         if (line.startsWith('## ')) {
                           return (
-                            <h2 key={index} className="text-lg font-bold mt-6 mb-3 text-gray-900 flex items-center gap-2">
+                            <h2 key={index} className="text-base sm:text-lg font-bold mt-4 sm:mt-6 mb-2 sm:mb-3 text-gray-900 flex items-center gap-2">
                               {line.replace('## ', '')}
                             </h2>
                           );
@@ -1777,7 +1867,7 @@ export function JobsPage() {
                         // Heading 3
                         if (line.startsWith('### ')) {
                           return (
-                            <h3 key={index} className="text-base font-semibold mt-4 mb-2 text-gray-800">
+                            <h3 key={index} className="text-sm sm:text-base font-semibold mt-3 sm:mt-4 mb-1.5 sm:mb-2 text-gray-800">
                               {line.replace('### ', '')}
                             </h3>
                           );
@@ -1785,7 +1875,7 @@ export function JobsPage() {
                         // List items
                         if (line.trim().startsWith('- ')) {
                           return (
-                            <li key={index} className="ml-6 mb-2 text-gray-700">
+                            <li key={index} className="ml-4 sm:ml-6 mb-1.5 sm:mb-2 text-xs sm:text-sm text-gray-700">
                               {line.trim().replace('- ', '')}
                             </li>
                           );
@@ -1793,18 +1883,18 @@ export function JobsPage() {
                         // Numbered list
                         if (/^\d+\.\s/.test(line.trim())) {
                           return (
-                            <li key={index} className="ml-6 mb-2 text-gray-700 list-decimal">
+                            <li key={index} className="ml-4 sm:ml-6 mb-1.5 sm:mb-2 text-xs sm:text-sm text-gray-700 list-decimal">
                               {line.trim().replace(/^\d+\.\s/, '')}
                             </li>
                           );
                         }
                         // Empty line
                         if (line.trim() === '') {
-                          return <div key={index} className="h-2" />;
+                          return <div key={index} className="h-1.5 sm:h-2" />;
                         }
                         // Regular paragraph
                         return (
-                          <p key={index} className="mb-2 text-gray-700">
+                          <p key={index} className="mb-1.5 sm:mb-2 text-xs sm:text-sm text-gray-700">
                             {line}
                           </p>
                         );
@@ -1814,10 +1904,10 @@ export function JobsPage() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                     onClick={handleCopyAIQuestions}
                   >
                     <Copy className="w-4 h-4 mr-2" />
@@ -1825,6 +1915,7 @@ export function JobsPage() {
                   </Button>
                   <Button
                     variant="outline"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       setAiQuestions('');
                       if (selectedJob) {
@@ -1837,6 +1928,7 @@ export function JobsPage() {
                   </Button>
                   <Button
                     variant="outline"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       setIsAIQuestionsDialogOpen(false);
                       setAiQuestions('');
@@ -1848,9 +1940,9 @@ export function JobsPage() {
               </>
             ) : (
               // No questions state
-              <div className="text-center py-12 text-gray-500">
-                <Sparkles className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-sm">Không có câu hỏi nào được tạo</p>
+              <div className="text-center py-10 sm:py-12 text-gray-500">
+                <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 text-gray-400" />
+                <p className="text-xs sm:text-sm">Không có câu hỏi nào được tạo</p>
               </div>
             )}
           </div>
@@ -1859,20 +1951,20 @@ export function JobsPage() {
 
       {/* Dialog Xác nhận xóa */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md w-[90vw] sm:max-w-md p-4 sm:p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa Job Description</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa JD <strong>{selectedJob?.title}</strong> không? 
+            <AlertDialogTitle className="text-base sm:text-lg">Xác nhận xóa Job Description</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
+              Bạn có chắc chắn muốn xóa JD <strong>{selectedJob?.title}</strong> không?
               Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? 'Đang xóa...' : 'Xóa'}
             </AlertDialogAction>

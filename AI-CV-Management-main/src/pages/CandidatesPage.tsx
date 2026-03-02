@@ -766,16 +766,18 @@ export function CandidatesPage() {
   }).slice(0, 100);
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Quản lý ứng viên</h1>
-          <p className="text-sm text-muted-foreground">Quản lý và theo dõi tất cả ứng viên</p>
+    <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">Quản lý ứng viên</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">Quản lý và theo dõi tất cả ứng viên</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={fetchCandidates}>Làm mới</Button>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={fetchCandidates} className="hidden sm:flex">
+            Làm mới
+          </Button>
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hidden sm:flex"
             onClick={() => setIsDialogOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -783,6 +785,14 @@ export function CandidatesPage() {
           </Button>
         </div>
       </div>
+
+      {/* Mobile FAB - Add Candidate */}
+      <Button
+        className="sm:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white z-50"
+        onClick={() => setIsDialogOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       {/* Dialog Thêm ứng viên */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1177,77 +1187,78 @@ export function CandidatesPage() {
 
       {/* Dialog Xem thông tin ứng viên */}
       <Dialog open={!!viewCandidate || isLoadingView} onOpenChange={() => setViewCandidate(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl sm:max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw]">
           <DialogHeader>
-            <DialogTitle>Thông tin ứng viên</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Thông tin ứng viên</DialogTitle>
           </DialogHeader>
           {isLoadingView ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-4">Đang tải thông tin...</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải thông tin...</p>
             </div>
           ) : viewCandidate ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 pb-4 border-b">
-                <Avatar className="h-16 w-16 border-2 border-blue-200">
-                  <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-3 sm:gap-4 pb-3 sm:pb-4 border-b">
+                <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-blue-200 shrink-0">
+                  <AvatarFallback className="text-lg sm:text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
                     {viewCandidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold">{viewCandidate.full_name}</h3>
-                  <p className="text-sm text-gray-500">{viewCandidate.cv_jobs?.title || 'N/A'}</p>
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold truncate">{viewCandidate.full_name}</h3>
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">{viewCandidate.cv_jobs?.title || 'N/A'}</p>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1">
                     {getStatusBadge(viewCandidate.status)}
                     {viewCandidate.mandatory_requirements_met && (
-                      <Badge className="bg-green-100 text-green-700 border-green-300">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Đáp ứng yêu cầu
+                      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs sm:text-sm">
+                        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" />
+                        <span className="hidden sm:inline">Đáp ứng yêu cầu</span>
+                        <span className="sm:hidden">Đáp ứng</span>
                       </Badge>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-sm font-medium text-gray-500">Email</label><p className="text-gray-900">{viewCandidate.email}</p></div>
-                <div><label className="text-sm font-medium text-gray-500">Số điện thoại</label><p className="text-gray-900">{viewCandidate.phone_number || 'N/A'}</p></div>
-                <div><label className="text-sm font-medium text-gray-500">Địa chỉ</label><p className="text-gray-900">{viewCandidate.address || 'N/A'}</p></div>
-                <div><label className="text-sm font-medium text-gray-500">Trường học</label><p className="text-gray-900">{viewCandidate.university || 'N/A'}</p></div>
-                <div><label className="text-sm font-medium text-gray-500">Cấp độ</label><p className="text-gray-900">{viewCandidate.cv_jobs?.level || 'N/A'}</p></div>
-                <div><label className="text-sm font-medium text-gray-500">Nguồn</label><p className="text-gray-900">{viewCandidate.source || 'N/A'}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Email</label><p className="text-gray-900 text-sm sm:text-base break-all">{viewCandidate.email}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Số điện thoại</label><p className="text-gray-900 text-sm sm:text-base">{viewCandidate.phone_number || 'N/A'}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Địa chỉ</label><p className="text-gray-900 text-sm sm:text-base">{viewCandidate.address || 'N/A'}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Trường học</label><p className="text-gray-900 text-sm sm:text-base">{viewCandidate.university || 'N/A'}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Cấp độ</label><p className="text-gray-900 text-sm sm:text-base">{viewCandidate.cv_jobs?.level || 'N/A'}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-gray-500">Nguồn</label><p className="text-gray-900 text-sm sm:text-base">{viewCandidate.source || 'N/A'}</p></div>
               </div>
 
-              <div><label className="text-sm font-medium text-gray-500">Kinh nghiệm</label><p className="text-gray-900 mt-1">{viewCandidate.experience || 'Chưa có thông tin'}</p></div>
-              <div><label className="text-sm font-medium text-gray-500">Học vấn</label><p className="text-gray-900 mt-1">{viewCandidate.education || 'Chưa có thông tin'}</p></div>
-              
+              <div><label className="text-xs sm:text-sm font-medium text-gray-500">Kinh nghiệm</label><p className="text-gray-900 mt-1 text-sm sm:text-base">{viewCandidate.experience || 'Chưa có thông tin'}</p></div>
+              <div><label className="text-xs sm:text-sm font-medium text-gray-500">Học vấn</label><p className="text-gray-900 mt-1 text-sm sm:text-base">{viewCandidate.education || 'Chưa có thông tin'}</p></div>
+
               {viewCandidate.mandatory_requirements_notes && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="text-sm font-medium text-amber-900 block mb-1">
+                  <label className="text-xs sm:text-sm font-medium text-amber-900 block mb-1">
                     Ghi chú yêu cầu bắt buộc
                   </label>
-                  <p className="text-sm text-amber-800">{viewCandidate.mandatory_requirements_notes}</p>
+                  <p className="text-xs sm:text-sm text-amber-800">{viewCandidate.mandatory_requirements_notes}</p>
                 </div>
               )}
-              
+
               <div>
-                <label className="text-sm font-medium text-gray-500">Kỹ năng</label>
+                <label className="text-xs sm:text-sm font-medium text-gray-500">Kỹ năng</label>
                 <div className="mt-1">
                   {viewCandidate?.cv_candidate_skills && viewCandidate.cv_candidate_skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {viewCandidate.cv_candidate_skills.map((item, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                           {item.cv_skills.name}
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-900">Chưa có thông tin</p>
+                    <p className="text-gray-900 text-sm sm:text-base">Chưa có thông tin</p>
                   )}
                 </div>
               </div>
 
-              <div><label className="text-sm font-medium text-gray-500">Ngày ứng tuyển</label><p className="text-gray-900">{new Date(viewCandidate.created_at).toLocaleDateString('vi-VN')}</p></div>
+              <div><label className="text-xs sm:text-sm font-medium text-gray-500">Ngày ứng tuyển</label><p className="text-gray-900 text-sm sm:text-base">{new Date(viewCandidate.created_at).toLocaleDateString('vi-VN')}</p></div>
             </div>
           ) : null}
         </DialogContent>
@@ -1323,33 +1334,33 @@ export function CandidatesPage() {
 
       {/* Dialog Xem CV */}
       <Dialog open={!!viewCVCandidate || isLoadingCV} onOpenChange={() => setViewCVCandidate(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw]">
           <DialogHeader>
-            <DialogTitle>CV - {viewCVCandidate?.full_name}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg truncate">CV - {viewCVCandidate?.full_name}</DialogTitle>
           </DialogHeader>
           {isLoadingCV ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-4">Đang tải CV...</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải CV...</p>
             </div>
           ) : viewCVCandidate?.cv_url ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{viewCVCandidate.cv_file_name}</p>
-                  <p className="text-sm text-gray-500">Ngày upload: {new Date(viewCVCandidate.created_at).toLocaleDateString('vi-VN')}</p>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm sm:text-base truncate">{viewCVCandidate.cv_file_name}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Ngày upload: {new Date(viewCVCandidate.created_at).toLocaleDateString('vi-VN')}</p>
                 </div>
-                <a href={viewCVCandidate.cv_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <a href={viewCVCandidate.cv_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 sm:w-auto w-full shrink-0">
                   <Download className="w-4 h-4" />
                   Tải xuống
                 </a>
               </div>
-              <iframe src={viewCVCandidate.cv_url} className="w-full h-[600px] border rounded-lg" title="CV Preview" />
+              <iframe src={viewCVCandidate.cv_url} className="w-full h-[400px] sm:h-[600px] border rounded-lg" title="CV Preview" />
             </div>
           ) : (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">Ứng viên chưa upload CV</p>
+            <div className="text-center py-8 sm:py-12">
+              <FileText className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-400 mb-3 sm:mb-4" />
+              <p className="text-gray-500 text-sm sm:text-base">Ứng viên chưa upload CV</p>
             </div>
           )}
         </DialogContent>
@@ -1357,14 +1368,14 @@ export function CandidatesPage() {
 
       {/* Dialog Phân tích CV */}
       <Dialog open={!!analyzeCVCandidate || isLoadingAnalyze} onOpenChange={() => setAnalyzeCVCandidate(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl sm:max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw]">
           <DialogHeader>
-            <DialogTitle>Phân tích CV - {analyzeCVCandidate?.full_name}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Phân tích CV - {analyzeCVCandidate?.full_name}</DialogTitle>
           </DialogHeader>
           {isLoadingAnalyze ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-4">Đang tải dữ liệu phân tích...</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu phân tích...</p>
             </div>
           ) : analyzeCVCandidate?.cv_parsed_data ? (
             <div className="space-y-4">
@@ -1535,13 +1546,13 @@ export function CandidatesPage() {
       </Dialog>
 
       {/* Cards thống kê */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
         <Card className="shadow-sm border-2 border-gray-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Tổng ứng viên</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{candidates.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold">{candidates.length}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="inline h-4 w-4 mr-1 text-green-500" />
               +20.1% so với tháng trước
@@ -1553,7 +1564,7 @@ export function CandidatesPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Ứng viên mới</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{candidates.filter(c => c.status === 'Mới').length}</div>
+            <div className="text-2xl sm:text-3xl font-bold">{candidates.filter(c => c.status === 'Mới').length}</div>
             <p className="text-xs text-muted-foreground">
               <Users className="inline h-4 w-4 mr-1 text-blue-500" />
               Trong tuần này
@@ -1565,7 +1576,7 @@ export function CandidatesPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Đáp ứng yêu cầu</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl sm:text-3xl font-bold">
               {candidates.filter(c => c.mandatory_requirements_met).length}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -1577,9 +1588,9 @@ export function CandidatesPage() {
       </div>
 
       {/* Bộ lọc và nút chức năng */}
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-4 items-center flex-1">
-          <div className="relative min-w-[200px] flex-1">
+      <div className="flex flex-wrap gap-3 sm:gap-4 items-center justify-between">
+        <div className="flex flex-wrap gap-3 sm:gap-4 items-center flex-1 min-w-0">
+          <div className="relative min-w-[180px] sm:min-w-[200px] flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               className="pl-9"
@@ -1588,13 +1599,13 @@ export function CandidatesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" onClick={() => setIsFilterOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setIsFilterOpen(true)}>
             <Filter className="mr-2 h-4 w-4" />
-            Bộ lọc nâng cao
+            <span className="hidden sm:inline">Bộ lọc nâng cao</span>
           </Button>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV}>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={exportCSV} className="hidden sm:flex">
             <Download className="mr-2 h-4 w-4" />
             Xuất CSV
           </Button>
@@ -1603,105 +1614,204 @@ export function CandidatesPage() {
 
       {/* Bảng ứng viên */}
       {loading ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-500 mt-4">Đang tải dữ liệu ứng viên...</p>
+        <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu ứng viên...</p>
         </div>
       ) : filteredCandidates.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Không tìm thấy ứng viên</h3>
+        <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
+          <Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900">Không tìm thấy ứng viên</h3>
           <p className="text-sm text-gray-500 mt-1">Thử thay đổi bộ lọc hoặc thêm ứng viên mới</p>
         </div>
       ) : (
         <Card className="shadow-sm border-2 border-gray-100 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="w-[250px]">Ứng viên</TableHead>
-                <TableHead>Vị trí</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Kỹ năng</TableHead>
-                <TableHead className="text-right">Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCandidates.map((candidate) => (
-                <TableRow key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 border-2 border-blue-200">
-                        <AvatarFallback className="text-sm bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                          {candidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium text-gray-900 flex items-center gap-2">
-                          {candidate.full_name}
-                          {candidate.mandatory_requirements_met && (
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          )}
+          {/* Desktop Table - shows on sm and up */}
+          <div className="hidden sm:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-[180px] sm:w-[250px]">Ứng viên</TableHead>
+                  <TableHead>Vị trí</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Kỹ năng</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCandidates.map((candidate) => (
+                  <TableRow key={candidate.id} className="hover:bg-gray-50 transition-colors">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Avatar className="h-8 w-8 border-2 border-blue-200 shrink-0">
+                          <AvatarFallback className="text-xs sm:text-sm bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                            {candidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
+                            <span className="truncate">{candidate.full_name}</span>
+                            {candidate.mandatory_requirements_met && (
+                              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500 truncate">{candidate.email}</div>
                         </div>
-                        <div className="text-sm text-gray-500">{candidate.email}</div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {candidate.cv_jobs ? (
-                      <div>
-                        <div className="font-medium">{candidate.cv_jobs.title}</div>
-                        <div className="text-sm text-gray-500">{candidate.cv_jobs.level}</div>
+                    </TableCell>
+                    <TableCell>
+                      {candidate.cv_jobs ? (
+                        <div>
+                          <div className="font-medium text-sm">{candidate.cv_jobs.title}</div>
+                          <div className="text-xs sm:text-sm text-gray-500">{candidate.cv_jobs.level}</div>
+                        </div>
+                      ) : 'N/A'}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(candidate.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-[150px] sm:max-w-[300px]">
+                        {candidate.cv_candidate_skills?.slice(0, 3).map((item, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {item.cv_skills.name}
+                          </Badge>
+                        ))}
+                        {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">+{candidate.cv_candidate_skills.length - 3}</Badge>
+                        )}
                       </div>
-                    ) : 'N/A'}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(candidate.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[300px]">
-                      {candidate.cv_candidate_skills?.slice(0, 4).map((item, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          {item.cv_skills.name}
-                        </Badge>
-                      ))}
-                      {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 4 && (
-                        <Badge variant="secondary" className="text-xs">+{candidate.cv_candidate_skills.length - 4}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-[60] bg-white shadow-lg border border-gray-200">
+                          <DropdownMenuItem onClick={() => handleViewCandidate(candidate)} className="flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-blue-600" />
+                            <span>Xem thông tin</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditCandidate(candidate)} className="flex items-center gap-2">
+                            <Edit className="h-4 w-4 text-green-600" />
+                            <span>Chỉnh sửa</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewCV(candidate)} className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-purple-600" />
+                            <span>Xem CV</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAnalyzeCV(candidate)} className="flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-orange-600" />
+                            <span>Phân tích CV</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate)} className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="h-4 w-4" />
+                            <span>Xóa ứng viên</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card Layout - shows only on mobile */}
+          <div className="sm:hidden space-y-3">
+            {filteredCandidates.map((candidate) => (
+              <div key={candidate.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors shadow-sm">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10 border-2 border-blue-200 shrink-0">
+                    <AvatarFallback className="text-xs sm:text-sm bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                      {candidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-semibold text-gray-900 text-base truncate">{candidate.full_name}</h3>
+                      {candidate.mandatory_requirements_met && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right">
+                    <p className="text-sm text-gray-500 truncate">{candidate.email}</p>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      {getStatusBadge(candidate.status)}
+                      {candidate.cv_jobs && (
+                        <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                          {candidate.cv_jobs.title}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {candidate.cv_candidate_skills.slice(0, 4).map((item, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">
+                        {item.cv_skills.name}
+                      </Badge>
+                    ))}
+                    {candidate.cv_candidate_skills.length > 4 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{candidate.cv_candidate_skills.length - 4}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <div className="text-xs text-gray-500">
+                    Ngày ứng tuyển: {new Date(candidate.created_at).toLocaleDateString('vi-VN')}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewCandidate(candidate)}
+                      className="h-8 w-8 text-gray-600 hover:text-blue-600"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditCandidate(candidate)}
+                      className="h-8 w-8 text-gray-600 hover:text-green-600"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewCV(candidate)}
+                      className="h-8 w-8 text-gray-600 hover:text-purple-600"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4 text-gray-600" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="z-[60] bg-white shadow-lg border border-gray-200">
-                        <DropdownMenuItem onClick={() => handleViewCandidate(candidate)} className="flex items-center gap-2">
-                          <Eye className="h-4 w-4 text-blue-600" />
-                          <span>Xem thông tin</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditCandidate(candidate)} className="flex items-center gap-2">
-                          <Edit className="h-4 w-4 text-green-600" />
-                          <span>Chỉnh sửa</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewCV(candidate)} className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-purple-600" />
-                          <span>Xem CV</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAnalyzeCV(candidate)} className="flex items-center gap-2">
-                          <Brain className="h-4 w-4 text-orange-600" />
+                      <DropdownMenuContent align="end" className="w-48 bg-white z-[60] shadow-lg border border-gray-200">
+                        <DropdownMenuItem onClick={() => handleAnalyzeCV(candidate)}>
+                          <Brain className="mr-2 h-4 w-4 text-orange-600" />
                           <span>Phân tích CV</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate)} className="flex items-center gap-2 text-red-600">
-                          <Trash2 className="h-4 w-4" />
+                        <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                          <Trash2 className="mr-2 h-4 w-4" />
                           <span>Xóa ứng viên</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 
