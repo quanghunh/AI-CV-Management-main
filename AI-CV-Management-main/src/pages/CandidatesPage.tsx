@@ -777,40 +777,33 @@ export function CandidatesPage() {
             Làm mới
           </Button>
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hidden sm:flex"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0 text-xs sm:text-sm px-3 sm:px-4 h-8 sm:h-9"
             onClick={() => setIsDialogOpen(true)}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm ứng viên
+            <Plus className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Thêm ứng viên</span>
+            <span className="sm:hidden">Thêm</span>
           </Button>
         </div>
       </div>
 
-      {/* Mobile FAB - Add Candidate */}
-      <Button
-        className="sm:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white z-50"
-        onClick={() => setIsDialogOpen(true)}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
-
       {/* Dialog Thêm ứng viên */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-xl font-bold">Thêm ứng viên mới</DialogTitle>
-                <p className="text-sm text-gray-500 mt-1">
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-base sm:text-lg font-bold truncate">Thêm ứng viên mới</DialogTitle>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 truncate">
                   Nhập thông tin ứng viên mới và tải lên CV nếu có. Các trường có dấu (*) là bắt buộc.
                 </p>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-1.5 sm:gap-2 mt-3 sm:mt-4">
             <button
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+              className={`flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
                 currentTab === 'basic'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -820,7 +813,7 @@ export function CandidatesPage() {
               Thông tin cơ bản
             </button>
             <button
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+              className={`flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
                 currentTab === 'cv'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -831,7 +824,7 @@ export function CandidatesPage() {
             </button>
             {selectedJob?.mandatory_requirements && (
               <button
-                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors rounded-lg relative ${
+                className={`flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg relative ${
                   currentTab === 'requirements'
                     ? 'bg-amber-50 text-amber-700 border-2 border-amber-300'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -840,16 +833,16 @@ export function CandidatesPage() {
               >
                 Yêu cầu bắt buộc
                 {!mandatoryRequirementsMet && (
-                  <AlertTriangle className="w-4 h-4 absolute -top-1 -right-1 text-red-500" />
+                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute -top-0.5 sm:-top-1 -right-0.5 sm:-right-1 text-red-500" />
                 )}
               </button>
             )}
           </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 space-y-3 sm:space-y-4">
             {currentTab === 'basic' ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Họ và tên <span className="text-red-500">*</span>
@@ -858,6 +851,7 @@ export function CandidatesPage() {
                       placeholder="Nhập họ tên đầy đủ"
                       value={formData.full_name}
                       onChange={(e) => handleInputChange('full_name', e.target.value)}
+                      className="w-full"
                     />
                   </div>
                   <div>
@@ -869,17 +863,19 @@ export function CandidatesPage() {
                       placeholder="example@email.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Số điện thoại</label>
                     <Input
                       placeholder="0123456789"
                       value={formData.phone_number}
                       onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                      className="w-full"
                     />
                   </div>
                   <div>
@@ -906,10 +902,10 @@ export function CandidatesPage() {
                 </div>
 
                 {selectedJob?.mandatory_requirements && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm">
+                      <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs sm:text-xs sm:text-sm">
                         <p className="font-medium text-amber-900">Vị trí này có yêu cầu bắt buộc</p>
                         <p className="text-amber-700 text-xs mt-1">
                           Vui lòng kiểm tra tab "Yêu cầu bắt buộc" để xác nhận ứng viên đáp ứng đủ điều kiện
@@ -925,6 +921,7 @@ export function CandidatesPage() {
                     placeholder="Nhập địa chỉ"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
+                    className="w-full"
                   />
                 </div>
 
@@ -934,15 +931,16 @@ export function CandidatesPage() {
                     placeholder="VD: Đại học Bách Khoa TP.HCM"
                     value={formData.university}
                     onChange={(e) => handleInputChange('university', e.target.value)}
+                    className="w-full"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Kinh nghiệm</label>
                     <Textarea
                       placeholder="VD: 3 năm làm Frontend Developer tại ABC Company"
-                      className="min-h-[80px] resize-none"
+                      className="min-h-[80px] resize-none w-full"
                       value={formData.experience}
                       onChange={(e) => handleInputChange('experience', e.target.value)}
                     />
@@ -951,7 +949,7 @@ export function CandidatesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Học vấn</label>
                     <Textarea
                       placeholder="VD: Cử nhân CNTT, GPA 3.5/4.0"
-                      className="min-h-[80px] resize-none"
+                      className="min-h-[80px] resize-none w-full"
                       value={formData.education}
                       onChange={(e) => handleInputChange('education', e.target.value)}
                     />
@@ -980,7 +978,7 @@ export function CandidatesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Kỹ năng</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Kỹ năng</label>
                   <SkillsInput
                     value={formData.skills}
                     onChange={(skills) => handleInputChange('skills', skills)}
@@ -989,7 +987,7 @@ export function CandidatesPage() {
                 </div>
               </>
             ) : currentTab === 'cv' ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                   selectedFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-blue-400'
                 }`}>
@@ -1003,7 +1001,7 @@ export function CandidatesPage() {
                   />
                   
                   {isUploading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-center justify-center">
                         <div className="relative">
                           <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
@@ -1090,7 +1088,7 @@ export function CandidatesPage() {
                 )}
               </div>
             ) : currentTab === 'requirements' ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="w-6 h-6 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -1141,7 +1139,7 @@ export function CandidatesPage() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">
                       Ghi chú về yêu cầu bắt buộc (tùy chọn)
                     </label>
                     <Textarea
@@ -1170,16 +1168,17 @@ export function CandidatesPage() {
             ) : null}
           </div>
 
-          <div className="flex gap-3 mt-6 pt-4 border-t">
-            <Button variant="outline" className="px-6" onClick={resetForm}>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 mt-4 pt-4 border-t">
+            <Button variant="outline" onClick={resetForm}>
               <X className="w-4 h-4 mr-2" />
               Reset
             </Button>
-            <Button variant="outline" className="px-6" onClick={() => { setIsDialogOpen(false); resetForm(); }} disabled={isSaving}>
+            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} disabled={isSaving}>
               Hủy
             </Button>
-            <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSubmit} disabled={isSaving}>
-              {isSaving ? <>Đang lưu...</> : <><Plus className="mr-2 h-4 w-4" />Thêm ứng viên</>}
+            <Button className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSubmit} disabled={isSaving}>
+              <Plus className="w-4 h-4 mr-2" />
+              {isSaving ? 'Đang lưu...' : 'Thêm ứng viên'}
             </Button>
           </div>
         </DialogContent>
@@ -1194,10 +1193,10 @@ export function CandidatesPage() {
           {isLoadingView ? (
             <div className="text-center py-8 sm:py-12">
               <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải thông tin...</p>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải thông tin...</p>
             </div>
           ) : viewCandidate ? (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-3 sm:space-y-4">
               <div className="flex items-center gap-3 sm:gap-4 pb-3 sm:pb-4 border-b">
                 <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-blue-200 shrink-0">
                   <AvatarFallback className="text-lg sm:text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
@@ -1207,10 +1206,10 @@ export function CandidatesPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg sm:text-xl font-bold truncate">{viewCandidate.full_name}</h3>
                   <p className="text-xs sm:text-sm text-gray-500 truncate">{viewCandidate.cv_jobs?.title || 'N/A'}</p>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
                     {getStatusBadge(viewCandidate.status)}
                     {viewCandidate.mandatory_requirements_met && (
-                      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs sm:text-sm">
+                      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs sm:text-xs sm:text-sm">
                         <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" />
                         <span className="hidden sm:inline">Đáp ứng yêu cầu</span>
                         <span className="sm:hidden">Đáp ứng</span>
@@ -1233,7 +1232,7 @@ export function CandidatesPage() {
               <div><label className="text-xs sm:text-sm font-medium text-gray-500">Học vấn</label><p className="text-gray-900 mt-1 text-sm sm:text-base">{viewCandidate.education || 'Chưa có thông tin'}</p></div>
 
               {viewCandidate.mandatory_requirements_notes && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <label className="text-xs sm:text-sm font-medium text-amber-900 block mb-1">
                     Ghi chú yêu cầu bắt buộc
                   </label>
@@ -1277,27 +1276,27 @@ export function CandidatesPage() {
             </div>
           ) : (
             <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Họ và tên *</label><Input value={formData.full_name} onChange={(e) => handleInputChange('full_name', e.target.value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label><Input type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Họ và tên *</label><Input value={formData.full_name} onChange={(e) => handleInputChange('full_name', e.target.value)} /></div>
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Email *</label><Input type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} /></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Số điện thoại</label><Input value={formData.phone_number} onChange={(e) => handleInputChange('phone_number', e.target.value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Địa chỉ</label><Input value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Số điện thoại</label><Input value={formData.phone_number} onChange={(e) => handleInputChange('phone_number', e.target.value)} /></div>
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Địa chỉ</label><Input value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} /></div>
               </div>
 
-              <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Trường học</label><Input value={formData.university} onChange={(e) => handleInputChange('university', e.target.value)} /></div>
+              <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Trường học</label><Input value={formData.university} onChange={(e) => handleInputChange('university', e.target.value)} /></div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Kinh nghiệm</label><Textarea className="min-h-[80px] resize-none" value={formData.experience} onChange={(e) => handleInputChange('experience', e.target.value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Học vấn</label><Textarea className="min-h-[80px] resize-none" value={formData.education} onChange={(e) => handleInputChange('education', e.target.value)} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Kinh nghiệm</label><Textarea className="min-h-[60px] sm:min-h-[80px] resize-none text-xs sm:text-xs sm:text-sm" value={formData.experience} onChange={(e) => handleInputChange('experience', e.target.value)} /></div>
+                <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Học vấn</label><Textarea className="min-h-[60px] sm:min-h-[80px] resize-none text-xs sm:text-xs sm:text-sm" value={formData.education} onChange={(e) => handleInputChange('education', e.target.value)} /></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 {/* ĐÃ XÓA PHẦN CHỌN TRẠNG THÁI Ở ĐÂY */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nguồn</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Nguồn</label>
                   <Select value={formData.source} onValueChange={(value) => handleInputChange('source', value)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-white z-50">
@@ -1313,7 +1312,7 @@ export function CandidatesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Kỹ năng</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Kỹ năng</label>
                 <SkillsInput
                   value={formData.skills}
                   onChange={(skills) => handleInputChange('skills', skills)}
@@ -1341,10 +1340,10 @@ export function CandidatesPage() {
           {isLoadingCV ? (
             <div className="text-center py-8 sm:py-12">
               <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải CV...</p>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải CV...</p>
             </div>
           ) : viewCVCandidate?.cv_url ? (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm sm:text-base truncate">{viewCVCandidate.cv_file_name}</p>
@@ -1375,13 +1374,13 @@ export function CandidatesPage() {
           {isLoadingAnalyze ? (
             <div className="text-center py-8 sm:py-12">
               <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu phân tích...</p>
+              <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải dữ liệu phân tích...</p>
             </div>
           ) : analyzeCVCandidate?.cv_parsed_data ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="font-semibold text-blue-900 mb-2">Thông tin trích xuất từ CV</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs sm:text-sm">
                   {analyzeCVCandidate.cv_parsed_data.email && <div><span className="font-medium">Email:</span> {analyzeCVCandidate.cv_parsed_data.email}</div>}
                   {analyzeCVCandidate.cv_parsed_data.phone && <div><span className="font-medium">Số điện thoại:</span> {analyzeCVCandidate.cv_parsed_data.phone}</div>}
                   {analyzeCVCandidate.cv_parsed_data.university && <div><span className="font-medium">Trường học:</span> {analyzeCVCandidate.cv_parsed_data.university}</div>}
@@ -1479,7 +1478,7 @@ export function CandidatesPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Trạng thái</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Trạng thái</label>
               <Select value={tempFilterStatus} onValueChange={setTempFilterStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tất cả trạng thái" />
@@ -1493,7 +1492,7 @@ export function CandidatesPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Vị trí</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Vị trí</label>
               <Select value={tempFilterPosition} onValueChange={setTempFilterPosition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tất cả vị trí" />
@@ -1507,7 +1506,7 @@ export function CandidatesPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Cấp độ</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Cấp độ</label>
               <Select value={tempFilterLevel} onValueChange={setTempFilterLevel}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tất cả cấp độ" />
@@ -1521,7 +1520,7 @@ export function CandidatesPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nguồn</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Nguồn</label>
               <Select value={tempFilterSource} onValueChange={setTempFilterSource}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tất cả nguồn" />
@@ -1616,7 +1615,7 @@ export function CandidatesPage() {
       {loading ? (
         <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu ứng viên...</p>
+          <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải dữ liệu ứng viên...</p>
         </div>
       ) : filteredCandidates.length === 0 ? (
         <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
@@ -1662,7 +1661,7 @@ export function CandidatesPage() {
                     <TableCell>
                       {candidate.cv_jobs ? (
                         <div>
-                          <div className="font-medium text-sm">{candidate.cv_jobs.title}</div>
+                          <div className="font-medium text-xs sm:text-sm">{candidate.cv_jobs.title}</div>
                           <div className="text-xs sm:text-sm text-gray-500">{candidate.cv_jobs.level}</div>
                         </div>
                       ) : 'N/A'}

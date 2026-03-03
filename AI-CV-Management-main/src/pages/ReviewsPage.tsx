@@ -320,181 +320,301 @@ if (!selectedPendingInterview || newRating === 0) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Đánh giá phỏng vấn</h1>
-          <p className="text-sm text-muted-foreground">Quản lý và theo dõi đánh giá phỏng vấn</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">Đánh giá phỏng vấn</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">Quản lý và theo dõi đánh giá phỏng vấn</p>
         </div>
-        <Button variant="outline" onClick={getReviews}>
+        <Button variant="outline" size="sm" onClick={getReviews} className="shrink-0">
           <RefreshCw className="w-4 h-4 mr-2" />
-          Làm mới
+          <span className="hidden sm:inline">Làm mới</span>
         </Button>
       </div>
-      
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+        <Card className="shadow-sm border-2 border-gray-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Tổng số đánh giá</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground"/>
+            <CardTitle className="text-xs sm:text-sm font-medium">Tổng số đánh giá</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground shrink-0"/>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalReviews}</div>
+            <div className="text-2xl sm:text-3xl font-bold">{stats.totalReviews}</div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card className="shadow-sm border-2 border-gray-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Đánh giá trung bình</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground"/>
+            <CardTitle className="text-xs sm:text-sm font-medium">Đánh giá trung bình</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground shrink-0"/>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              {stats.averageRating.toFixed(1)} 
+            <div className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              {stats.averageRating.toFixed(1)}
               <StarRating rating={stats.averageRating} />
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card className="shadow-sm border-2 border-gray-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Tỷ lệ khuyên nghị</CardTitle>
-<TrendingUp className="h-4 w-4 text-muted-foreground"/>
+            <CardTitle className="text-xs sm:text-sm font-medium">Tỷ lệ khuyên nghị</CardTitle>
+<TrendingUp className="h-4 w-4 text-muted-foreground shrink-0"/>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.recommendationRate.toFixed(0)}%</div>
+            <div className="text-2xl sm:text-3xl font-bold">{stats.recommendationRate.toFixed(0)}%</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Pending Reviews Section */}
       {pendingInterviews.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-orange-500" />
+        <Card className="shadow-sm border-2 border-gray-100 overflow-hidden">
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
               Chờ đánh giá ({pendingInterviews.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ứng viên</TableHead>
-                  <TableHead>Vị trí</TableHead>
-                  <TableHead>Người PV</TableHead>
-                  <TableHead>Ngày PV</TableHead>
-                  <TableHead>Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInterviews.map((interview) => (
-                  <TableRow key={interview.id}>
-                    <TableCell className="font-medium">{interview.cv_candidates?.full_name || 'N/A'}</TableCell>
-                    <TableCell>{interview.cv_candidates?.cv_jobs?.title || 'N/A'}</TableCell>
-                    <TableCell>{interview.interviewer}</TableCell>
-                    <TableCell>
-                      {new Date(interview.interview_date).toLocaleString('vi-VN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleCreateReview(interview)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Đánh giá
-                      </Button>
-                    </TableCell>
+          <CardContent className="p-0">
+            {/* Desktop Table - shows on sm and up */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead>Ứng viên</TableHead>
+                    <TableHead>Vị trí</TableHead>
+                    <TableHead>Người PV</TableHead>
+                    <TableHead>Ngày PV</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pendingInterviews.map((interview) => (
+                    <TableRow key={interview.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{interview.cv_candidates?.full_name || 'N/A'}</TableCell>
+                      <TableCell>{interview.cv_candidates?.cv_jobs?.title || 'N/A'}</TableCell>
+                      <TableCell>{interview.interviewer}</TableCell>
+                      <TableCell>
+                        {new Date(interview.interview_date).toLocaleString('vi-VN', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          onClick={() => handleCreateReview(interview)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Đánh giá
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Mobile Card Layout - shows only on mobile */}
+            <div className="sm:hidden space-y-3 p-3">
+              {pendingInterviews.map((interview) => (
+                <div key={interview.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base truncate">
+                        {interview.cv_candidates?.full_name || 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-500 truncate">
+                        {interview.cv_candidates?.cv_jobs?.title || 'N/A'}
+                      </p>
+                    </div>
+                    <Badge className="bg-orange-100 text-orange-700">Chờ đánh giá</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Người PV:</span>
+                      <span className="text-gray-900">{interview.interviewer}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Ngày PV:</span>
+                      <span className="text-gray-900">
+                        {new Date(interview.interview_date).toLocaleString('vi-VN', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-end">
+                    <Button
+                      size="sm"
+                      onClick={() => handleCreateReview(interview)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Đánh giá
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* Reviews List Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách đánh giá</CardTitle>
+      <Card className="shadow-sm border-2 border-gray-100 overflow-hidden">
+        <CardHeader className="p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Danh sách đánh giá</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ứng viên</TableHead>
-                <TableHead>Vị trí</TableHead>
-                <TableHead>Người PV</TableHead>
-                <TableHead>Ngày PV</TableHead>
-                <TableHead>Đánh giá</TableHead>
-                <TableHead>Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Đang tải dữ liệu...</TableCell>
+        <CardContent className="p-0">
+          {/* Desktop Table - shows on sm and up */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Ứng viên</TableHead>
+                  <TableHead>Vị trí</TableHead>
+                  <TableHead>Người PV</TableHead>
+                  <TableHead>Ngày PV</TableHead>
+                  <TableHead>Đánh giá</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
-              ) : reviews.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Chưa có đánh giá nào</TableCell>
-                </TableRow>
-              ) : (
-                reviews.map((review) => (
-                  <TableRow key={review.id}>
-                    <TableCell className="font-medium">{review.cv_interviews?.cv_candidates?.full_name || 'N/A'}</TableCell>
-                    <TableCell>{review.cv_interviews?.cv_candidates?.cv_jobs?.title || 'N/A'}</TableCell>
-                    <TableCell>{review.cv_interviews?.interviewer || 'N/A'}</TableCell>
-                    <TableCell>
-                      {review.cv_interviews ? new Date(review.cv_interviews.interview_date).toLocaleDateString('vi-VN') : 'N/A'}
-                    </TableCell>
-                    <TableCell><StarRating rating={review.rating} /></TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white" style={{ zIndex: 50 }}>
-                          <DropdownMenuItem onClick={() => handleViewDetail(review)}>
-                            Hiển thị
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRerating(review)}>
-                            Đánh giá lại
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">Đang tải dữ liệu...</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : reviews.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">Chưa có đánh giá nào</TableCell>
+                  </TableRow>
+                ) : (
+                  reviews.map((review) => (
+                    <TableRow key={review.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{review.cv_interviews?.cv_candidates?.full_name || 'N/A'}</TableCell>
+                      <TableCell>{review.cv_interviews?.cv_candidates?.cv_jobs?.title || 'N/A'}</TableCell>
+                      <TableCell>{review.cv_interviews?.interviewer || 'N/A'}</TableCell>
+                      <TableCell>
+                        {review.cv_interviews ? new Date(review.cv_interviews.interview_date).toLocaleDateString('vi-VN') : 'N/A'}
+                      </TableCell>
+                      <TableCell><StarRating rating={review.rating} /></TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                              <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-white z-60 shadow-lg border border-gray-200" style={{ zIndex: 50 }}>
+                            <DropdownMenuItem onClick={() => handleViewDetail(review)}>
+                              Hiển thị
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRerating(review)}>
+                              Đánh giá lại
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {/* Mobile Card Layout - shows only on mobile */}
+          <div className="sm:hidden space-y-3 p-3">
+            {loading ? (
+              <div className="text-center py-8 sm:py-12">
+                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu...</p>
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-8 sm:py-12">
+                <FileText className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+                <p className="text-sm text-gray-500">Chưa có đánh giá nào</p>
+              </div>
+            ) : (
+              reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors shadow-sm">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base truncate">
+                        {review.cv_interviews?.cv_candidates?.full_name || 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-500 truncate">
+                        {review.cv_interviews?.cv_candidates?.cv_jobs?.title || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StarRating rating={review.rating} />
+                      <Badge className={
+                        review.outcome === 'Đạt'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }>
+                        {review.outcome}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Người PV:</span>
+                      <span className="text-gray-900">{review.cv_interviews?.interviewer || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Ngày PV:</span>
+                      <span className="text-gray-900">
+                        {review.cv_interviews ? new Date(review.cv_interviews.interview_date).toLocaleDateString('vi-VN') : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetail(review)}
+                      className="text-gray-700 hover:text-blue-600"
+                    >
+                      Xem
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRerating(review)}
+                      className="text-gray-700 hover:text-orange-600"
+                    >
+                      Đánh giá lại
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {/* Dialog Hiển thị Chi tiết */}
       {isDetailDialogOpen && selectedReview && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             style={{ zIndex: 999999 }}
             onClick={() => setIsDetailDialogOpen(false)}
           />
-          
+
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
+              <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
 Chi tiết đánh giá phỏng vấn
                 </h2>
@@ -506,33 +626,33 @@ Chi tiết đánh giá phỏng vấn
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-6">
                 {/* Thông tin ứng viên */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <h3 className="font-semibold text-blue-900 mb-2">Thông tin ứng viên</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100">
+                  <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Thông tin ứng viên</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <p className="text-sm text-blue-700">Họ tên</p>
-                      <p className="font-semibold text-blue-900">{selectedReview.cv_interviews?.cv_candidates?.full_name || 'N/A'}</p>
+                      <p className="text-xs sm:text-sm text-blue-700">Họ tên</p>
+                      <p className="font-semibold text-blue-900 text-sm sm:text-base">{selectedReview.cv_interviews?.cv_candidates?.full_name || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-blue-700">Vị trí ứng tuyển</p>
-                      <p className="font-semibold text-blue-900">{selectedReview.cv_interviews?.cv_candidates?.cv_jobs?.title || 'N/A'}</p>
+                      <p className="text-xs sm:text-sm text-blue-700">Vị trí ứng tuyển</p>
+                      <p className="font-semibold text-blue-900 text-sm sm:text-base">{selectedReview.cv_interviews?.cv_candidates?.cv_jobs?.title || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Thông tin buổi phỏng vấn */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-3">Thông tin buổi phỏng vấn</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Thông tin buổi phỏng vấn</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
-                      <p className="text-sm text-gray-600">Người phỏng vấn</p>
-                      <p className="font-medium text-gray-900">{selectedReview.cv_interviews?.interviewer || 'N/A'}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Người phỏng vấn</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">{selectedReview.cv_interviews?.interviewer || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Ngày phỏng vấn</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-xs sm:text-sm text-gray-600">Ngày phỏng vấn</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">
                         {selectedReview.cv_interviews ? new Date(selectedReview.cv_interviews.interview_date).toLocaleString('vi-VN', {
                           year: 'numeric',
                           month: '2-digit',
@@ -543,33 +663,33 @@ Chi tiết đánh giá phỏng vấn
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Thời lượng</p>
-                      <p className="font-medium text-gray-900">{selectedReview.cv_interviews?.duration || 'N/A'} phút</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Thời lượng</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">{selectedReview.cv_interviews?.duration || 'N/A'} phút</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Hình thức</p>
-                      <p className="font-medium text-gray-900">{selectedReview.cv_interviews?.format || 'N/A'}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Hình thức</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">{selectedReview.cv_interviews?.format || 'N/A'}</p>
                     </div>
                     <div>
-<p className="text-sm text-gray-600">Địa điểm</p>
-                      <p className="font-medium text-gray-900">{selectedReview.cv_interviews?.location || 'Chưa có thông tin'}</p>
+<p className="text-xs sm:text-sm text-gray-600">Địa điểm</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">{selectedReview.cv_interviews?.location || 'Chưa có thông tin'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Đánh giá */}
-                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                  <h3 className="font-semibold text-yellow-900 mb-3">Đánh giá</h3>
+                <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200">
+                  <h3 className="font-semibold text-yellow-900 mb-3 text-sm sm:text-base">Đánh giá</h3>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-yellow-700 mb-1">Rating</p>
+                      <p className="text-xs sm:text-sm text-yellow-700 mb-1">Rating</p>
                       <div className="flex items-center gap-2">
                         <StarRating rating={selectedReview.rating} />
-                        <span className="font-bold text-yellow-900 text-lg">{selectedReview.rating}/5</span>
+                        <span className="font-bold text-yellow-900 text-base sm:text-lg">{selectedReview.rating}/5</span>
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-yellow-700 mb-1">Kết quả</p>
+                      <p className="text-xs sm:text-sm text-yellow-700 mb-1">Kết quả</p>
                       <Badge className={
                         selectedReview.outcome === 'Đạt' ? 'bg-green-100 text-green-700' :
                         'bg-red-100 text-red-700'
@@ -578,8 +698,8 @@ Chi tiết đánh giá phỏng vấn
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-sm text-yellow-700 mb-1">Thời gian đánh giá</p>
-                      <p className="font-medium text-yellow-900">
+                      <p className="text-xs sm:text-sm text-yellow-700 mb-1">Thời gian đánh giá</p>
+                      <p className="font-medium text-yellow-900 text-sm sm:text-base">
                         {new Date(selectedReview.created_at).toLocaleString('vi-VN', {
                           year: 'numeric',
                           month: '2-digit',
@@ -591,15 +711,15 @@ Chi tiết đánh giá phỏng vấn
                     </div>
                     {selectedReview.notes && (
                       <div>
-                        <p className="text-sm text-yellow-700 mb-1">Ghi chú</p>
-                        <p className="text-yellow-900 bg-white rounded p-3 border border-yellow-200">{selectedReview.notes}</p>
+                        <p className="text-xs sm:text-sm text-yellow-700 mb-1">Ghi chú</p>
+                        <p className="text-yellow-900 bg-white rounded p-3 border border-yellow-200 text-sm sm:text-base">{selectedReview.notes}</p>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="border-t px-6 py-4 flex justify-end">
+              <div className="border-t px-4 sm:px-6 py-4 flex justify-end">
                 <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
                   Đóng
                 </Button>
@@ -612,7 +732,7 @@ Chi tiết đánh giá phỏng vấn
       {/* Dialog Đánh giá lại (Rerating) */}
       {isReratingDialogOpen && selectedReview && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             style={{ zIndex: 999999 }}
             onClick={() => {
@@ -621,13 +741,13 @@ Chi tiết đánh giá phỏng vấn
 setNewNote('');
             }}
           />
-          
+
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
+              <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
-                  Đánh giá lại buổi phỏng vấn
+                  <span className="truncate">Đánh giá lại buổi phỏng vấn</span>
                 </h2>
                 <button
                   onClick={() => {
@@ -641,32 +761,32 @@ setNewNote('');
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Thông tin ứng viên */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Ứng viên</p>
-                  <p className="font-semibold text-lg">{selectedReview.cv_interviews?.cv_candidates?.full_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">{selectedReview.cv_interviews?.cv_candidates?.cv_jobs?.title}</p>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-gray-600">Ứng viên</p>
+                  <p className="font-semibold text-base sm:text-lg">{selectedReview.cv_interviews?.cv_candidates?.full_name}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">{selectedReview.cv_interviews?.cv_candidates?.cv_jobs?.title}</p>
                 </div>
 
                 {/* Đánh giá hiện tại */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-sm text-blue-700 mb-2">Đánh giá hiện tại</p>
+                <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                  <p className="text-xs sm:text-sm text-blue-700 mb-2">Đánh giá hiện tại</p>
                   <div className="flex items-center gap-2 mb-3">
                     <StarRating rating={selectedReview.rating} />
-                    <span className="font-bold text-blue-900">{selectedReview.rating}/5</span>
+                    <span className="font-bold text-blue-900 text-sm sm:text-base">{selectedReview.rating}/5</span>
                   </div>
                   {selectedReview.notes && (
                     <div>
-                      <p className="text-sm text-blue-700 mb-1">Ghi chú cũ</p>
-                      <p className="text-sm text-blue-900 bg-white rounded p-2 border border-blue-200">{selectedReview.notes}</p>
+                      <p className="text-xs sm:text-sm text-blue-700 mb-1">Ghi chú cũ</p>
+                      <p className="text-xs sm:text-sm text-blue-900 bg-white rounded p-2 border border-blue-200">{selectedReview.notes}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Rating mới */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs sm:text-sm font-medium">
                     Đánh giá mới <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center gap-2">
@@ -694,7 +814,7 @@ setNewNote('');
 
                 {/* Kết quả mới (Updated UI from V1) */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs sm:text-sm font-medium">
                     Kết quả <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -704,7 +824,7 @@ setNewNote('');
                     <SelectTrigger className="bg-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
+                    <SelectContent className="bg-white z-60 shadow-lg border border-gray-200" style={{ zIndex: 1000001 }}>
                       <SelectItem value="Đạt">
                         <div className="flex items-center gap-2">
                           <span className="text-green-600">✓</span>
@@ -723,19 +843,19 @@ setNewNote('');
                   {/* Thông báo cảnh báo (Feature V1) */}
                   {(reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') && (
                     <div className={`p-3 rounded-lg border-2 flex items-start gap-2 ${
-                      reviewOutcome === 'Đạt' 
-                          ? 'bg-green-50 border-green-300' 
+                      reviewOutcome === 'Đạt'
+                          ? 'bg-green-50 border-green-300'
                           : 'bg-red-50 border-red-300'
                     }`}>
-                      <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      <AlertTriangle className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 ${
                         reviewOutcome === 'Đạt' ? 'text-green-600' : 'text-red-600'
                       }`} />
-                      <div className={`text-sm ${
+                      <div className={`text-xs sm:text-sm ${
                         reviewOutcome === 'Đạt' ? 'text-green-900' : 'text-red-900'
                       }`}>
                         <p className="font-semibold mb-1">
-                          {reviewOutcome === 'Đạt' 
-                            ? '✓ Trạng thái ứng viên sẽ chuyển sang "Chấp nhận"' 
+                          {reviewOutcome === 'Đạt'
+                            ? '✓ Trạng thái ứng viên sẽ chuyển sang "Chấp nhận"'
                             : '⚠️ Trạng thái ứng viên sẽ chuyển sang "Từ chối"'
                           }
                         </p>
@@ -749,15 +869,15 @@ setNewNote('');
 
                 {/* Ghi chú mới */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs sm:text-sm font-medium">
                     Ghi chú đánh giá
                   </label>
                   <Textarea
                     placeholder="Nhập ghi chú về đánh giá của bạn..."
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
-                    rows={5}
-                    className="resize-none"
+                    rows={4}
+                    className="resize-none text-sm sm:text-base"
                   />
                   <p className="text-xs text-gray-500">
                     {newNote.length}/500 ký tự
@@ -765,9 +885,9 @@ setNewNote('');
                 </div>
               </div>
 
-              <div className="border-t px-6 py-4 flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
+              <div className="border-t px-4 sm:px-6 py-4 flex justify-end gap-2">
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setIsReratingDialogOpen(false);
                     setNewRating(0);
@@ -777,7 +897,7 @@ setNewNote('');
                 >
                   Hủy
                 </Button>
-                <Button 
+                <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={handleSubmitRerating}
                   disabled={submitting || newRating === 0}
@@ -808,10 +928,10 @@ setNewNote('');
 
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg m-4 pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
+              <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
-                  Đánh giá buổi phỏng vấn
+                  <span className="truncate">Đánh giá buổi phỏng vấn</span>
                 </h2>
                 <button
 onClick={() => {
@@ -827,17 +947,17 @@ onClick={() => {
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Thông tin ứng viên */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Ứng viên</p>
-                  <p className="font-semibold text-lg">{selectedPendingInterview.cv_candidates?.full_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">{selectedPendingInterview.cv_candidates?.cv_jobs?.title}</p>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-gray-600">Ứng viên</p>
+                  <p className="font-semibold text-base sm:text-lg">{selectedPendingInterview.cv_candidates?.full_name}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">{selectedPendingInterview.cv_candidates?.cv_jobs?.title}</p>
                 </div>
 
                 {/* Rating */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs sm:text-sm font-medium">
                     Đánh giá <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center gap-2">
@@ -848,16 +968,16 @@ onClick={() => {
                         onClick={() => setNewRating(star)}
                         className="transition-transform hover:scale-110"
                       >
-                        <Star 
-                          className={`w-10 h-10 ${
-                            star <= newRating 
-                              ? 'fill-yellow-400 text-yellow-400' 
+                        <Star
+                          className={`w-8 h-8 sm:w-10 sm:h-10 ${
+                            star <= newRating
+                              ? 'fill-yellow-400 text-yellow-400'
                               : 'text-gray-300'
                           }`}
                         />
                       </button>
                     ))}
-                    <span className="ml-2 text-lg font-semibold text-gray-700">
+                    <span className="ml-2 text-base sm:text-lg font-semibold text-gray-700">
                       {newRating > 0 ? `${newRating}/5` : 'Chưa chọn'}
                     </span>
                   </div>
@@ -865,7 +985,7 @@ onClick={() => {
 
                 {/* Outcome (Updated UI from V1 with Warning) */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs sm:text-sm font-medium">
                     Kết quả <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -875,7 +995,7 @@ onClick={() => {
                     <SelectTrigger className="bg-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
+                    <SelectContent className="bg-white z-60 shadow-lg border border-gray-200" style={{ zIndex: 1000001 }}>
                       <SelectItem value="Đạt">
                         <div className="flex items-center gap-2">
                           <span className="text-green-600">✓</span>
@@ -894,19 +1014,19 @@ onClick={() => {
                   {/* Thông báo cảnh báo (Feature V1) */}
                   {(reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') && (
                     <div className={`p-3 rounded-lg border-2 flex items-start gap-2 ${
-                      reviewOutcome === 'Đạt' 
-                          ? 'bg-green-50 border-green-300' 
+                      reviewOutcome === 'Đạt'
+                          ? 'bg-green-50 border-green-300'
                           : 'bg-red-50 border-red-300'
                     }`}>
-                      <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      <AlertTriangle className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 ${
                         reviewOutcome === 'Đạt' ? 'text-green-600' : 'text-red-600'
                       }`} />
-                      <div className={`text-sm ${
+                      <div className={`text-xs sm:text-sm ${
                         reviewOutcome === 'Đạt' ? 'text-green-900' : 'text-red-900'
                       }`}>
                         <p className="font-semibold mb-1">
-                          {reviewOutcome === 'Đạt' 
-                            ? '✓ Trạng thái ứng viên sẽ chuyển sang "Chấp nhận"' 
+                          {reviewOutcome === 'Đạt'
+                            ? '✓ Trạng thái ứng viên sẽ chuyển sang "Chấp nhận"'
                             : '⚠️ Trạng thái ứng viên sẽ chuyển sang "Từ chối"'
                           }
                         </p>
@@ -920,20 +1040,20 @@ onClick={() => {
 
                 {/* Notes */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Ghi chú đánh giá</label>
+                  <label className="text-xs sm:text-sm font-medium">Ghi chú đánh giá</label>
                   <Textarea
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
                     placeholder="Nhập ghi chú về buổi phỏng vấn..."
-                    rows={4}
-                    className="bg-white"
+                    rows={3}
+                    className="bg-white text-sm sm:text-base"
                   />
                 </div>
               </div>
 
-              <div className="border-t px-6 py-4 flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
+              <div className="border-t px-4 sm:px-6 py-4 flex justify-end gap-2">
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setIsNewReviewDialogOpen(false);
                     setSelectedPendingInterview(null);
@@ -945,7 +1065,7 @@ onClick={() => {
                 >
 Hủy
                 </Button>
-                <Button 
+                <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={handleSubmitNewReview}
                   disabled={submitting || newRating === 0}

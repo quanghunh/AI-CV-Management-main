@@ -983,14 +983,6 @@ export function JobsPage() {
         </CardContent>
       </Card>
 
-      {/* Mobile FAB - Add Candidate */}
-      <Button
-        className="sm:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white z-50"
-        onClick={() => window.location.href = '/candidates'}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
-
       {/* ==================== DIALOG TẠO JD MỚI ==================== */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
@@ -1472,7 +1464,7 @@ export function JobsPage() {
               <div className="flex items-start gap-3">
                 <Avatar className="h-10 w-10 border-2 border-blue-200 shrink-0">
                   <AvatarFallback className="text-xs sm:text-sm bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                    {candidate.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    {candidate.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">

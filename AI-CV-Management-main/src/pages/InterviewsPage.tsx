@@ -702,90 +702,90 @@ const matchesSearch =
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-blue-600" />
-            Lịch phỏng vấn
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 truncate">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
+            <span>Lịch phỏng vấn</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Quản lý và theo dõi lịch phỏng vấn</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">Quản lý và theo dõi lịch phỏng vấn</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIsDialogOpen(true)}>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white shrink-0" onClick={() => setIsDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Tạo lịch phỏng vấn
+          Tạo lịch
         </Button>
       </div>
-      
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+        <Card className="shadow-sm border-2 border-gray-100">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Tổng số</p>
-                <div className="text-3xl font-bold">{totalInterviews}</div>
-                <p className="text-xs text-blue-600 font-medium">+8%</p>
+              <div className="space-y-1 sm:space-y-2">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Tổng số</p>
+                <div className="text-2xl sm:text-3xl font-bold">{totalInterviews}</div>
+                <p className="text-[10px] sm:text-xs text-blue-600 font-medium">+8%</p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 shrink-0" />
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="shadow-sm border-2 border-gray-100">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Đang chờ</p>
-                <div className="text-3xl font-bold">{pendingInterviews}</div>
-                <p className="text-xs text-orange-600 font-medium">+3%</p>
+              <div className="space-y-1 sm:space-y-2">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Đang chờ</p>
+                <div className="text-2xl sm:text-3xl font-bold">{pendingInterviews}</div>
+                <p className="text-[10px] sm:text-xs text-orange-600 font-medium">+3%</p>
               </div>
-              <Clock className="h-8 w-8 text-orange-600" />
+              <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 shrink-0" />
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="shadow-sm border-2 border-gray-100">
+          <CardContent className="pt-4 sm:pt-6">
 <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Hoàn thành</p>
-                <div className="text-3xl font-bold">{completedInterviews}</div>
-                <p className="text-xs text-green-600 font-medium">+12%</p>
+              <div className="space-y-1 sm:space-y-2">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Hoàn thành</p>
+                <div className="text-2xl sm:text-3xl font-bold">{completedInterviews}</div>
+                <p className="text-[10px] sm:text-xs text-green-600 font-medium">+12%</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 shrink-0" />
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="shadow-sm border-2 border-gray-100">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-600">Đã hủy</p>
-                <div className="text-3xl font-bold">{cancelledInterviews}</div>
-                <p className="text-xs text-red-600 font-medium">-5%</p>
+              <div className="space-y-1 sm:space-y-2">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Đã hủy</p>
+                <div className="text-2xl sm:text-3xl font-bold">{cancelledInterviews}</div>
+                <p className="text-[10px] sm:text-xs text-red-600 font-medium">-5%</p>
               </div>
-              <XCircle className="h-8 w-8 text-red-600" />
+              <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 shrink-0" />
             </div>
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
+        <div className="relative min-w-[180px] sm:min-w-[250px] flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Tìm kiếm theo tên ứng viên, vị trí..." 
-            className="pl-10 bg-white" 
+          <Input
+            placeholder="Tìm kiếm theo tên ứng viên, vị trí..."
+            className="pl-10 bg-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <Select value={positionFilter} onValueChange={setPositionFilter}>
-          <SelectTrigger className="w-[180px] bg-white">
-            <SelectValue placeholder="Tất cả vị trí" />
+          <SelectTrigger className="w-[150px] sm:w-[180px] bg-white">
+            <SelectValue placeholder="Vị trí" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả vị trí</SelectItem>
@@ -796,8 +796,8 @@ const matchesSearch =
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px] bg-white">
-            <SelectValue placeholder="Tất cả trạng thái" />
+          <SelectTrigger className="w-[150px] sm:w-[180px] bg-white">
+            <SelectValue placeholder="Trạng thái" />
           </SelectTrigger>
           <SelectContent className="bg-white">
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
@@ -809,96 +809,89 @@ const matchesSearch =
             <SelectItem value="Đã hủy">Đã hủy</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select>
-<SelectTrigger className="w-[180px] bg-white">
-            <SelectValue placeholder="Tất cả" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Table Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Danh sách lịch phỏng vấn</CardTitle>
-          <div className="text-sm text-muted-foreground">
+      <Card className="shadow-sm border-2 border-gray-100 overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Danh sách lịch phỏng vấn</CardTitle>
+          <div className="text-xs sm:text-sm text-muted-foreground">
             {filteredInterviews.length} / {totalInterviews}
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ứng viên</TableHead>
-                <TableHead>Vị trí ứng tuyển</TableHead>
-                <TableHead>Ngày & Giờ</TableHead>
-                <TableHead>Người phỏng vấn</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-64">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                      <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
-                    </div>
-                  </TableCell>
+        <CardContent className="p-0">
+          {/* Desktop Table View - shows on sm and up */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Ứng viên</TableHead>
+                  <TableHead>Vị trí ứng tuyển</TableHead>
+                  <TableHead>Ngày & Giờ</TableHead>
+                  <TableHead>Người phỏng vấn</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
-              ) : filteredInterviews.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-64">
-                    <div className="flex flex-col items-center justify-center">
-                      <Calendar className="h-16 w-16 text-gray-300 mb-4" />
-                      <h3 className="text-base font-medium text-gray-900">
-                        {searchTerm || statusFilter !== 'all' || positionFilter !== 'all' 
-                          ? 'Không tìm thấy kết quả phù hợp' 
-                          : 'Chưa có lịch phỏng vấn nào'}
-                      </h3>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredInterviews.map((interview) => (
-                  <TableRow key={interview.id}>
-                    <TableCell className="font-medium">
-                      {interview.cv_candidates?.full_name || 'N/A'}
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-64">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      {interview.cv_jobs?.title || interview.cv_candidates?.cv_jobs?.title || 'N/A'}
+                  </TableRow>
+                ) : filteredInterviews.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-64">
+                      <div className="flex flex-col items-center justify-center">
+                        <Calendar className="h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-base font-medium text-gray-900">
+                          {searchTerm || statusFilter !== 'all' || positionFilter !== 'all'
+                            ? 'Không tìm thấy kết quả phù hợp'
+                            : 'Chưa có lịch phỏng vấn nào'}
+                        </h3>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const date = new Date(interview.interview_date);
-                        return date.toLocaleString('vi-VN', {
-year: 'numeric', month: '2-digit', day: '2-digit',
-                          hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh'
-                        });
-                      })()}
-                    </TableCell>
-                    <TableCell>{interview.interviewer}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadgeClass(interview.status)}>
-                        {interview.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white">
+                  </TableRow>
+                ) : (
+                  filteredInterviews.map((interview) => (
+                    <TableRow key={interview.id} className="hover:bg-gray-50 transition-colors">
+                      <TableCell className="font-medium">
+                        {interview.cv_candidates?.full_name || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {interview.cv_jobs?.title || interview.cv_candidates?.cv_jobs?.title || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const date = new Date(interview.interview_date);
+                          return date.toLocaleString('vi-VN', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh'
+                          });
+                        })()}
+                      </TableCell>
+                      <TableCell>{interview.interviewer}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadgeClass(interview.status)}>
+                          {interview.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                              <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-60 bg-white shadow-lg border border-gray-200">
                             <DropdownMenuItem onClick={() => handleViewDetail(interview)}>
                              Xem chi tiết
                             </DropdownMenuItem>
-  
+
                             {/* ✅ MERGED UI: Ẩn các thao tác nếu đã Hoàn thành HOẶC Đã hủy */}
                             {interview.status !== 'Hoàn thành' && interview.status !== 'Đã hủy' && (
                               <>
@@ -912,14 +905,14 @@ year: 'numeric', month: '2-digit', day: '2-digit',
             >
               Phỏng vấn ngay
             </DropdownMenuItem>
-            
+
             {/* ✅ Chỉnh sửa - KHÔNG CÓ ICON */}
             <DropdownMenuItem onClick={() => handleEditClick(interview)}>
               Chỉnh sửa
             </DropdownMenuItem>
           </>
         )}
-      
+
                                 {/* Kết thúc sớm theo logic V1 (Chuyển thành Đang đánh giá) */}
                                 {interview.status === 'Đang phỏng vấn' && (
                                   <DropdownMenuItem
@@ -930,7 +923,7 @@ year: 'numeric', month: '2-digit', day: '2-digit',
                                      Kết thúc sớm
                                   </DropdownMenuItem>
                                 )}
-      
+
                                 {(interview.status === 'Đang đánh giá' || interview.status === 'Đang chờ đánh giá') && (
                                    <DropdownMenuItem
                                      className="text-blue-600"
@@ -939,8 +932,8 @@ year: 'numeric', month: '2-digit', day: '2-digit',
                                       Đánh giá
                                    </DropdownMenuItem>
                                  )}
-      
-                                <DropdownMenuItem 
+
+                                <DropdownMenuItem
                                   className="text-red-600"
 onClick={() => handleDelete(interview)}
                                  >
@@ -948,14 +941,139 @@ onClick={() => handleDelete(interview)}
                                  </DropdownMenuItem>
                               </>
                             )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card Layout - shows only on mobile */}
+          <div className="sm:hidden space-y-3 p-3">
+            {loading ? (
+              <div className="text-center py-8 sm:py-12">
+                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Đang tải dữ liệu...</p>
+              </div>
+            ) : filteredInterviews.length === 0 ? (
+              <div className="text-center py-8 sm:py-12">
+                <Calendar className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">
+                  {searchTerm || statusFilter !== 'all' || positionFilter !== 'all'
+                    ? 'Không tìm thấy kết quả phù hợp'
+                    : 'Chưa có lịch phỏng vấn nào'}
+                </h3>
+              </div>
+            ) : (
+              filteredInterviews.map((interview) => (
+                <div key={interview.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors shadow-sm">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base truncate">
+                        {interview.cv_candidates?.full_name || 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-500 truncate">
+                        {interview.cv_jobs?.title || interview.cv_candidates?.cv_jobs?.title || 'N/A'}
+                      </p>
+                    </div>
+                    <Badge className={getStatusBadgeClass(interview.status)}>
+                      {interview.status}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Ngày:</span>
+                      <span className="text-gray-900">
+                        {(() => {
+                          const date = new Date(interview.interview_date);
+                          return date.toLocaleString('vi-VN', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh'
+                          });
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">Người PV:</span>
+                      <span className="text-gray-900">{interview.interviewer}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetail(interview)}
+                      className="text-gray-700 hover:text-blue-600"
+                    >
+                      Xem
+                    </Button>
+                    {interview.status === 'Đang chờ' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditClick(interview)}
+                          className="text-gray-700 hover:text-green-600"
+                        >
+                          Sửa
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStartInterviewNow(interview)}
+                          className="text-green-700 hover:text-green-800 border-green-200"
+                          disabled={submitting}
+                        >
+                          PV ngay
+                        </Button>
+                      </>
+                    )}
+                    {(interview.status === 'Đang đánh giá' || interview.status === 'Đang chờ đánh giá') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenReviewForm(interview)}
+                        className="text-blue-700 hover:text-blue-800 border-blue-200"
+                      >
+                        Đánh giá
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="bottom" className="w-48 bg-white z-60 shadow-lg border border-gray-200">
+                        {interview.status === 'Đang phỏng vấn' && (
+                          <DropdownMenuItem
+                            className="text-orange-600"
+                            onClick={() => handleEndInterview(interview)}
+                            disabled={submitting}
+                          >
+                            Kết thúc sớm
+                          </DropdownMenuItem>
+                        )}
+                        {interview.status !== 'Hoàn thành' && interview.status !== 'Đã hủy' && (
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDelete(interview)}
+                          >
+                            Hủy lịch
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -963,44 +1081,45 @@ onClick={() => handleDelete(interview)}
       {isDialogOpen && (
         <>
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => setIsDialogOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  Tạo lịch phỏng vấn mới
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 sm:p-6" style={{ zIndex: 1000000 }}>
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto pointer-events-auto">
+            <div className="sticky top-0 bg-white border-b px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-1.5 sm:gap-2">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
+                  <span className="truncate">Tạo lịch phỏng vấn mới</span>
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1 truncate">
                   Điền thông tin chi tiết để tạo lịch phỏng vấn.
                 </p>
               </div>
-              <button onClick={() => setIsDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-5 h-5" />
+              <button onClick={() => setIsDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 p-1">
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="space-y-2">
+            <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-4">
+              <div className="space-y-1 sm:space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium">
-                  <User className="w-4 h-4" /> Ứng viên <span className="text-red-500">*</span>
+                  <User className="w-4 h-4 sm:w-4 sm:h-4" /> Ứng viên <span className="text-red-500">*</span>
                 </label>
                 {!selectedCandidate ? (
                     <CandidateAutoCompleteDual onCandidateSelect={handleCandidateSelect} className="w-full" />
                 ) : (
                     <>
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-md">
                             <p className="text-sm font-medium text-blue-800">
-                                Đã chọn ứng viên: {selectedCandidate.full_name} và {selectedCandidate.email}
+                                Đã chọn: {selectedCandidate.full_name}
                             </p>
+                            <p className="text-xs text-blue-600 truncate">{selectedCandidate.email}</p>
                         </div>
                         <div className="flex items-center justify-between p-2 border rounded-md bg-gray-50">
-                            <span className="font-medium text-sm text-gray-600">Có thể thay đổi ứng viên</span>
+                            <span className="font-medium text-sm text-gray-600">Thay đổi ứng viên</span>
                             <Button variant="ghost" size="sm" onClick={() => {
                                     setSelectedCandidate(null);
 setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                                     setUseDifferentPosition(false);
-                                }} type="button">
+                                }} type="button" className="h-8 w-8 p-0">
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
@@ -1008,29 +1127,29 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <Briefcase className="w-4 h-4" /> Vị trí ứng tuyển <span className="text-red-500">*</span>
+              <div className="space-y-1 sm:space-y-2">
+                <label className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-medium">
+                  <Briefcase className="w-3 h-3 sm:w-4 sm:h-4" /> Vị trí ứng tuyển <span className="text-red-500">*</span>
                 </label>
                 {selectedCandidate?.cv_jobs ? (
-                  <div className="space-y-3">
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-sm font-medium text-blue-800">Vị trí đang ứng tuyển:</p>
-                      <p className="text-base font-semibold text-blue-900">{selectedCandidate.cv_jobs.title}</p>
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-[10px] sm:text-xs font-medium text-blue-800">Vị trí đang ứng tuyển:</p>
+                      <p className="text-xs sm:text-base font-semibold text-blue-900">{selectedCandidate.cv_jobs.title}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
                       <input type="checkbox" id="useDifferentPosition" checked={useDifferentPosition}
                         onChange={(e) => {
                           setUseDifferentPosition(e.target.checked);
                           if (!e.target.checked) setFormData(prev => ({ ...prev, job_id: selectedCandidate.cv_jobs?.id || "" }));
                         }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 sm:w-4 sm:h-4"
                       />
-                      <label htmlFor="useDifferentPosition" className="text-sm text-gray-700">Phỏng vấn cho vị trí khác</label>
+                      <label htmlFor="useDifferentPosition" className="text-[11px] sm:text-sm text-gray-700">Phỏng vấn vị trí khác</label>
                     </div>
                     {useDifferentPosition && (
                       <Select value={formData.job_id} onValueChange={(value) => setFormData({...formData, job_id: value})} required>
-                        <SelectTrigger className="bg-white"><SelectValue placeholder="Chọn vị trí phỏng vấn" /></SelectTrigger>
+                        <SelectTrigger className="bg-white h-9 sm:h-10"><SelectValue placeholder="Chọn vị trí phỏng vấn" /></SelectTrigger>
                         <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
                             {jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}
                         </SelectContent>
@@ -1039,7 +1158,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                   </div>
                 ) : (
                   <Select value={formData.job_id} onValueChange={(value) => setFormData({...formData, job_id: value})} required>
-                    <SelectTrigger className="bg-white"><SelectValue placeholder="Chọn vị trí ứng tuyển" /></SelectTrigger>
+                    <SelectTrigger className="bg-white h-9 sm:h-10"><SelectValue placeholder="Chọn vị trí ứng tuyển" /></SelectTrigger>
                     <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
                       {jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}
                     </SelectContent>
@@ -1047,53 +1166,53 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 )}
 </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-xs sm:text-sm font-medium">Ngày <span className="text-red-500">*</span></label>
                   <Input type="date" value={formData.interview_date}
                     onChange={(e) => {
                       setFormData({...formData, interview_date: e.target.value});
                       if (formErrors.interview_date) setFormErrors({...formErrors, interview_date: ""});
                     }}
-                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white`}
+                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white w-full`}
                     min={new Date().toISOString().split('T')[0]}
                   />
-                  {formErrors.interview_date && <p className="text-xs text-red-500">{formErrors.interview_date}</p>}
+                  {formErrors.interview_date && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_date}</p>}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Giờ phỏng vấn <span className="text-red-500">*</span></label>
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-xs sm:text-sm font-medium">Giờ <span className="text-red-500">*</span></label>
                   <Input type="time" value={formData.interview_time}
                     onChange={(e) => {
                       setFormData({...formData, interview_time: e.target.value});
                       if (formErrors.interview_time) setFormErrors({...formErrors, interview_time: ""});
                     }}
-                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white`}
+                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white w-full`}
                   />
-                  {formErrors.interview_time && <p className="text-xs text-red-500">{formErrors.interview_time}</p>}
+                  {formErrors.interview_time && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_time}</p>}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium"><Clock className="w-4 h-4" /> Thời lượng (phút)</label>
+              <div className="space-y-1 sm:space-y-2">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Clock className="w-4 h-4 sm:w-4 sm:h-4" /> Thời lượng (phút)</label>
                 <Input type="number" value={formData.duration}
                   onChange={(e) => {
                     setFormData({...formData, duration: e.target.value});
                     if (formErrors.duration) setFormErrors({...formErrors, duration: ""});
                   }}
-                  placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white`}
+                  placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white w-full`}
                 />
-                {formErrors.duration && <p className="text-xs text-red-500">{formErrors.duration}</p>}
+                {formErrors.duration && <p className="text-xs sm:text-sm text-red-500">{formErrors.duration}</p>}
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium"><MapPin className="w-4 h-4" /> Địa điểm</label>
-                <Input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="Phòng họp, địa chỉ, link online" className="bg-white" />
+              <div className="space-y-1 sm:space-y-2">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><MapPin className="w-4 h-4 sm:w-4 sm:h-4" /> Địa điểm</label>
+                <Input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="Phòng họp, link online..." className="bg-white w-full" />
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium"><Video className="w-4 h-4" /> Hình thức</label>
+              <div className="space-y-1 sm:space-y-2">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Video className="w-4 h-4 sm:w-4 sm:h-4" /> Hình thức</label>
 <Select value={formData.format} onValueChange={(value) => setFormData({...formData, format: value})}>
-                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-white w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
                     <SelectItem value="Trực tiếp">Trực tiếp</SelectItem>
                     <SelectItem value="Online">Online</SelectItem>
@@ -1102,21 +1221,21 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium"><User className="w-4 h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
-                <Input value={formData.interviewer} onChange={(e) => setFormData({...formData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white" required />
+              <div className="space-y-1 sm:space-y-2">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4 sm:w-4 sm:h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
+                <Input value={formData.interviewer} onChange={(e) => setFormData({...formData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white w-full" required />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Ghi chú</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Ghi chú thêm về cuộc phỏng vấn..." rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white" />
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-xs sm:text-sm font-medium">Ghi chú</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Ghi chú thêm về cuộc phỏng vấn..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white" />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={submitting}>Hủy</Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={submitting || !formData.candidate_id || !formData.job_id || !formData.interview_date || !formData.interview_time || !formData.interviewer}>
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={submitting} className="w-full sm:w-auto">Hủy</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" disabled={submitting || !formData.candidate_id || !formData.job_id || !formData.interview_date || !formData.interview_time || !formData.interviewer}>
                   <Calendar className="w-4 h-4 mr-2" />
-                  {submitting ? 'Đang tạo...' : 'Tạo lịch phỏng vấn'}
+                  {submitting ? 'Đang tạo...' : 'Tạo lịch'}
                 </Button>
               </div>
             </form>
@@ -1129,8 +1248,8 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
       {isEditDialogOpen && (
         <>
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => setIsEditDialogOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 sm:p-6" style={{ zIndex: 1000000 }}>
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto pointer-events-auto">
               <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
                 <div>
                   <h2 className="text-xl font-semibold flex items-center gap-2"><Pencil className="w-5 h-5 text-blue-600" /> Chỉnh sửa lịch phỏng vấn</h2>
@@ -1140,44 +1259,44 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
               </div>
 
               <form onSubmit={handleUpdate} className="p-6 space-y-6">
-                <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-medium"><User className="w-4 h-4" /> Ứng viên (Không thể thay đổi)</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4" /> Ứng viên (Không thể thay đổi)</label>
                     <Input value={editFormData.candidate_name} disabled className="bg-gray-100" />
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium"><Briefcase className="w-4 h-4" /> Vị trí ứng tuyển</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Briefcase className="w-4 h-4" /> Vị trí ứng tuyển</label>
                   <Select value={editFormData.job_id} onValueChange={(value) => setEditFormData({...editFormData, job_id: value})}>
                     <SelectTrigger className="bg-white"><SelectValue placeholder="Chọn vị trí" /></SelectTrigger>
                     <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>{jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className="text-xs sm:text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
                     <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white`} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Giờ phỏng vấn <span className="text-red-500">*</span></label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className="text-xs sm:text-sm font-medium">Giờ phỏng vấn <span className="text-red-500">*</span></label>
                     <Input type="time" value={editFormData.interview_time} onChange={(e) => setEditFormData({...editFormData, interview_time: e.target.value})} required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white`} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium"><Clock className="w-4 h-4" /> Thời lượng (phút)</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Clock className="w-4 h-4" /> Thời lượng (phút)</label>
                   <Input type="number" value={editFormData.duration} onChange={(e) => setEditFormData({...editFormData, duration: e.target.value})} placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white`} />
                 </div>
-                <div className="space-y-2">
-<label className="flex items-center gap-2 text-sm font-medium"><MapPin className="w-4 h-4" /> Địa điểm</label>
+                <div className="space-y-1.5 sm:space-y-2">
+<label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><MapPin className="w-4 h-4" /> Địa điểm</label>
                   <Input value={editFormData.location} onChange={(e) => setEditFormData({...editFormData, location: e.target.value})} placeholder="Phòng họp, địa chỉ, link online" className="bg-white" />
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium"><Video className="w-4 h-4" /> Hình thức</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Video className="w-4 h-4" /> Hình thức</label>
                   <Select value={editFormData.format} onValueChange={(value) => setEditFormData({...editFormData, format: value})}>
                     <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-white" style={{ zIndex: 1000001 }}><SelectItem value="Trực tiếp">Trực tiếp</SelectItem><SelectItem value="Online">Online</SelectItem><SelectItem value="Hybrid">Hybrid</SelectItem></SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium"><User className="w-4 h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
                   <Input value={editFormData.interviewer} onChange={(e) => setEditFormData({...editFormData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white" required />
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-4 border-t">
@@ -1194,25 +1313,25 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
       {isDetailDialogOpen && selectedInterview && (
         <>
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => setIsDetailDialogOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-xl font-semibold flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-600" /> Chi tiết lịch phỏng vấn</h2>
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 sm:p-6" style={{ zIndex: 1000000 }}>
+            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto pointer-events-auto">
+              <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-600" /> Chi tiết lịch phỏng vấn</h2>
 <button onClick={() => setIsDetailDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-sm font-medium text-gray-600">Ứng viên</label><p className="mt-1 text-base font-semibold">{selectedInterview.cv_candidates?.full_name || 'N/A'}</p></div>
-                  <div><label className="text-sm font-medium text-gray-600">Vị trí phỏng vấn</label><p className="mt-1 text-base">{selectedInterview.cv_jobs?.title || selectedInterview.cv_candidates?.cv_jobs?.title || 'N/A'}</p></div>
-                  <div><label className="text-sm font-medium text-gray-600">Trạng thái</label><div className="mt-1"><Badge className={getStatusBadgeClass(selectedInterview.status)}>{selectedInterview.status}</Badge></div></div>
-                  <div><label className="text-sm font-medium text-gray-600">Ngày & Giờ</label><p className="mt-1 text-base">{new Date(selectedInterview.interview_date).toLocaleString('vi-VN', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh'})}</p></div>
-                  <div><label className="text-sm font-medium text-gray-600">Thời lượng</label><p className="mt-1 text-base">{selectedInterview.duration} phút</p></div>
-                  <div><label className="text-sm font-medium text-gray-600">Người phỏng vấn</label><p className="mt-1 text-base">{selectedInterview.interviewer}</p></div>
-                  <div><label className="text-sm font-medium text-gray-600">Hình thức</label><p className="mt-1 text-base">{selectedInterview.format}</p></div>
-                  <div className="col-span-2"><label className="text-sm font-medium text-gray-600">Địa điểm</label><p className="mt-1 text-base">{selectedInterview.location || 'Chưa có thông tin'}</p></div>
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Ứng viên</label><p className="mt-1 text-sm sm:text-base font-semibold">{selectedInterview.cv_candidates?.full_name || 'N/A'}</p></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Vị trí phỏng vấn</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.cv_jobs?.title || selectedInterview.cv_candidates?.cv_jobs?.title || 'N/A'}</p></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Trạng thái</label><div className="mt-1"><Badge className={getStatusBadgeClass(selectedInterview.status)}>{selectedInterview.status}</Badge></div></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Ngày & Giờ</label><p className="mt-1 text-sm sm:text-base">{new Date(selectedInterview.interview_date).toLocaleString('vi-VN', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh'})}</p></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Thời lượng</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.duration} phút</p></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Người phỏng vấn</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.interviewer}</p></div>
+                  <div><label className="text-xs sm:text-sm font-medium text-gray-600">Hình thức</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.format}</p></div>
+                  <div className="col-span-2"><label className="text-xs sm:text-sm font-medium text-gray-600">Địa điểm</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.location || 'Chưa có thông tin'}</p></div>
                 </div>
               </div>
-              <div className="border-t px-6 py-4 flex justify-end"><Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Đóng</Button></div>
+              <div className="border-t px-4 sm:px-6 py-4 flex justify-end"><Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Đóng</Button></div>
             </div>
           </div>
         </>
@@ -1220,33 +1339,33 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
 
       {/* Dialog Form Đánh Giá */}
       {isReviewFormDialogOpen && interviewToReview && (
-        <> 
+        <>
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => { setIsReviewFormDialogOpen(false); setInterviewToReview(null); setReviewData({ rating: 0, notes: '', outcome: 'Đạt' }); }} />
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
             <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg m-4 pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-<h2 className="text-xl font-semibold flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500" /> Đánh giá buổi phỏng vấn</h2>
+              <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+<h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500" /> Đánh giá buổi phỏng vấn</h2>
                 <button onClick={() => { setIsReviewFormDialogOpen(false); setInterviewToReview(null); setReviewData({ rating: 0, notes: '', outcome: 'Đạt' }); }} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Ứng viên</p>
-                  <p className="font-semibold text-lg">{interviewToReview.cv_candidates?.full_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">{interviewToReview.cv_jobs?.title || interviewToReview.cv_candidates?.cv_jobs?.title}</p>
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-gray-600">Ứng viên</p>
+                  <p className="font-semibold text-base sm:text-lg">{interviewToReview.cv_candidates?.full_name}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">{interviewToReview.cv_jobs?.title || interviewToReview.cv_candidates?.cv_jobs?.title}</p>
                 </div>
                 <div className="space-y-3">
-                    <label className="text-sm font-medium">Đánh giá <span className="text-red-500">*</span></label>
+                    <label className="text-xs sm:text-sm font-medium">Đánh giá <span className="text-red-500">*</span></label>
                     <div className="flex items-center gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button key={star} type="button" onClick={() => setReviewData({...reviewData, rating: star})} className="transition-transform hover:scale-110">
-                          <Star className={`w-10 h-10 ${star <= reviewData.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                          <Star className={`w-8 h-8 sm:w-10 sm:h-10 ${star <= reviewData.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                         </button>
                       ))}
-                      <span className="ml-2 text-lg font-semibold text-gray-700">{reviewData.rating > 0 ? `${reviewData.rating}/5` : 'Chưa chọn'}</span>
+                      <span className="ml-2 text-base sm:text-lg font-semibold text-gray-700">{reviewData.rating > 0 ? `${reviewData.rating}/5` : 'Chưa chọn'}</span>
                     </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Kết quả <span className="text-red-500">*</span></label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-xs sm:text-sm font-medium">Kết quả <span className="text-red-500">*</span></label>
                   <Select value={reviewData.outcome} onValueChange={(value) => setReviewData({...reviewData, outcome: value})}>
                     <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
@@ -1254,12 +1373,12 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Ghi chú đánh giá</label>
-                  <textarea value={reviewData.notes} onChange={(e) => setReviewData({...reviewData, notes: e.target.value})} placeholder="Nhập ghi chú về buổi phỏng vấn..." rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white" />
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-xs sm:text-sm font-medium">Ghi chú đánh giá</label>
+                  <textarea value={reviewData.notes} onChange={(e) => setReviewData({...reviewData, notes: e.target.value})} placeholder="Nhập ghi chú về buổi phỏng vấn..." rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white text-sm sm:text-base" />
                 </div>
               </div>
-              <div className="border-t px-6 py-4 flex justify-end gap-2">
+              <div className="border-t px-4 sm:px-6 py-4 flex justify-end gap-2">
 <Button variant="outline" onClick={() => { setIsReviewFormDialogOpen(false); setInterviewToReview(null); setReviewData({ rating: 0, notes: '', outcome: 'Đạt' }); }} disabled={submitting}>Hủy</Button>
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSubmitReviewForm} disabled={submitting || reviewData.rating === 0}><Star className="w-4 h-4 mr-2" /> {submitting ? 'Đang lưu...' : 'Lưu đánh giá'}</Button>
               </div>
