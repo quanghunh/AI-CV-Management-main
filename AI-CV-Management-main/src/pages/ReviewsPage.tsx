@@ -612,7 +612,7 @@ if (!selectedPendingInterview || newRating === 0) {
           />
 
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
+            <div className="relative bg-white rounded-lg shadow-2xl w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
               <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
                 <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
@@ -743,7 +743,7 @@ setNewNote('');
           />
 
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
+            <div className="relative bg-white rounded-lg shadow-2xl w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto m-4 pointer-events-auto">
               <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
                 <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
@@ -821,7 +821,7 @@ setNewNote('');
                     value={reviewOutcome}
                     onValueChange={(value) => setReviewOutcome(value)}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-60 shadow-lg border border-gray-200" style={{ zIndex: 1000001 }}>
@@ -877,7 +877,7 @@ setNewNote('');
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
                     rows={4}
-                    className="resize-none text-sm sm:text-base"
+                    className="min-h-20 resize-none px-2.5 sm:px-3 w-full text-sm sm:text-base"
                   />
                   <p className="text-xs text-gray-500">
                     {newNote.length}/500 ký tự
@@ -927,7 +927,7 @@ setNewNote('');
           />
 
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg m-4 pointer-events-auto">
+            <div className="relative bg-white rounded-lg shadow-2xl w-[95vw] max-w-lg m-4 pointer-events-auto">
               <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between z-10">
                 <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
@@ -992,7 +992,7 @@ onClick={() => {
                     value={reviewOutcome}
                     onValueChange={(value) => setReviewOutcome(value)}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-60 shadow-lg border border-gray-200" style={{ zIndex: 1000001 }}>
@@ -1046,7 +1046,7 @@ onClick={() => {
                     onChange={(e) => setNewNote(e.target.value)}
                     placeholder="Nhập ghi chú về buổi phỏng vấn..."
                     rows={3}
-                    className="bg-white text-sm sm:text-base"
+                    className="min-h-20 resize-none px-2.5 sm:px-3 w-full bg-white text-sm sm:text-base"
                   />
                 </div>
               </div>

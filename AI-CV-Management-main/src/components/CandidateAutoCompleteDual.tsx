@@ -290,22 +290,22 @@ export function CandidateAutoCompleteDual({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Ô nhập tên */}
-      <div className="relative" ref={nameDropdownRef}>
+      <div className="relative w-full" ref={nameDropdownRef}>
         <label className="flex items-center gap-2 text-sm font-medium mb-2">
           <User className="w-4 h-4" />
           Tên ứng viên
         </label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
             ref={nameInputRef}
             value={nameInputValue}
             onChange={handleNameInputChange}
             placeholder="Nhập tên ứng viên..."
-            className="pl-10 bg-white pr-10"
+            className="pl-10 bg-white pr-10 w-full min-w-0"
           />
           {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           )}
@@ -313,7 +313,7 @@ export function CandidateAutoCompleteDual({
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 shrink-0"
               onClick={handleClearSelection}
             >
               <X className="w-4 h-4" />
@@ -323,7 +323,7 @@ export function CandidateAutoCompleteDual({
 
         {/* Dropdown gợi ý theo tên */}
         {isNameDropdownOpen && nameSuggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 w-full min-w-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {nameSuggestions.map((candidate) =>
               renderSuggestionItem(candidate, 'name', handleSelectCandidateByName)
             )}
@@ -332,29 +332,29 @@ export function CandidateAutoCompleteDual({
 
         {/* Hiển thị thông báo khi không tìm thấy kết quả */}
         {isNameDropdownOpen && nameSuggestions.length === 0 && nameInputValue.trim().length >= 2 && !loading && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-3">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 w-full min-w-0 bg-white border border-gray-200 rounded-md shadow-lg p-3">
             <p className="text-sm text-gray-500">Không tìm thấy ứng viên nào với tên: "{nameInputValue}"</p>
           </div>
         )}
       </div>
 
       {/* Ô nhập email */}
-      <div className="relative" ref={emailDropdownRef}>
+      <div className="relative w-full" ref={emailDropdownRef}>
         <label className="flex items-center gap-2 text-sm font-medium mb-2">
           <Mail className="w-4 h-4" />
           Email ứng viên
         </label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
             ref={emailInputRef}
             value={emailInputValue}
             onChange={handleEmailInputChange}
             placeholder="Nhập email ứng viên..."
-            className="pl-10 bg-white pr-10"
+            className="pl-10 bg-white pr-10 w-full min-w-0"
           />
           {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           )}
@@ -362,7 +362,7 @@ export function CandidateAutoCompleteDual({
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 shrink-0"
               onClick={handleClearSelection}
             >
               <X className="w-4 h-4" />
@@ -372,7 +372,7 @@ export function CandidateAutoCompleteDual({
 
         {/* Dropdown gợi ý theo email */}
         {isEmailDropdownOpen && emailSuggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 w-full min-w-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {emailSuggestions.map((candidate) =>
               renderSuggestionItem(candidate, 'email', handleSelectCandidateByEmail)
             )}
@@ -381,7 +381,7 @@ export function CandidateAutoCompleteDual({
 
         {/* Hiển thị thông báo khi không tìm thấy kết quả */}
         {isEmailDropdownOpen && emailSuggestions.length === 0 && emailInputValue.trim().length >= 2 && !loading && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-3">
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 w-full min-w-0 bg-white border border-gray-200 rounded-md shadow-lg p-3">
             <p className="text-sm text-gray-500">Không tìm thấy ứng viên nào với email: "{emailInputValue}"</p>
           </div>
         )}

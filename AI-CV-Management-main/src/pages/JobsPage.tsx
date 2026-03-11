@@ -985,7 +985,7 @@ export function JobsPage() {
 
       {/* ==================== DIALOG TẠO JD MỚI ==================== */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-[95vw] w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
@@ -1339,7 +1339,7 @@ export function JobsPage() {
 
       {/* Dialog Xem chi tiết */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-[95vw] w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl font-bold truncate">{selectedJob?.title}</DialogTitle>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -1415,7 +1415,7 @@ export function JobsPage() {
       </Dialog>
 {/* ==================== ✅ NEW DIALOG - DANH SÁCH ỨNG VIÊN ==================== */}
 <Dialog open={isCandidatesDialogOpen} onOpenChange={setIsCandidatesDialogOpen}>
-  <DialogContent className="max-w-5xl w-[95vw] sm:max-w-4xl max-h-[85vh] overflow-y-auto sm:max-h-[90vh] p-4 sm:p-6">
+  <DialogContent className="max-w-[95vw] w-full sm:max-w-5xl max-h-[85vh] overflow-y-auto sm:max-h-[90vh] p-4 sm:p-6">
     <DialogHeader>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -1579,7 +1579,7 @@ export function JobsPage() {
 </Dialog>
       {/* Dialog Chỉnh sửa */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-[95vw] w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl font-bold">Chỉnh sửa Job Description</DialogTitle>
           </DialogHeader>
@@ -1751,7 +1751,7 @@ export function JobsPage() {
 
       {/* ==================== ✅ NEW DIALOG - AI INTERVIEW QUESTIONS ==================== */}
       <Dialog open={isAIQuestionsDialogOpen} onOpenChange={setIsAIQuestionsDialogOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-[95vw] w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="flex items-start sm:items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
