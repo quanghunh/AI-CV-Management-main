@@ -863,7 +863,7 @@ export function CandidatesPage() {
                       placeholder="example@email.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="w-full"
+                      className="px-2.5 sm:px-3 w-full"
                     />
                   </div>
                 </div>
@@ -875,7 +875,7 @@ export function CandidatesPage() {
                       placeholder="0123456789"
                       value={formData.phone_number}
                       onChange={(e) => handleInputChange('phone_number', e.target.value)}
-                      className="w-full"
+                      className="px-2.5 sm:px-3 w-full"
                     />
                   </div>
                   <div>
@@ -886,7 +886,7 @@ export function CandidatesPage() {
                       value={formData.job_id}
                       onValueChange={(value) => handleInputChange('job_id', value)}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn vị trí" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-60 shadow-lg border border-gray-200 max-h-[300px]">
@@ -921,7 +921,7 @@ export function CandidatesPage() {
                     placeholder="Nhập địa chỉ"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
-                    className="w-full"
+                    className="px-2.5 sm:px-3 w-full"
                   />
                 </div>
 
@@ -931,7 +931,7 @@ export function CandidatesPage() {
                     placeholder="VD: Đại học Bách Khoa TP.HCM"
                     value={formData.university}
                     onChange={(e) => handleInputChange('university', e.target.value)}
-                    className="w-full"
+                    className="px-2.5 sm:px-3 w-full"
                   />
                 </div>
 
@@ -940,7 +940,7 @@ export function CandidatesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Kinh nghiệm</label>
                     <Textarea
                       placeholder="VD: 3 năm làm Frontend Developer tại ABC Company"
-                      className="min-h-[80px] resize-none w-full"
+                      className="min-h-[80px] resize-none px-2.5 sm:px-3 w-full"
                       value={formData.experience}
                       onChange={(e) => handleInputChange('experience', e.target.value)}
                     />
@@ -949,7 +949,7 @@ export function CandidatesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Học vấn</label>
                     <Textarea
                       placeholder="VD: Cử nhân CNTT, GPA 3.5/4.0"
-                      className="min-h-[80px] resize-none w-full"
+                      className="min-h-[80px] resize-none px-2.5 sm:px-3 w-full"
                       value={formData.education}
                       onChange={(e) => handleInputChange('education', e.target.value)}
                     />
@@ -963,7 +963,7 @@ export function CandidatesPage() {
                     value={formData.source}
                     onValueChange={(value) => handleInputChange('source', value)}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue placeholder="Chọn nguồn" />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1144,7 +1144,7 @@ export function CandidatesPage() {
                     </label>
                     <Textarea
                       placeholder="VD: Ứng viên có bằng Cử nhân CNTT từ ĐH Bách Khoa, TOEIC 850 điểm, 3 năm kinh nghiệm React..."
-                      className="min-h-[100px] resize-none"
+                      className="min-h-[100px] resize-none px-2.5 sm:px-3 w-full"
                       value={mandatoryRequirementsNotes}
                       onChange={(e) => setMandatoryRequirementsNotes(e.target.value)}
                     />

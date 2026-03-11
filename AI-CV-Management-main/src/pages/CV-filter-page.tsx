@@ -546,7 +546,7 @@ export default function PotentialCandidatesPage() {
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
           <Button onClick={handleAnalyzeAll} disabled={analyzing} size="sm" className="text-gray-900!">
-            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-gray-900" />
             <span className="hidden sm:inline">{analyzing ? "Đang phân tích..." : "Phân tích tất cả"}</span>
           </Button>
         </div>
@@ -760,11 +760,12 @@ export default function PotentialCandidatesPage() {
                 {!candidate.analysis_result ? (
                   <Button
                     size="sm"
+                    variant="ghost"
                     onClick={() => handleAnalyzeOne(candidate)}
                     disabled={analyzing}
-                    className="w-full h-10 sm:h-9 text-xs sm:text-sm text-gray-900!"
+                    className="w-full h-10 sm:h-9 text-xs sm:text-sm text-gray-900 hover:bg-gray-100"
                   >
-                    <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+                    <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0 text-gray-900" />
                     <span className="whitespace-nowrap">Phân tích</span>
                   </Button>
                 ) : (

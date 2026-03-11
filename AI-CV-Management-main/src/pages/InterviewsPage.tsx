@@ -19,6 +19,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CandidateAutoCompleteDual } from "@/components/CandidateAutoCompleteDual"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // --- Interfaces (Giữ nguyên của Version 2) ---
 
@@ -1078,27 +1084,21 @@ onClick={() => handleDelete(interview)}
       </Card>
 
       {/* Dialog tạo lịch phỏng vấn (V2 UI) */}
-      {isDialogOpen && (
-        <>
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => setIsDialogOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 sm:p-6" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto pointer-events-auto">
-            <div className="sticky top-0 bg-white border-b px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-1.5 sm:gap-2">
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
-                  <span className="truncate">Tạo lịch phỏng vấn mới</span>
-                </h2>
-                <p className="text-[10px] sm:text-xs text-gray-600 mt-0.5 sm:mt-1 truncate">
-                  Điền thông tin chi tiết để tạo lịch phỏng vấn.
-                </p>
-              </div>
-              <button onClick={() => setIsDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 p-1">
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+          <DialogHeader>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-1.5 sm:gap-2 truncate">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
+                <span className="truncate">Tạo lịch phỏng vấn mới</span>
+              </DialogTitle>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
+                Điền thông tin chi tiết để tạo lịch phỏng vấn.
+              </p>
             </div>
+          </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
               <div className="space-y-1 sm:space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <User className="w-4 h-4 sm:w-4 sm:h-4" /> Ứng viên <span className="text-red-500">*</span>
@@ -1149,8 +1149,8 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                     </div>
                     {useDifferentPosition && (
                       <Select value={formData.job_id} onValueChange={(value) => setFormData({...formData, job_id: value})} required>
-                        <SelectTrigger className="bg-white h-9 sm:h-10"><SelectValue placeholder="Chọn vị trí phỏng vấn" /></SelectTrigger>
-                        <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
+                        <SelectTrigger className="px-2.5 sm:px-3 h-9 sm:h-10 w-full"><SelectValue placeholder="Chọn vị trí phỏng vấn" /></SelectTrigger>
+                        <SelectContent className="bg-white">
                             {jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}
                         </SelectContent>
                       </Select>
@@ -1158,8 +1158,8 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                   </div>
                 ) : (
                   <Select value={formData.job_id} onValueChange={(value) => setFormData({...formData, job_id: value})} required>
-                    <SelectTrigger className="bg-white h-9 sm:h-10"><SelectValue placeholder="Chọn vị trí ứng tuyển" /></SelectTrigger>
-                    <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
+                    <SelectTrigger className="px-2.5 sm:px-3 h-9 sm:h-10 w-full"><SelectValue placeholder="Chọn vị trí ứng tuyển" /></SelectTrigger>
+                    <SelectContent className="bg-white">
                       {jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}
                     </SelectContent>
                   </Select>
@@ -1223,12 +1223,12 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
 
               <div className="space-y-1 sm:space-y-2">
                 <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4 sm:w-4 sm:h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
-                <Input value={formData.interviewer} onChange={(e) => setFormData({...formData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white w-full" required />
+                <Input value={formData.interviewer} onChange={(e) => setFormData({...formData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white px-2.5 sm:px-3 w-full" required />
               </div>
 
               <div className="space-y-1 sm:space-y-2">
                 <label className="text-xs sm:text-sm font-medium">Ghi chú</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Ghi chú thêm về cuộc phỏng vấn..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white" />
+                <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Ghi chú thêm về cuộc phỏng vấn..." rows={2} className="w-full px-2.5 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white" />
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4 border-t">
@@ -1239,75 +1239,67 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Chỉnh Sửa */}
-      {isEditDialogOpen && (
-        <>
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" style={{ zIndex: 999999 }} onClick={() => setIsEditDialogOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 sm:p-6" style={{ zIndex: 1000000 }}>
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto pointer-events-auto">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-                <div>
-                  <h2 className="text-xl font-semibold flex items-center gap-2"><Pencil className="w-5 h-5 text-blue-600" /> Chỉnh sửa lịch phỏng vấn</h2>
-<p className="text-sm text-gray-600 mt-1">Cập nhật thông tin cho lịch phỏng vấn đang chờ.</p>
-                </div>
-                <button onClick={() => setIsEditDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button>
-              </div>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-blue-600" /> Chỉnh sửa lịch phỏng vấn
+            </DialogTitle>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">Cập nhật thông tin cho lịch phỏng vấn đang chờ.</p>
+          </DialogHeader>
 
-              <form onSubmit={handleUpdate} className="p-6 space-y-6">
+          <form onSubmit={handleUpdate} className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
                 <div className="space-y-1.5 sm:space-y-2">
                     <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4" /> Ứng viên (Không thể thay đổi)</label>
-                    <Input value={editFormData.candidate_name} disabled className="bg-gray-100" />
+                    <Input value={editFormData.candidate_name} disabled className="bg-gray-100 px-2.5 sm:px-3 w-full" />
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Briefcase className="w-4 h-4" /> Vị trí ứng tuyển</label>
                   <Select value={editFormData.job_id} onValueChange={(value) => setEditFormData({...editFormData, job_id: value})}>
-                    <SelectTrigger className="bg-white"><SelectValue placeholder="Chọn vị trí" /></SelectTrigger>
-                    <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>{jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}</SelectContent>
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full"><SelectValue placeholder="Chọn vị trí" /></SelectTrigger>
+                    <SelectContent className="bg-white">{jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
-                    <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white`} />
+                    <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`} />
                   </div>
                   <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium">Giờ phỏng vấn <span className="text-red-500">*</span></label>
-                    <Input type="time" value={editFormData.interview_time} onChange={(e) => setEditFormData({...editFormData, interview_time: e.target.value})} required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white`} />
+                    <Input type="time" value={editFormData.interview_time} onChange={(e) => setEditFormData({...editFormData, interview_time: e.target.value})} required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`} />
                   </div>
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Clock className="w-4 h-4" /> Thời lượng (phút)</label>
-                  <Input type="number" value={editFormData.duration} onChange={(e) => setEditFormData({...editFormData, duration: e.target.value})} placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white`} />
+                  <Input type="number" value={editFormData.duration} onChange={(e) => setEditFormData({...editFormData, duration: e.target.value})} placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`} />
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
 <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><MapPin className="w-4 h-4" /> Địa điểm</label>
-                  <Input value={editFormData.location} onChange={(e) => setEditFormData({...editFormData, location: e.target.value})} placeholder="Phòng họp, địa chỉ, link online" className="bg-white" />
+                  <Input value={editFormData.location} onChange={(e) => setEditFormData({...editFormData, location: e.target.value})} placeholder="Phòng họp, địa chỉ, link online" className="bg-white px-2.5 sm:px-3 w-full" />
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Video className="w-4 h-4" /> Hình thức</label>
                   <Select value={editFormData.format} onValueChange={(value) => setEditFormData({...editFormData, format: value})}>
-                    <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white" style={{ zIndex: 1000001 }}><SelectItem value="Trực tiếp">Trực tiếp</SelectItem><SelectItem value="Online">Online</SelectItem><SelectItem value="Hybrid">Hybrid</SelectItem></SelectContent>
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white"><SelectItem value="Trực tiếp">Trực tiếp</SelectItem><SelectItem value="Online">Online</SelectItem><SelectItem value="Hybrid">Hybrid</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><User className="w-4 h-4" /> Người phỏng vấn <span className="text-red-500">*</span></label>
-                  <Input value={editFormData.interviewer} onChange={(e) => setEditFormData({...editFormData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white" required />
+                  <Input value={editFormData.interviewer} onChange={(e) => setEditFormData({...editFormData, interviewer: e.target.value})} placeholder="Nhập tên người phỏng vấn" className="bg-white px-2.5 sm:px-3 w-full" required />
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={submitting}>Hủy</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={submitting}><Pencil className="w-4 h-4 mr-2" /> {submitting ? 'Đang cập nhật...' : 'Cập nhật thay đổi'}</Button>
+                <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={submitting} className="w-full sm:w-auto">Hủy</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" disabled={submitting}><Pencil className="w-4 h-4 mr-2" /> {submitting ? 'Đang cập nhật...' : 'Cập nhật thay đổi'}</Button>
                 </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
+            </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Xem Chi Tiết */}
       {isDetailDialogOpen && selectedInterview && (
