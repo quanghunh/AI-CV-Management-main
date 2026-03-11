@@ -529,91 +529,91 @@ export default function PotentialCandidatesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Brain className="h-8 w-8 text-blue-600" />
-            Ứng viên tiềm năng
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+            <span className="truncate">Ứng viên tiềm năng</span>
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
             Phân tích và đánh giá độ phù hợp của CV với các vị trí tuyển dụng
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={fetchData} disabled={analyzing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${analyzing ? 'animate-spin' : ''}`} />
-            Làm mới
+        <div className="flex gap-2 sm:gap-3">
+          <Button variant="outline" onClick={fetchData} disabled={analyzing} size="sm">
+            <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 ${analyzing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Làm mới</span>
           </Button>
-          <Button onClick={handleAnalyzeAll} disabled={analyzing}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            {analyzing ? "Đang phân tích..." : "Phân tích tất cả"}
+          <Button onClick={handleAnalyzeAll} disabled={analyzing} size="sm" className="text-gray-900!">
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            <span className="hidden sm:inline">{analyzing ? "Đang phân tích..." : "Phân tích tất cả"}</span>
           </Button>
         </div>
       </div>
 
       {/* ✅ FROM V1: Stats grid với Perfect Match Rate */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
         <Card className="border-2 border-blue-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
               Tổng số CV
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600">{stats.total}</div>
           </CardContent>
         </Card>
 
         <Card className="border-2 border-green-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
               Đã phân tích
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.analyzed}</div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">{stats.analyzed}</div>
           </CardContent>
         </Card>
 
         <Card className="border-2 border-yellow-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
               Điểm TB
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{stats.avgScore}</div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600">{stats.avgScore}</div>
           </CardContent>
         </Card>
 
         <Card className="border-2 border-purple-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
               Xuất sắc (≥85)
-              <div className="text-xs text-gray-500 font-normal mt-1">
+              <div className="text-[10px] sm:text-xs text-gray-500 font-normal mt-0.5 sm:mt-1">
                 Theo vị trí đã apply
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600">{stats.excellent}</div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600">{stats.excellent}</div>
           </CardContent>
         </Card>
 
         <Card className="border-2 border-indigo-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-              <Target className="h-4 w-4" />
-              Apply đúng vị trí
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1">
+              <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="truncate">Apply đúng vị trí</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-indigo-600">
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="flex items-baseline gap-1 sm:gap-2">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600">
                 {stats.perfectMatchRate}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-[10px] sm:text-sm text-gray-500">
                 ({stats.perfectMatch}/{stats.analyzed})
               </div>
             </div>
@@ -623,15 +623,15 @@ export default function PotentialCandidatesPage() {
 
       {/* ✅ FROM V1: Filters với Match Filter */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
+              <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-2">
+                <Briefcase className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Lọc theo vị trí
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2.5 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={selectedJob}
                 onChange={(e) => setSelectedJob(e.target.value)}
               >
@@ -645,12 +645,12 @@ export default function PotentialCandidatesPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Filter className="h-4 w-4" />
+              <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Lọc theo độ phù hợp
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2.5 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={matchFilter}
                 onChange={(e) => setMatchFilter(e.target.value)}
               >
@@ -665,7 +665,7 @@ export default function PotentialCandidatesPage() {
       </Card>
 
       {/* ✅ FROM V1: Candidate Cards UI (Advanced) + V2 Action Button */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filteredCandidates.map((candidate) => (
           <Card
             key={candidate.id}
@@ -673,28 +673,28 @@ export default function PotentialCandidatesPage() {
               candidate.analysis_result ? getScoreBg(candidate.overall_score) : "bg-gray-50"
             }`}
           >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-1">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1 truncate">
                     {candidate.full_name}
                   </h3>
-                  <p className="text-sm text-gray-600">{candidate.email}</p>
-                  
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">{candidate.email}</p>
+
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
                     {candidate.cv_jobs && (
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
                         {candidate.cv_jobs.title}
                         </Badge>
                     )}
                     {/* ✅ FROM V2: Status Badge */}
                     {candidate.status === 'Sàng lọc' && (
-                        <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Sàng lọc</Badge>
+                        <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">Sàng lọc</Badge>
                     )}
                   </div>
                 </div>
                 {candidate.analysis_result && (
-                  <div className={`text-2xl font-bold ${getScoreColor(candidate.overall_score)}`}>
+                  <div className={`text-xl sm:text-2xl font-bold shrink-0 ml-2 ${getScoreColor(candidate.overall_score)}`}>
                     {candidate.overall_score}
                   </div>
                 )}
@@ -702,25 +702,25 @@ export default function PotentialCandidatesPage() {
 
               {/* Best Match Display (Logic V1) */}
               {candidate.analysis_result?.best_match && (
-                <div className={`rounded-lg p-3 mb-4 border-2 ${
+                <div className={`rounded-lg p-2.5 sm:p-3 mb-3 sm:mb-4 border-2 ${
                   candidate.cv_jobs?.id === candidate.analysis_result.best_match.job_id
                     ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-300'
                     : 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-300'
                 }`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between mb-1.5 sm:mb-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                       {candidate.cv_jobs?.id === candidate.analysis_result.best_match.job_id ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                        <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 shrink-0" />
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                        <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 shrink-0" />
                       )}
-                      <p className="text-xs font-semibold text-gray-700">
+                      <p className="text-[10px] sm:text-xs font-semibold text-gray-700">
                         {candidate.cv_jobs?.id === candidate.analysis_result.best_match.job_id
                           ? 'Vị trí phù hợp nhất'
                           : 'Gợi ý vị trí phù hợp hơn'}
                       </p>
                     </div>
-                    <Badge className={`text-xs font-bold ${
+                    <Badge className={`text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 ${
                       candidate.cv_jobs?.id === candidate.analysis_result.best_match.job_id
                         ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
                         : 'bg-amber-100 text-amber-700 border-amber-300'
@@ -728,26 +728,26 @@ export default function PotentialCandidatesPage() {
                       {candidate.analysis_result.best_match.match_score}%
                     </Badge>
                   </div>
-                  
-                  <p className="text-sm font-semibold text-gray-900 mb-2">
+
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2 truncate">
                     {candidate.analysis_result.best_match.job_title}
                   </p>
-                  
+
                   {candidate.cv_jobs?.id === candidate.analysis_result.best_match.job_id ? (
-                    <div className="bg-white/60 rounded px-2 py-1.5">
-                      <p className="text-xs text-emerald-700 font-medium">
+                    <div className="bg-white/60 rounded px-1.5 sm:px-2 py-1 sm:py-1.5">
+                      <p className="text-[10px] sm:text-xs text-emerald-700 font-medium">
                         ✅ Ứng viên đã apply đúng vị trí
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
-                      <div className="bg-white/60 rounded px-2 py-1">
-                        <p className="text-xs text-gray-600">
+                    <div className="space-y-1 sm:space-y-1.5">
+                      <div className="bg-white/60 rounded px-1.5 sm:px-2 py-1">
+                        <p className="text-[10px] sm:text-xs text-gray-600">
                           Đã apply: <span className="font-medium text-gray-800">{candidate.cv_jobs?.title}</span>
                         </p>
                       </div>
-                      <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
+                      <p className="text-[10px] sm:text-xs text-amber-700 font-medium flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         Nên xem xét chuyển vị trí
                       </p>
                     </div>
@@ -762,10 +762,10 @@ export default function PotentialCandidatesPage() {
                     size="sm"
                     onClick={() => handleAnalyzeOne(candidate)}
                     disabled={analyzing}
-                    className="w-full"
+                    className="w-full h-10 sm:h-9 text-xs sm:text-sm text-gray-900!"
                   >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Phân tích
+                    <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+                    <span className="whitespace-nowrap">Phân tích</span>
                   </Button>
                 ) : (
                   <>
@@ -773,28 +773,28 @@ export default function PotentialCandidatesPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleViewDetail(candidate)}
-                      className="w-full"
+                      className="w-full h-10 sm:h-9 text-xs sm:text-sm"
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Xem chi tiết
+                      <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+                      <span className="whitespace-nowrap">Xem chi tiết</span>
                     </Button>
-                    
+
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={() => handleReanalyze(candidate)}
                       disabled={reanalyzingId === candidate.id}
-                      className="w-full"
+                      className="w-full h-10 sm:h-9 text-xs sm:text-sm"
                     >
                       {reanalyzingId === candidate.id ? (
                         <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Đang phân tích...
+                          <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin shrink-0" />
+                          <span className="whitespace-nowrap">Đang phân tích...</span>
                         </>
                       ) : (
                         <>
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Phân tích lại
+                          <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+                          <span className="whitespace-nowrap">Phân tích lại</span>
                         </>
                       )}
                     </Button>
@@ -804,10 +804,10 @@ export default function PotentialCandidatesPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleCreateInterview(candidate)}
-                      className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                      className="w-full h-10 sm:h-9 text-xs sm:text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
                     >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Tạo lịch phỏng vấn
+                      <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+                      <span className="whitespace-nowrap">Tạo lịch phỏng vấn</span>
                     </Button>
                   </>
                 )}
@@ -819,12 +819,12 @@ export default function PotentialCandidatesPage() {
 
       {filteredCandidates.length === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
-            <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <CardContent className="p-8 sm:p-12 text-center">
+            <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
               Không tìm thấy ứng viên
             </h3>
-            <p className="text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600">
               Thử điều chỉnh bộ lọc để xem thêm ứng viên
             </p>
           </CardContent>
@@ -833,15 +833,15 @@ export default function PotentialCandidatesPage() {
 
       {/* ✅ FROM V1: Detailed Dialog */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                     {selectedCandidate?.full_name}
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
                     {selectedCandidate?.email}
                   </p>
                 </div>
@@ -850,40 +850,40 @@ export default function PotentialCandidatesPage() {
           </DialogHeader>
 
           {selectedCandidate && (
-            <div className="p-6 space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Overall Score */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-200">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 lg:p-5 rounded-xl border border-blue-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3">
                   <div>
-                    <h4 className="font-semibold text-blue-900 flex items-center gap-2">
-                      <Target className="h-5 w-5" />
+                    <h4 className="font-semibold text-sm sm:text-base text-blue-900 flex items-center gap-2">
+                      <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                       Điểm phù hợp vị trí đã apply
                     </h4>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <p className="text-xs sm:text-sm text-blue-700 mt-1">
                       {selectedCandidate?.cv_jobs?.title}
                     </p>
                   </div>
-                  <span className={`text-2xl font-bold ${getScoreColor(selectedCandidate.overall_score || 0)}`}>
+                  <span className={`text-xl sm:text-2xl font-bold ${getScoreColor(selectedCandidate.overall_score || 0)}`}>
                     {selectedCandidate.overall_score || 0}/100
                   </span>
                 </div>
-                <Progress value={selectedCandidate.overall_score || 0} className="h-3" />
+                <Progress value={selectedCandidate.overall_score || 0} className="h-2 sm:h-3" />
               </div>
 
               {/* Best Match Section */}
               {selectedCandidate.analysis_result?.best_match && (
-                <div className={`rounded-xl p-5 border-2 ${
+                <div className={`rounded-xl p-3 sm:p-4 lg:p-5 border-2 ${
                   selectedCandidate.cv_jobs?.id === selectedCandidate.analysis_result.best_match.job_id
                     ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-300'
                     : 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-300'
                 }`}>
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                     {selectedCandidate.cv_jobs?.id === selectedCandidate.analysis_result.best_match.job_id ? (
-                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                      <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
                     ) : (
-                      <AlertCircle className="h-6 w-6 text-amber-600" />
+                      <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
                     )}
-                    <h4 className={`font-semibold text-lg ${
+                    <h4 className={`font-semibold text-sm sm:text-base sm:text-lg ${
                       selectedCandidate.cv_jobs?.id === selectedCandidate.analysis_result.best_match.job_id
                         ? 'text-emerald-900'
                         : 'text-amber-900'
@@ -893,16 +893,16 @@ export default function PotentialCandidatesPage() {
                         : 'Gợi ý vị trí phù hợp hơn'}
                     </h4>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-white/70 rounded-lg">
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-600 mb-1">Vị trí phù hợp nhất:</p>
-                        <p className="font-semibold text-lg text-gray-900">
+
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-3 bg-white/70 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1">Vị trí phù hợp nhất:</p>
+                        <p className="font-semibold text-sm sm:text-base sm:text-lg text-gray-900 truncate">
                           {selectedCandidate.analysis_result.best_match.job_title}
                         </p>
                       </div>
-                      <Badge className={`text-base font-bold px-3 py-1 ${
+                      <Badge className={`text-xs sm:text-sm sm:text-base font-bold px-2 sm:px-3 py-1 mt-2 sm:mt-0 ${
                         selectedCandidate.cv_jobs?.id === selectedCandidate.analysis_result.best_match.job_id
                           ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
                           : 'bg-amber-100 text-amber-700 border-amber-300'
@@ -910,47 +910,47 @@ export default function PotentialCandidatesPage() {
                         {selectedCandidate.analysis_result.best_match.match_score}%
                       </Badge>
                     </div>
-                    
+
                     {selectedCandidate.cv_jobs?.id === selectedCandidate.analysis_result.best_match.job_id ? (
-                      <div className="bg-emerald-100/50 rounded-lg p-4 border border-emerald-200">
-                        <p className="text-sm text-emerald-800 font-medium flex items-center gap-2">
-                          <CheckCircle className="h-5 w-5" />
+                      <div className="bg-emerald-100/50 rounded-lg p-3 sm:p-4 border border-emerald-200">
+                        <p className="text-xs sm:text-sm text-emerald-800 font-medium flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                           Ứng viên đã apply đúng vị trí có độ phù hợp cao nhất trong hệ thống
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="bg-white/70 rounded-lg p-3 border border-gray-200">
-                          <p className="text-xs text-gray-600 mb-1">Vị trí đã apply:</p>
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="bg-white/70 rounded-lg p-2 sm:p-3 border border-gray-200">
+                          <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Vị trí đã apply:</p>
                           <div className="flex items-center justify-between">
-                            <p className="font-medium text-gray-900">{selectedCandidate.cv_jobs?.title}</p>
+                            <p className="font-medium text-gray-900 truncate">{selectedCandidate.cv_jobs?.title}</p>
                             {(() => {
                               const appliedJobMatch = selectedCandidate.analysis_result.all_matches?.find(
                                 (m: any) => m.job_id === selectedCandidate.cv_jobs?.id
                               );
                               return appliedJobMatch ? (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-[10px] sm:text-xs">
                                   {appliedJobMatch.match_score}% match
                                 </Badge>
                               ) : null;
                             })()}
                           </div>
                         </div>
-                        
-                        <div className="bg-amber-100/50 rounded-lg p-4 border border-amber-200">
-                          <p className="text-sm text-amber-800 font-medium flex items-center gap-2 mb-2">
-                            <Sparkles className="h-5 w-5" />
+
+                        <div className="bg-amber-100/50 rounded-lg p-3 sm:p-4 border border-amber-200">
+                          <p className="text-xs sm:text-sm text-amber-800 font-medium flex items-center gap-2 mb-2">
+                            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                             Khuyến nghị
                           </p>
-                          <p className="text-sm text-amber-700">
+                          <p className="text-xs sm:text-sm text-amber-700">
                             Xem xét chuyển ứng viên sang vị trí <span className="font-semibold">{selectedCandidate.analysis_result.best_match.job_title}</span> để tận dụng tốt hơn năng lực và kinh nghiệm của họ.
                           </p>
                         </div>
                       </div>
                     )}
-                    
-                    <div className="bg-white/70 rounded-lg p-4">
-                      <p className="text-sm text-gray-700 leading-relaxed">
+
+                    <div className="bg-white/70 rounded-lg p-3 sm:p-4">
+                      <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                         {selectedCandidate.analysis_result.best_match.recommendation}
                       </p>
                     </div>
@@ -962,48 +962,48 @@ export default function PotentialCandidatesPage() {
               {selectedCandidate.analysis_result?.all_matches && (
                 <Tabs defaultValue="strengths" className="w-full">
                   <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="strengths">Điểm mạnh</TabsTrigger>
-                    <TabsTrigger value="weaknesses">Điểm yếu</TabsTrigger>
-                    <TabsTrigger value="matches">Gợi ý khác</TabsTrigger>
+                    <TabsTrigger value="strengths" className="text-xs sm:text-sm">Điểm mạnh</TabsTrigger>
+                    <TabsTrigger value="weaknesses" className="text-xs sm:text-sm">Điểm yếu</TabsTrigger>
+                    <TabsTrigger value="matches" className="text-xs sm:text-sm">Gợi ý khác</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="strengths" className="space-y-3">
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 rounded-xl border border-emerald-200">
-                      <h4 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5" />
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-3 sm:p-4 lg:p-5 rounded-xl border border-emerald-200">
+                      <h4 className="font-semibold text-sm sm:text-base text-emerald-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                         Điểm mạnh
                       </h4>
-                      <ul className="space-y-2">
+                      <ul className="space-y-1.5 sm:space-y-2">
                         {selectedCandidate.analysis_result.best_match?.strengths?.map((strength: string, index: number) => (
-                          <li key={index} className="text-sm flex items-start gap-2 text-emerald-800">
-                            <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                          <li key={index} className="text-xs sm:text-sm flex items-start gap-1.5 sm:gap-2 text-emerald-800">
+                            <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 mt-0.5 shrink-0" />
                             {strength}
                           </li>
                         ))}
-                        {(!selectedCandidate.analysis_result.best_match?.strengths || 
+                        {(!selectedCandidate.analysis_result.best_match?.strengths ||
                           selectedCandidate.analysis_result.best_match.strengths.length === 0) && (
-                          <p className="text-sm text-gray-500">Không có thông tin điểm mạnh</p>
+                          <p className="text-xs sm:text-sm text-gray-500">Không có thông tin điểm mạnh</p>
                         )}
                       </ul>
                     </div>
                   </TabsContent>
 
                   <TabsContent value="weaknesses" className="space-y-3">
-                    <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 p-5 rounded-xl border border-amber-200">
-                      <h4 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5" />
+                    <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 p-3 sm:p-4 lg:p-5 rounded-xl border border-amber-200">
+                      <h4 className="font-semibold text-sm sm:text-base text-amber-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+                        <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                         Điểm yếu
                       </h4>
-                      <ul className="space-y-2">
+                      <ul className="space-y-1.5 sm:space-y-2">
                         {selectedCandidate.analysis_result.best_match?.weaknesses?.map((weakness: string, index: number) => (
-                          <li key={index} className="text-sm flex items-start gap-2 text-amber-800">
-                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <li key={index} className="text-xs sm:text-sm flex items-start gap-1.5 sm:gap-2 text-amber-800">
+                            <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 mt-0.5 shrink-0" />
                             {weakness}
                           </li>
                         ))}
-                        {(!selectedCandidate.analysis_result.best_match?.weaknesses || 
+                        {(!selectedCandidate.analysis_result.best_match?.weaknesses ||
                           selectedCandidate.analysis_result.best_match.weaknesses.length === 0) && (
-                          <p className="text-sm text-gray-500">Không có thông tin điểm yếu</p>
+                          <p className="text-xs sm:text-sm text-gray-500">Không có thông tin điểm yếu</p>
                         )}
                       </ul>
                     </div>
@@ -1019,8 +1019,8 @@ export default function PotentialCandidatesPage() {
 
                           return suggestedMatches.length > 0 ? (
                             <>
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                <p className="text-sm text-blue-800">
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3 mb-3 sm:mb-4">
+                                <p className="text-xs sm:text-sm text-blue-800">
                                   <span className="font-semibold">💡 Gợi ý {suggestedMatches.length} vị trí phù hợp khác:</span>
                                 </p>
                               </div>
@@ -1029,42 +1029,42 @@ export default function PotentialCandidatesPage() {
                                   key={index}
                                   className={`${getScoreBg(match.match_score)} border-2`}
                                 >
-                                  <CardContent className="p-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                      <h5 className="font-semibold text-gray-900">{match.job_title}</h5>
-                                      <Badge className={`${getScoreBg(match.match_score)}`}>
-                                        <span className={`font-bold ${getScoreColor(match.match_score)}`}>
+                                  <CardContent className="p-3 sm:p-4">
+                                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                                      <h5 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{match.job_title}</h5>
+                                      <Badge className={`${getScoreBg(match.match_score)} text-xs sm:text-sm px-2 sm:px-3 py-1`}>
+                                        <span className={`font-bold text-xs sm:text-sm ${getScoreColor(match.match_score)}`}>
                                           {match.match_score}%
                                         </span>
                                       </Badge>
                                     </div>
-                                    <p className="text-sm text-gray-700 mb-3">{match.recommendation}</p>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-3">{match.recommendation}</p>
+                                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                       <div>
-                                        <p className="text-xs font-medium text-gray-500 mb-2">Điểm mạnh:</p>
+                                        <p className="text-[10px] sm:text-xs font-medium text-gray-500 mb-1.5 sm:mb-2">Điểm mạnh:</p>
                                         <ul className="space-y-1">
                                           {match.strengths?.slice(0, 3).map((s, i) => (
-                                            <li key={i} className="text-xs text-gray-700 flex items-start gap-1">
-                                              <CheckCircle className="h-3 w-3 text-emerald-600 mt-0.5 flex-shrink-0" />
+                                            <li key={i} className="text-[10px] sm:text-xs text-gray-700 flex items-start gap-1">
+                                              <CheckCircle className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
                                               {s}
                                             </li>
                                           ))}
                                           {(!match.strengths || match.strengths.length === 0) && (
-                                            <p className="text-xs text-gray-500">N/A</p>
+                                            <p className="text-[10px] sm:text-xs text-gray-500">N/A</p>
                                           )}
                                         </ul>
                                       </div>
                                       <div>
-                                        <p className="text-xs font-medium text-gray-500 mb-2">Điểm yếu:</p>
+                                        <p className="text-[10px] sm:text-xs font-medium text-gray-500 mb-1.5 sm:mb-2">Điểm yếu:</p>
                                         <ul className="space-y-1">
                                           {match.weaknesses?.slice(0, 2).map((w, i) => (
-                                            <li key={i} className="text-xs text-gray-700 flex items-start gap-1">
-                                              <AlertCircle className="h-3 w-3 text-amber-600 mt-0.5 flex-shrink-0" />
+                                            <li key={i} className="text-[10px] sm:text-xs text-gray-700 flex items-start gap-1">
+                                              <AlertCircle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
                                               {w}
                                             </li>
                                           ))}
                                           {(!match.weaknesses || match.weaknesses.length === 0) && (
-                                            <p className="text-xs text-gray-500">N/A</p>
+                                            <p className="text-[10px] sm:text-xs text-gray-500">N/A</p>
                                           )}
                                         </ul>
                                       </div>
@@ -1074,17 +1074,17 @@ export default function PotentialCandidatesPage() {
                               ))}
                             </>
                           ) : (
-                            <div className="text-center py-8">
-                              <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-3" />
-                              <p className="text-gray-600 font-medium">Không có gợi ý vị trí nào khác phù hợp hơn</p>
-                              <p className="text-sm text-gray-500 mt-1">Vị trí hiện tại là lựa chọn tốt nhất</p>
+                            <div className="text-center py-6 sm:py-8">
+                              <CheckCircle className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-400 mx-auto mb-2 sm:mb-3" />
+                              <p className="text-sm sm:text-base text-gray-600 font-medium">Không có gợi ý vị trí nào khác phù hợp hơn</p>
+                              <p className="text-xs sm:text-sm text-gray-500 mt-1">Vị trí hiện tại là lựa chọn tốt nhất</p>
                             </div>
                           );
                         })()}
                       </>
                     ) : (
-                      <div className="text-center py-8">
-                        <p className="text-gray-500">Không có dữ liệu matching</p>
+                      <div className="text-center py-6 sm:py-8">
+                        <p className="text-xs sm:text-sm text-gray-500">Không có dữ liệu matching</p>
                       </div>
                     )}
                   </TabsContent>
@@ -1092,34 +1092,34 @@ export default function PotentialCandidatesPage() {
               )}
 
               {/* Personal Info */}
-              <div className="grid grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Trường</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedCandidate.university || "N/A"}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Trường</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-900">{selectedCandidate.university || "N/A"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Học vấn</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedCandidate.education || "N/A"}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Học vấn</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-900">{selectedCandidate.education || "N/A"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Kinh nghiệm</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedCandidate.experience || "N/A"}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Kinh nghiệm</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-900">{selectedCandidate.experience || "N/A"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedCandidate.address || "N/A"}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Địa chỉ</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-900">{selectedCandidate.address || "N/A"}</p>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button variant="outline" onClick={() => setShowDetail(false)}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
+                <Button variant="outline" onClick={() => setShowDetail(false)} className="w-full sm:w-auto">
                   Đóng
                 </Button>
                 {selectedCandidate.cv_url && (
                   <Button
                     onClick={() => window.open(selectedCandidate.cv_url, "_blank")}
-                    className="gap-2"
+                    className="w-full sm:w-auto gap-2"
                   >
                     <Download className="h-4 w-4" />
                     Tải CV gốc

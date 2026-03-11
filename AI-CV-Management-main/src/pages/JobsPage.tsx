@@ -701,7 +701,7 @@ export function JobsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
           <Card className="border-blue-100 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-700">Tổng JDs</CardTitle>
@@ -1037,13 +1037,13 @@ export function JobsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Tiêu đề vị trí <span className="text-red-500">*</span>
                     </label>
                     <Select value={formData.title} onValueChange={(value) => handleInputChange('title', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn vị trí" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1061,7 +1061,7 @@ export function JobsPage() {
                       Phòng ban <span className="text-red-500">*</span>
                     </label>
                     <Select value={formData.department} onValueChange={(value) => handleInputChange('department', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn phòng ban" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1077,7 +1077,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Cấp độ</label>
                     <Select value={formData.level} onValueChange={(value) => handleInputChange('level', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Mid-level" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1093,7 +1093,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Ngôn ngữ JD</label>
                     <Select value={aiLanguage} onValueChange={setAiLanguage}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1157,13 +1157,13 @@ export function JobsPage() {
             ) : (
               <>
                 {/* Manual Tab Content */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Tiêu đề vị trí <span className="text-red-500">*</span>
                     </label>
                     <Select value={formData.title} onValueChange={(value) => handleInputChange('title', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn vị trí" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1181,7 +1181,7 @@ export function JobsPage() {
                       Phòng ban <span className="text-red-500">*</span>
                     </label>
                     <Select value={formData.department} onValueChange={(value) => handleInputChange('department', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn phòng ban" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1197,7 +1197,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Địa điểm</label>
                     <Select value={formData.work_location} onValueChange={(value) => handleInputChange('work_location', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Chọn địa điểm" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1212,7 +1212,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Loại hình</label>
                     <Select value={formData.job_type} onValueChange={(value) => handleInputChange('job_type', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Full-time" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1227,7 +1227,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Cấp độ</label>
                     <Select value={formData.level} onValueChange={(value) => handleInputChange('level', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Mid-level" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1243,7 +1243,7 @@ export function JobsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Trạng thái</label>
                     <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="px-2.5 sm:px-3 w-full">
                         <SelectValue placeholder="Bản nháp" />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1592,7 +1592,7 @@ export function JobsPage() {
                     Tiêu đề vị trí <span className="text-red-500">*</span>
                   </label>
                   <Select value={editFormData.title} onValueChange={(value) => handleEditInputChange('title', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1610,7 +1610,7 @@ export function JobsPage() {
                     Phòng ban <span className="text-red-500">*</span>
                   </label>
                   <Select value={editFormData.department} onValueChange={(value) => handleEditInputChange('department', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1626,7 +1626,7 @@ export function JobsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Địa điểm</label>
                   <Select value={editFormData.work_location} onValueChange={(value) => handleEditInputChange('work_location', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1641,7 +1641,7 @@ export function JobsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Loại hình</label>
                   <Select value={editFormData.job_type} onValueChange={(value) => handleEditInputChange('job_type', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1656,7 +1656,7 @@ export function JobsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Cấp độ</label>
                   <Select value={editFormData.level} onValueChange={(value) => handleEditInputChange('level', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
@@ -1672,7 +1672,7 @@ export function JobsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Trạng thái</label>
                   <Select value={editFormData.status} onValueChange={(value) => handleEditInputChange('status', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="px-2.5 sm:px-3 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">

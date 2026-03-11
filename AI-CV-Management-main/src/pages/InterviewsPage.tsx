@@ -1166,7 +1166,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 )}
 </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                 <div className="space-y-1 sm:space-y-2">
                   <label className="text-xs sm:text-sm font-medium">Ngày <span className="text-red-500">*</span></label>
                   <Input type="date" value={formData.interview_date}
@@ -1174,7 +1174,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                       setFormData({...formData, interview_date: e.target.value});
                       if (formErrors.interview_date) setFormErrors({...formErrors, interview_date: ""});
                     }}
-                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white w-full`}
+                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`}
                     min={new Date().toISOString().split('T')[0]}
                   />
                   {formErrors.interview_date && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_date}</p>}
@@ -1186,7 +1186,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                       setFormData({...formData, interview_time: e.target.value});
                       if (formErrors.interview_time) setFormErrors({...formErrors, interview_time: ""});
                     }}
-                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white w-full`}
+                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`}
                   />
                   {formErrors.interview_time && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_time}</p>}
                 </div>
@@ -1199,20 +1199,20 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                     setFormData({...formData, duration: e.target.value});
                     if (formErrors.duration) setFormErrors({...formErrors, duration: ""});
                   }}
-                  placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white w-full`}
+                  placeholder="60" min="5" step="5" className={`${formErrors.duration ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full`}
                 />
                 {formErrors.duration && <p className="text-xs sm:text-sm text-red-500">{formErrors.duration}</p>}
               </div>
 
               <div className="space-y-1 sm:space-y-2">
                 <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><MapPin className="w-4 h-4 sm:w-4 sm:h-4" /> Địa điểm</label>
-                <Input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="Phòng họp, link online..." className="bg-white w-full" />
+                <Input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} placeholder="Phòng họp, link online..." className="bg-white px-2.5 sm:px-3 w-full" />
               </div>
 
               <div className="space-y-1 sm:space-y-2">
                 <label className="flex items-center gap-2 text-xs sm:text-sm font-medium"><Video className="w-4 h-4 sm:w-4 sm:h-4" /> Hình thức</label>
 <Select value={formData.format} onValueChange={(value) => setFormData({...formData, format: value})}>
-                  <SelectTrigger className="bg-white w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-white px-2.5 sm:px-3 w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>
                     <SelectItem value="Trực tiếp">Trực tiếp</SelectItem>
                     <SelectItem value="Online">Online</SelectItem>
@@ -1270,7 +1270,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                     <SelectContent className="bg-white" style={{ zIndex: 1000001 }}>{jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
                     <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white`} />
@@ -1320,7 +1320,7 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
 <button onClick={() => setIsDetailDialogOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div><label className="text-xs sm:text-sm font-medium text-gray-600">Ứng viên</label><p className="mt-1 text-sm sm:text-base font-semibold">{selectedInterview.cv_candidates?.full_name || 'N/A'}</p></div>
                   <div><label className="text-xs sm:text-sm font-medium text-gray-600">Vị trí phỏng vấn</label><p className="mt-1 text-sm sm:text-base">{selectedInterview.cv_jobs?.title || selectedInterview.cv_candidates?.cv_jobs?.title || 'N/A'}</p></div>
                   <div><label className="text-xs sm:text-sm font-medium text-gray-600">Trạng thái</label><div className="mt-1"><Badge className={getStatusBadgeClass(selectedInterview.status)}>{selectedInterview.status}</Badge></div></div>

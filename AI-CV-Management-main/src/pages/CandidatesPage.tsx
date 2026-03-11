@@ -789,7 +789,7 @@ export function CandidatesPage() {
 
       {/* Dialog Thêm ứng viên */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-xl w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
@@ -842,7 +842,7 @@ export function CandidatesPage() {
           <div className="mt-4 space-y-3 sm:space-y-4">
             {currentTab === 'basic' ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Họ và tên <span className="text-red-500">*</span>
@@ -851,7 +851,7 @@ export function CandidatesPage() {
                       placeholder="Nhập họ tên đầy đủ"
                       value={formData.full_name}
                       onChange={(e) => handleInputChange('full_name', e.target.value)}
-                      className="w-full"
+                      className="px-2.5 sm:px-3 w-full"
                     />
                   </div>
                   <div>
@@ -868,7 +868,7 @@ export function CandidatesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Số điện thoại</label>
                     <Input
@@ -935,7 +935,7 @@ export function CandidatesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Kinh nghiệm</label>
                     <Textarea
