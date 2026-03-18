@@ -1166,27 +1166,29 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                 )}
 </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-                <div className="w-full min-w-0 max-w-full space-y-1 sm:space-y-2">
+              <div className="w-full grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="min-w-0 flex flex-col space-y-1 sm:space-y-2">
                   <label className="text-xs sm:text-sm font-medium">Ngày <span className="text-red-500">*</span></label>
                   <Input type="date" value={formData.interview_date}
                     onChange={(e) => {
                       setFormData({...formData, interview_date: e.target.value});
                       if (formErrors.interview_date) setFormErrors({...formErrors, interview_date: ""});
                     }}
-                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full max-w-full`}
+                    required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2 sm:px-3 text-xs sm:text-sm w-full max-w-full box-border appearance-none`}
                     min={new Date().toISOString().split('T')[0]}
+                    style={{ minWidth: 0, WebkitAppearance: 'none' }}
                   />
                   {formErrors.interview_date && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_date}</p>}
                 </div>
-                <div className="w-full min-w-0 max-w-full space-y-1 sm:space-y-2">
+                <div className="min-w-0 flex flex-col space-y-1 sm:space-y-2">
                   <label className="text-xs sm:text-sm font-medium">Giờ <span className="text-red-500">*</span></label>
                   <Input type="time" value={formData.interview_time}
                     onChange={(e) => {
                       setFormData({...formData, interview_time: e.target.value});
                       if (formErrors.interview_time) setFormErrors({...formErrors, interview_time: ""});
                     }}
-                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full max-w-full`}
+                    required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2 sm:px-3 text-xs sm:text-sm w-full max-w-full box-border appearance-none`}
+                    style={{ minWidth: 0, WebkitAppearance: 'none' }}
                   />
                   {formErrors.interview_time && <p className="text-xs sm:text-sm text-red-500">{formErrors.interview_time}</p>}
                 </div>
@@ -1264,14 +1266,14 @@ setFormData(prev => ({...prev, candidate_id: "", job_id: ""}));
                     <SelectContent className="bg-white">{jobs.map((job) => (<SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-                  <div className="w-full min-w-0 space-y-1.5 sm:space-y-2">
+                <div className="w-full grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="min-w-0 flex flex-col space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium">Ngày phỏng vấn <span className="text-red-500">*</span></label>
-                    <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full max-w-full`} />
+                    <Input type="date" value={editFormData.interview_date} onChange={(e) => setEditFormData({...editFormData, interview_date: e.target.value})} required className={`${formErrors.interview_date ? "border-red-500" : ""} bg-white px-2 sm:px-3 text-xs sm:text-sm w-full max-w-full box-border appearance-none`} style={{ minWidth: 0, WebkitAppearance: 'none' }} />
                   </div>
-                  <div className="w-full min-w-0 space-y-1.5 sm:space-y-2">
+                  <div className="min-w-0 flex flex-col space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium">Giờ phỏng vấn <span className="text-red-500">*</span></label>
-                    <Input type="time" value={editFormData.interview_time} onChange={(e) => setEditFormData({...editFormData, interview_time: e.target.value})} required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2.5 sm:px-3 w-full max-w-full`} />
+                    <Input type="time" value={editFormData.interview_time} onChange={(e) => setEditFormData({...editFormData, interview_time: e.target.value})} required className={`${formErrors.interview_time ? "border-red-500" : ""} bg-white px-2 sm:px-3 text-xs sm:text-sm w-full max-w-full box-border appearance-none`} style={{ minWidth: 0, WebkitAppearance: 'none' }} />
                   </div>
                 </div>
                 <div className="w-full min-w-0 space-y-1.5 sm:space-y-2">
