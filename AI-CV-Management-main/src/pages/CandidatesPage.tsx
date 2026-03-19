@@ -801,39 +801,39 @@ export function CandidatesPage() {
             </div>
           </DialogHeader>
 
-          <div className="flex gap-1.5 sm:gap-2 mt-3 sm:mt-4 overflow-hidden">
+          <div className="flex flex-row w-full gap-1.5 sm:gap-2 mt-3 sm:mt-4">
             <button
-              className={`min-w-0 flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
+              className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg overflow-hidden ${
                 currentTab === 'basic'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               onClick={() => setCurrentTab('basic')}
             >
-              <span className="truncate block">Thông tin cơ bản</span>
+              <span className="truncate block w-full">Thông tin cơ bản</span>
             </button>
             <button
-              className={`min-w-0 flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
+              className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg overflow-hidden ${
                 currentTab === 'cv'
                   ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               onClick={() => setCurrentTab('cv')}
             >
-              <span className="truncate block">CV & Tài liệu</span>
+              <span className="truncate block w-full">CV & Tài liệu</span>
             </button>
             {selectedJob?.mandatory_requirements && (
               <button
-                className={`min-w-0 flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors rounded-lg relative ${
+                className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg relative overflow-hidden ${
                   currentTab === 'requirements'
                     ? 'bg-amber-50 text-amber-700 border-2 border-amber-300'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
                 onClick={() => setCurrentTab('requirements')}
               >
-                <span className="truncate block pr-2 sm:pr-3">Yêu cầu bắt buộc</span>
+                <span className="truncate block w-full pr-2 sm:pr-3">Yêu cầu bắt buộc</span>
                 {!mandatoryRequirementsMet && (
-                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute -top-0.5 sm:-top-1 -right-0.5 sm:-right-1 text-red-500 shrink-0" />
+                  <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 absolute -top-0.5 sm:-top-1 -right-0.5 sm:-right-1 text-red-500 shrink-0" />
                 )}
               </button>
             )}
