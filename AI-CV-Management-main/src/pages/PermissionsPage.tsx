@@ -400,7 +400,18 @@ export default function PermissionsPage() {
   // MAIN RENDER
   // ========================================
   return (
-    <div className="w-full min-h-screen bg-white">
+    <>
+      <div className="sm:hidden flex flex-col items-center justify-center min-h-[80vh] p-6 text-center space-y-4">
+        <div className="bg-gray-100 p-4 rounded-full">
+          <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-800">Không hỗ trợ di động</h2>
+        <p className="text-gray-500">Do not support for device mobile, We're Launching Soon</p>
+      </div>
+      <div className="hidden sm:block">
+        <div className="w-full min-h-screen bg-white">
       {/* Header */}
       <div className="flex items-start justify-between px-8 pt-6 pb-4 bg-white border-b border-gray-200">
         <div>
@@ -710,5 +721,7 @@ export default function PermissionsPage() {
         </div>
       )}
     </div>
+      </div>
+    </>
   )
 }
