@@ -16,9 +16,8 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-
-if not OPENROUTER_API_KEY:
-    raise ValueError("OPENROUTER_API_KEY not found in environment variables")
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 app = FastAPI(
     title="CV Management API",
@@ -87,12 +86,156 @@ class GenerateInterviewQuestionsRequest(BaseModel):
 
 # ==================== HELPERS ====================
 
-def call_openrouter_api(messages: List[dict], model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
+def get_ai_config() -> dict:
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return {}
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}"
+        }
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_ai_settings?select=*", headers=headers, timeout=10)
+        if res.status_code == 200:
+            data = res.json()
+            if data and len(data) > 0:
+                return data[0]
+    except Exception as e:
+        print(f"Error fetching AI config: {e}")
+    return {}
+
+def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https://api.openai.com/v1", model: str = "gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
+    if not endpoint:
+        endpoint = "https://api.openai.com/v1"
+    url = f"{endpoint}/chat/completions"
+    try:
+        response = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            },
+            timeout=60
+        )
+        if response.status_code != 200:
+            error_data = response.json()
+            raise HTTPException(status_code=response.status_code, detail=f"OpenAI API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+        return response.json()
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="OpenAI API timeout")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
+
+import base64
+
+def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-flash-preview", temperature: float = 0.7, max_tokens: int = 4000, file_content: bytes = None, mime_type: str = None) -> dict:
+    contents = []
+    
+    # Prepend system_text to the first user message
+    system_text = ""
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content")
+        
+        if role == "system":
+            system_text += content + "\n\n"
+        else:
+            gemini_role = "user" if role == "user" else "model"
+            
+            # Prepend system_text to the first user message
+            if gemini_role == "user" and system_text:
+                content = system_text + content
+                system_text = ""
+                
+            parts = [{"text": content}]
+            
+            # Đính kèm file gốc dạng inlineData (Dùng chuẩn Google Document AI)
+            if gemini_role == "user" and file_content and mime_type:
+                b64_data = base64.b64encode(file_content).decode("utf-8")
+                parts.append({
+                    "inlineData": {
+                        "mimeType": mime_type,
+                        "data": b64_data
+                    }
+                })
+                # Chỉ đính kèm 1 lần vào user message đầu tiên
+                file_content = None
+                
+            contents.append({"role": gemini_role, "parts": parts})
+            
+    # Fallback if no user message was found but we had system text
+    if system_text and not contents:
+        contents.append({"role": "user", "parts": [{"text": system_text}]})
+            
+    payload = {
+        "contents": contents,
+        "generationConfig": {
+            "temperature": temperature,
+            "maxOutputTokens": max_tokens,
+            "responseMimeType": "application/json"
+        },
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+    }
+        
+    url = f"https://generativelanguage.googleapis.com/v1alpha/models/{model}:generateContent?key={api_key}"
+    try:
+        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
+        if response.status_code != 200:
+            error_msg = response.text
+            print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', error_msg)
+            except:
+                pass
+            raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {error_msg}")
+        
+        data = response.json()
+        # DEV: Log raw structure for debugging API response format
+        print("🔍 RAW GEMINI API RESPONSE:")
+        print(data)
+        
+        text = ""
+        if "candidates" in data and len(data["candidates"]) > 0:
+            parts = data["candidates"][0].get("content", {}).get("parts", [])
+            if parts and len(parts) > 0:
+                text = parts[0].get("text", "")
+            else:
+                print("⚠️ No parts found in content!")
+                print(data["candidates"][0])
+        else:
+            print("⚠️ No candidates found in response!")
+                
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": text
+                    }
+                }
+            ]
+        }
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Gemini API timeout")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
+
+def call_openrouter_api_internal(messages: List[dict], api_key: str, model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     try:
         response = requests.post(
             f"{OPENROUTER_BASE_URL}/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:8000",
                 "X-Title": "CV Management System"
@@ -105,36 +248,132 @@ def call_openrouter_api(messages: List[dict], model: str = "openai/gpt-4o-mini",
             },
             timeout=60
         )
-        
         if response.status_code != 200:
             error_data = response.json()
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"OpenRouter API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
-            )
-        
+            raise HTTPException(status_code=response.status_code, detail=f"OpenRouter API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
         return response.json()
-    
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="OpenRouter API timeout")
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
 
+def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000, file_content: bytes = None, mime_type: str = None) -> dict:
+    config = get_ai_config()
+    
+    is_gemini = config.get("is_gemini_enabled")
+    gemini_key = config.get("gemini_api_key")
+    if is_gemini and gemini_key:
+        print("🤖 Route -> Gemini API (v1alpha Gemini 3.0 Document API)")
+        gemini_model = "gemini-3-flash-preview"
+        return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
+        
+    is_openai = config.get("is_openai_enabled")
+    openai_key = config.get("openai_api_key")
+    openai_endpoint = config.get("openai_endpoint", "https://api.openai.com/v1")
+    if is_openai and openai_key:
+        print("🤖 Route -> OpenAI API")
+        openai_model = "gpt-4o" if "4o" in model and "mini" not in model else "gpt-4o-mini"
+        return call_openai_api(messages, openai_key, endpoint=openai_endpoint, model=openai_model, temperature=temperature, max_tokens=max_tokens)
+        
+    is_or = config.get("is_openrouter_enabled")
+    or_key = config.get("openrouter_api_key")
+    if is_or and or_key:
+        print("🤖 Route -> OpenRouter API")
+        return call_openrouter_api_internal(messages, or_key, model=model, temperature=temperature, max_tokens=max_tokens)
+        
+    print("🤖 Route -> Default OpenRouter Env")
+    if OPENROUTER_API_KEY:
+        return call_openrouter_api_internal(messages, OPENROUTER_API_KEY, model=model, temperature=temperature, max_tokens=max_tokens)
+    else:
+        raise HTTPException(status_code=500, detail="Cannot route AI request: No provider chosen and no API keys configured.")
+
+import re
+
 def extract_json_from_response(content: str) -> dict:
+    if not content or not content.strip():
+        raise HTTPException(status_code=500, detail="AI response is completely empty. Please check API limits or try again.")
+        
     try:
         return json.loads(content)
     except json.JSONDecodeError:
         if '```json' in content:
-            content = content.split('```json')[1].split('```')[0].strip()
+            extracted = content.split('```json')[1].split('```')[0].strip()
         elif '```' in content:
-            content = content.split('```')[1].split('```')[0].strip()
-        
+            extracted = content.split('```')[1].split('```')[0].strip()
+        else:
+            extracted = content
+            
         try:
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: {str(e)}")
+            return json.loads(extracted)
+        except json.JSONDecodeError:
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group(0))
+                except Exception as e:
+                    pass
+            
+            print(f"❌ Failed JSON snippet: {content[:300]}")
+            raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: Content not valid JSON")
 
 # ==================== ENDPOINTS ====================
+
+class TestOpenAIRequest(BaseModel):
+    apiKey: str
+    endpoint: Optional[str] = None
+
+class TestOpenRouterRequest(BaseModel):
+    apiKey: str
+
+@app.post("/api/test-openai")
+async def test_openai(req: TestOpenAIRequest):
+    try:
+        endpoint = req.endpoint if req.endpoint else "https://api.openai.com/v1"
+        url = f"{endpoint}/models"
+        response = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {req.apiKey}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        if response.status_code == 200:
+            return {"success": True}
+        else:
+            return {"success": False, "error": response.text}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/test-openrouter")
+async def test_openrouter(req: TestOpenRouterRequest):
+    try:
+        url = "https://openrouter.ai/api/v1/models"
+        response = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {req.apiKey}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        if response.status_code == 200:
+            return {"success": True}
+        else:
+            return {"success": False, "error": response.text}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+
+@app.get("/api/test-models")
+async def test_models():
+    config = get_ai_config()
+    gemini_key = config.get("gemini_api_key")
+    if not gemini_key: return {"error": "no key"}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
+    res = requests.get(url)
+    return res.json()
 
 @app.get("/")
 async def root():
@@ -409,11 +648,17 @@ CRITICAL REMINDERS:
             }
         ]
         
-        result = call_openrouter_api(
+        # Determine File Types for direct Document AI features if supported
+        mime_type = "application/pdf" if upload_file.filename.lower().endswith('.pdf') else None
+        pdf_bytes = file_content if mime_type else None
+        
+        result = call_ai_api(
             messages=messages, 
             model="openai/gpt-4o-mini", 
             temperature=0.3,  # Low temperature for consistency
-            max_tokens=2000
+            max_tokens=2000,
+            file_content=pdf_bytes,
+            mime_type=mime_type
         )
         
         print(f"✅ OpenRouter responded")
@@ -750,7 +995,7 @@ Trả về ONLY valid JSON theo format đã cho."""
         # ==================== CALL OPENROUTER API ====================
         print(f"🤖 Calling OpenRouter AI (gpt-4o-mini, temp=0.2)...")
         
-        result = call_openrouter_api(
+        result = call_ai_api(
             messages=messages,
             model="openai/gpt-4o-mini",
             temperature=0.2,  # ✅ Giảm xuống 0.2 cho consistent hơn
@@ -872,7 +1117,7 @@ Return JSON:
 }}"""}
         ]
         
-        result = call_openrouter_api(messages=messages, model="openai/gpt-4o-mini", temperature=0.7, max_tokens=2000)
+        result = call_ai_api(messages=messages, model="openai/gpt-4o-mini", temperature=0.7, max_tokens=2000)
         
         content = result['choices'][0]['message']['content']
         job_data = extract_json_from_response(content)
@@ -1056,7 +1301,7 @@ Begin your response now:"""
         
         print(f"🤖 Calling OpenRouter AI for interview questions...")
         
-        result = call_openrouter_api(
+        result = call_ai_api(
             messages=messages, 
             model="openai/gpt-4o-mini", 
             temperature=0.7,  # Balanced creativity for diverse questions
