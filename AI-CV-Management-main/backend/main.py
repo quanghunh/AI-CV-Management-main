@@ -264,7 +264,7 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
     gemini_key = config.get("gemini_api_key")
     if is_gemini and gemini_key:
         print("🤖 Route -> Gemini API (v1alpha Gemini 3.0 Document API)")
-        gemini_model = "gemini-3-flash-preview"
+        gemini_model = "gemini-2.5-flash-preview-04-17"
         return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
         
     is_openai = config.get("is_openai_enabled")
