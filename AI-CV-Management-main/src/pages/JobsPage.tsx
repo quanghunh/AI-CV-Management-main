@@ -842,39 +842,26 @@ export function JobsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" side="top" className="w-48 bg-white z-50 shadow-lg border border-gray-200">
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleViewDetails(job)}>
-                              <Eye className="mr-2 h-4 w-4 text-gray-600" />
-                              <span>Xem chi tiết</span>
+                              Xem chi tiết
                             </DropdownMenuItem>
-                            {/* ✅ THÊM MENU ITEM MỚI */}
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleViewCandidates(job)}>
-                              <Users className="mr-2 h-4 w-4 text-blue-600" />
-                              <span>Xem ứng viên ({job.cv_candidates[0]?.count || 0})</span>
-                            </DropdownMenuItem>
-  
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => handleEdit(job)}>
-                              <Edit className="mr-2 h-4 w-4 text-gray-600" />
-                              <span>Chỉnh sửa</span>
+                              Xem ứng viên ({job.cv_candidates[0]?.count || 0})
                             </DropdownMenuItem>
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleEdit(job)}>
-                              <Edit className="mr-2 h-4 w-4 text-gray-600" />
-                              <span>Chỉnh sửa</span>
+                              Chỉnh sửa
                             </DropdownMenuItem>
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleCopy(job)}>
-                              <Copy className="mr-2 h-4 w-4 text-gray-600" />
-                              <span>Sao chép</span>
+                              Sao chép
                             </DropdownMenuItem>
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleShare(job)}>
-                              <Share2 className="mr-2 h-4 w-4 text-gray-600" />
-                              <span>Chia sẻ</span>
+                              Chia sẻ
                             </DropdownMenuItem>
                             <DropdownMenuItem className="cursor-pointer" onClick={() => handleGenerateAIQuestions(job)}>
-                              <Sparkles className="mr-2 h-4 w-4 text-purple-600" />
-                              <span>Tạo câu hỏi AI</span>
+                              Tạo câu hỏi AI
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer" onClick={() => handleDelete(job)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Xóa</span>
+                              Xóa
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -953,25 +940,20 @@ export function JobsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" side="bottom" className="w-48 bg-white z-50 shadow-lg border border-gray-200">
                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleEdit(job)}>
-                          <Edit className="mr-2 h-4 w-4 text-gray-600" />
-                          <span>Chỉnh sửa</span>
+                          Chỉnh sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleCopy(job)}>
-                          <Copy className="mr-2 h-4 w-4 text-gray-600" />
-                          <span>Sao chép</span>
+                          Sao chép
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleShare(job)}>
-                          <Share2 className="mr-2 h-4 w-4 text-gray-600" />
-                          <span>Chia sẻ</span>
+                          Chia sẻ
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleGenerateAIQuestions(job)}>
-                          <Sparkles className="mr-2 h-4 w-4 text-purple-600" />
-                          <span>Tạo câu hỏi AI</span>
+                          Tạo câu hỏi AI
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer" onClick={() => handleDelete(job)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Xóa</span>
+                          Xóa
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

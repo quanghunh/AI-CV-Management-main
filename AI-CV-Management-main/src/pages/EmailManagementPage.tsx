@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
+import { EmailRecipientSelector } from "@/components/EmailRecipientSelector"
 
 interface EmailCategory {
   id: string
@@ -108,6 +109,26 @@ export function EmailManagementPage() {
     template_id: ''
   })
 
+  const [emailHistory, setEmailHistory] = useState<any[]>([])
+
+  // Logic URL Params (Phase 4: Open Compose from Interviews)
+  useEffect(() => {
+    const initFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const composeMode = params.get('compose');
+      const candidateId = params.get('candidate_id');
+
+      if (composeMode === 'true') {
+        setIsComposeOpen(true);
+        if (candidateId) {
+          setComposeForm(prev => ({ ...prev, candidate_id: candidateId }));
+        }
+        window.history.replaceState({}, '', '/quan-ly-email');
+      }
+    };
+    initFromUrl();
+  }, []);
+
   useEffect(() => {
     fetchData()
     checkApiKeyStatus()
@@ -131,20 +152,6 @@ export function EmailManagementPage() {
   const checkApiKeyStatus = async () => {
     try {
       setIsRefreshingApiKey(true)
-      // check localStorage first
-      const localApiKey = localStorage.getItem('resend_api_key')
-      if (localApiKey && localApiKey !== 'EMPTY') {
-        setIsApiKeyConfigured(true)
-        setApiKey(localApiKey)
-        // also try to fetch from-email if saved
-        const localFrom = localStorage.getItem('resend_from_email')
-        if (localFrom) setDefaultFrom(localFrom)
-        const localSenderName = localStorage.getItem('resend_sender_name')
-        if (localSenderName) setSenderName(localSenderName)
-        setIsRefreshingApiKey(false)
-        return
-      }
-
       // fetch settings from DB
       try {
         const { data, error } = await supabase
@@ -196,7 +203,7 @@ export function EmailManagementPage() {
 
   const fetchData = async () => {
     setLoading(true)
-    await Promise.all([fetchTemplates(), fetchCategories(), fetchStats()])
+    await Promise.all([fetchTemplates(), fetchCategories(), fetchStats(), fetchHistory()])
     setLoading(false)
   }
 
@@ -264,17 +271,39 @@ export function EmailManagementPage() {
         .eq('is_active', true)
 
       const totalSent = sentCount || 0
-      const uniqueOpens = new Set(eventsData?.filter((e: any) => e.event_type === 'opened').map((e: any) => e.email_id)).size
-      const openRate = totalSent > 0 ? (uniqueOpens / totalSent) * 100 : 0
+      // const uniqueOpens = new Set(eventsData?.filter((e: any) => e.event_type === 'opened').map((e: any) => e.email_id)).size
+      // const openRate = totalSent > 0 ? (uniqueOpens / totalSent) * 100 : 0
 
       setStats({
-        totalSent,
-        openRate: openRate.toFixed(1),
+        totalSent: sentCount || 0,
+        openRate: '0.0', // Not supported with regular SMTP
         waitingToSend: queueCount || 0,
         totalTemplates: templatesCount || 0
       })
     } catch (error) {
-      console.error('Lỗi khi tải thống kê:', error)
+      console.error('Lỗi khi thống kê:', error)
+    }
+  }
+
+  const fetchHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cv_emails')
+        .select(`
+          id,
+          candidate_id,
+          subject,
+          status,
+          sent_at,
+          cv_email_templates ( name )
+        `)
+        .order('sent_at', { ascending: false })
+        .limit(50)
+
+      if (data) setEmailHistory(data)
+      if (error) console.error('Lỗi khi tải lịch sử:', error)
+    } catch (error) {
+      console.error('Lỗi:', error)
     }
   }
 
@@ -333,13 +362,15 @@ export function EmailManagementPage() {
 </html>`
   }
 
-  interface ResendEmailPayload {
-    from: string;
-    to: string[];
+  interface SendEmailPayload {
     subject: string;
-    html: string;
-    text?: string;
+    body_html: string;
+    body_text?: string;
+    to: string[];
     cc?: string[];
+    app_password: string;
+    sender_email: string;
+    sender_name: string;
   }
 
   // helper: resolve recipient(s) - input could be emails list or candidate id(s)
@@ -369,13 +400,13 @@ export function EmailManagementPage() {
     }
   }
 
-  const sendEmail = async (toField: string, subject: string, body: string, cc?: string) => {
+  const sendEmail = async (toField: string, subject: string, body: string, cc?: string, templateId?: string) => {
     // ensure API key
     if (!isApiKeyConfigured || !apiKey) {
       await forceRefreshApiKey()
       if (!isApiKeyConfigured || !apiKey) {
-        alert('Vui lòng cấu hình Resend API key trước khi gửi email.')
-        return { success: false, error: 'API key not configured' }
+        alert('Vui lòng cấu hình App Password trước khi gửi email.')
+        return { success: false, error: 'App Password not configured' }
       }
     }
 
@@ -389,22 +420,24 @@ export function EmailManagementPage() {
       const formattedHtml = formatEmailContent(body, subject)
       const textFallback = body.replace(/\{\{|\}\}/g, '') // simple plaintext fallback
 
-      const payload: ResendEmailPayload = {
-        from: `${senderName} <${defaultFrom}>`,
-        to: recipients,
+      const payload: SendEmailPayload = {
         subject,
-        html: formattedHtml,
-        text: textFallback
+        body_html: formattedHtml,
+        body_text: textFallback,
+        to: recipients,
+        app_password: apiKey.replace(/\s/g, ''),
+        sender_email: defaultFrom,
+        sender_name: senderName
       }
       if (cc && cc.trim()) {
         const ccList = cc.split(',').map(s => s.trim()).filter(Boolean)
         if (ccList.length) payload.cc = ccList
       }
 
-      const response = await fetch('/proxy/resend/emails', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/send-email`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
@@ -412,14 +445,14 @@ export function EmailManagementPage() {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
-        throw new Error((err as any).message || 'Failed to send')
+        throw new Error((err as any).detail || (err as any).message || 'Failed to send')
       }
       const data = await response.json().catch(() => ({}))
 
       // record to DB
       await supabase.from('cv_emails').insert([{
         candidate_id: toField,
-        template_id: composeForm.template_id || null,
+        template_id: templateId || null,
         subject,
         body,
         composition_type: 'manual',
@@ -427,6 +460,14 @@ export function EmailManagementPage() {
         sent_at: new Date().toISOString(),
         external_id: (data as any).id || null
       }])
+
+      // update template usage count if applicable
+      if (templateId) {
+        const { data: tData } = await supabase.from('cv_email_templates').select('usage_count').eq('id', templateId).single()
+        if (tData) {
+          await supabase.from('cv_email_templates').update({ usage_count: (tData.usage_count || 0) + 1 }).eq('id', templateId)
+        }
+      }
 
       return { success: true, data }
     } catch (error: any) {
@@ -444,7 +485,7 @@ export function EmailManagementPage() {
     }
     setEmailSendingStatus({ ...emailSendingStatus, compose: 'sending' })
     try {
-      const result = await sendEmail(composeForm.candidate_id, composeForm.subject, composeForm.body, composeForm.cc)
+      const result = await sendEmail(composeForm.candidate_id, composeForm.subject, composeForm.body, composeForm.cc, composeForm.template_id)
       if (result.success) {
         setEmailSendingStatus({ ...emailSendingStatus, compose: 'success' })
         alert('✓ Email đã được gửi thành công!')
@@ -475,7 +516,7 @@ export function EmailManagementPage() {
     }
     setEmailSendingStatus({ ...emailSendingStatus, test: 'sending' })
     try {
-      const result = await sendEmail(testEmailForm.test_email, `[TEST] ${template.subject}`, template.body)
+      const result = await sendEmail(testEmailForm.test_email, `[TEST] ${template.subject}`, template.body, undefined, testEmailForm.template_id)
       if (result.success) {
         setEmailSendingStatus({ ...emailSendingStatus, test: 'success' })
         alert('✓ Email thử nghiệm đã được gửi thành công!')
@@ -650,7 +691,7 @@ export function EmailManagementPage() {
               ))}
             </p>
             <p className="text-sm text-green-600 mt-1">
-              <strong>API key đã được cấu hình.</strong> Bạn có thể gửi email ngay bây giờ.
+              <strong>Hệ thống Email đã được cấu hình.</strong> Bạn có thể gửi email ngay bây giờ.
             </p>
           </div>
         </div>
@@ -659,7 +700,7 @@ export function EmailManagementPage() {
           <div className="text-orange-600 mt-0.5">!</div>
           <div className="flex-1 flex items-center justify-between">
             <p className="text-sm text-orange-600 mt-1">
-              <strong>Lưu ý:</strong> Để gửi email thực, vui lòng cấu hình Resend API key trong Cài đặt và kiểm tra cấu hình email.
+              <strong>Lưu ý:</strong> Để gửi email thực, vui lòng cấu hình Gmail App Password trong mục Cài đặt.
             </p>
             <Button
               variant="outline"
@@ -685,7 +726,7 @@ export function EmailManagementPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-start justify-between">
@@ -695,34 +736,6 @@ export function EmailManagementPage() {
               </div>
               <div className="bg-blue-600 p-3 rounded-xl">
                 <Send className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Tỷ lệ mở email</p>
-                <div className="text-3xl font-bold">{stats.openRate} %</div>
-              </div>
-              <div className="bg-green-600 p-3 rounded-xl">
-                <Mail className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Đang chờ gửi</p>
-                <div className="text-3xl font-bold">{stats.waitingToSend}</div>
-              </div>
-              <div className="bg-orange-600 p-3 rounded-xl">
-                <Clock className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -883,8 +896,43 @@ export function EmailManagementPage() {
       )}
 
       {currentTab === 'history' && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Lịch sử Email - Đang phát triển</p>
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600 border-b">
+              <tr>
+                <th className="px-6 py-4 font-semibold">Người nhận</th>
+                <th className="px-6 py-4 font-semibold">Tiêu đề</th>
+                <th className="px-6 py-4 font-semibold">Template</th>
+                <th className="px-6 py-4 font-semibold">Thời gian</th>
+                <th className="px-6 py-4 font-semibold">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {emailHistory.length > 0 ? (
+                emailHistory.map(email => (
+                  <tr key={email.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 truncate max-w-[200px]">{email.candidate_id}</td>
+                    <td className="px-6 py-4 truncate max-w-[250px]">{email.subject}</td>
+                    <td className="px-6 py-4 text-gray-500">{email.cv_email_templates?.name || 'Thủ công'}</td>
+                    <td className="px-6 py-4 text-gray-500">
+                      {new Date(email.sent_at).toLocaleString('vi-VN')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        {email.status === 'sent' ? 'Thành công' : email.status}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    Chưa có lịch sử gửi email
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -917,11 +965,9 @@ export function EmailManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Người nhận *</label>
-                  <Input
-                    placeholder="email1@example.com, email2@example.com  OR candidateId1,candidateId2"
-                    className="bg-gray-50"
+                  <EmailRecipientSelector
                     value={composeForm.candidate_id}
-                    onChange={(e) => setComposeForm(prev => ({ ...prev, candidate_id: e.target.value }))}
+                    onChange={(val) => setComposeForm(prev => ({ ...prev, candidate_id: val }))}
                   />
                 </div>
                 <div>

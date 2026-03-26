@@ -1687,25 +1687,28 @@ export function CandidatesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="z-[60] bg-white shadow-lg border border-gray-200">
-                          <DropdownMenuItem onClick={() => handleViewCandidate(candidate)} className="flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-blue-600" />
-                            <span>Xem thông tin</span>
+                          <DropdownMenuItem onClick={() => handleViewCandidate(candidate)}>
+
+                            Xem thông tin
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditCandidate(candidate)} className="flex items-center gap-2">
-                            <Edit className="h-4 w-4 text-green-600" />
-                            <span>Chỉnh sửa</span>
+                          <DropdownMenuItem onClick={() => handleEditCandidate(candidate)}>
+
+                            Chỉnh sửa
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleViewCV(candidate)} className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-purple-600" />
-                            <span>Xem CV</span>
+                          <DropdownMenuItem onClick={() => handleViewCV(candidate)}>
+
+                            Xem CV
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAnalyzeCV(candidate)} className="flex items-center gap-2">
-                            <Brain className="h-4 w-4 text-orange-600" />
-                            <span>Phân tích CV</span>
+                          <DropdownMenuItem onClick={() => handleAnalyzeCV(candidate)}>
+
+                            Phân tích CV
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate)} className="flex items-center gap-2 text-red-600">
-                            <Trash2 className="h-4 w-4" />
-                            <span>Xóa ứng viên</span>
+                          <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate)} className="text-red-600">
+
+                            Xóa ứng viên
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${candidate.id}`} className="text-blue-600">
+                            Gửi mail
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Calendar, Clock, CheckCircle, XCircle, MoreHorizontal, Search, User, Briefcase, MapPin, Video, X, Star, Pencil } from 'lucide-react'
+import { Plus, Calendar, Clock, CheckCircle, XCircle, MoreHorizontal, Search, User, Briefcase, MapPin, Video, X, Star, Pencil, Mail } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -916,6 +916,14 @@ const matchesSearch =
             <DropdownMenuItem onClick={() => handleEditClick(interview)}>
               Chỉnh sửa
             </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="text-blue-600 font-medium"
+              // @ts-ignore
+              onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${interview.candidate_id || ''}`}
+            >
+              Gửi mail thông báo
+            </DropdownMenuItem>
           </>
         )}
 
@@ -1056,6 +1064,15 @@ onClick={() => handleDelete(interview)}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" side="bottom" className="w-48 bg-white z-60 shadow-lg border border-gray-200">
+                        {interview.status === 'Đang chờ' && (
+                          <DropdownMenuItem
+                            className="text-blue-600 cursor-pointer"
+                            // @ts-ignore - Supabase returns candidate_id but it's not fully typed
+                            onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${interview.candidate_id || ''}`}
+                          >
+                            Gửi mail thông báo
+                          </DropdownMenuItem>
+                        )}
                         {interview.status === 'Đang phỏng vấn' && (
                           <DropdownMenuItem
                             className="text-orange-600"

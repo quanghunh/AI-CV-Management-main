@@ -19,7 +19,7 @@ interface EmailSettingsData {
 
 export function EmailSettings() {
   const [apiKey, setApiKey] = useState("")
-  const [sendingEmail, setSendingEmail] = useState("onboarding@resend.dev")
+  const [sendingEmail, setSendingEmail] = useState("")
   const [senderName, setSenderName] = useState("Recruit AI")
   const [isLoading, setIsLoading] = useState(false)
   const [settingsId, setSettingsId] = useState<string | null>(null)
@@ -53,7 +53,7 @@ export function EmailSettings() {
 
       if (data) {
         setApiKey(data.resend_api_key || "")
-        setSendingEmail(data.sending_email || "onboarding@resend.dev")
+        setSendingEmail(data.sending_email || "")
         setSenderName(data.sender_name || "Recruit AI")
         setSettingsId(data.id)
       }
@@ -67,7 +67,7 @@ export function EmailSettings() {
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
-      alert('Vui lòng nhập Resend API Key')
+      alert('Vui lòng nhập App Password')
       return
     }
 
@@ -117,17 +117,16 @@ export function EmailSettings() {
 
   const handleTestAPI = () => {
     if (!apiKey.trim()) {
-      alert('Vui lòng nhập Resend API Key')
+      alert('Vui lòng nhập Mật khẩu ứng dụng (App Password)')
       return
     }
 
-    // Kiểm tra format cơ bản
-    if (!apiKey.startsWith('re_')) {
-      alert('API Key phải bắt đầu bằng "re_"')
+    if (apiKey.replace(/\s/g, '').length !== 16) {
+      alert('Mật khẩu ứng dụng của Google thường có 16 ký tự. Vui lòng kiểm tra lại.')
       return
     }
 
-    alert('Format API Key hợp lệ! Hãy lưu cài đặt và test bằng cách gửi email từ hệ thống.')
+    alert('Định dạng hợp lệ! Hãy lưu cài đặt và test bằng cách gửi email từ hệ thống.')
   }
 
   return (
@@ -137,27 +136,27 @@ export function EmailSettings() {
           <KeyRound className="h-5 w-5" />
           Cài đặt Email
         </CardTitle>
-        <CardDescription>Cấu hình dịch vụ gửi email của bạn (ví dụ: Resend).</CardDescription>
+        <CardDescription>Cấu hình Gmail (App Password) để gửi email trực tiếp từ hệ thống.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="resend-api-key">Resend API Key</Label>
+          <Label htmlFor="resend-api-key">Gmail App Password (Mật khẩu ứng dụng)</Label>
           <Input
             id="resend-api-key"
             type="password"
-            placeholder="re_..."
+            placeholder="16 ký tự, ví dụ: abcd efgh ijkl mnop"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             disabled={isLoading}
           />
           <p className="text-sm text-muted-foreground">
             <a
-              href="https://resend.com/api-keys"
+              href="https://myaccount.google.com/apppasswords"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              Lấy API key từ Resend Dashboard
+              Lấy App Password từ Google Account
             </a>
           </p>
         </div>

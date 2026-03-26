@@ -521,6 +521,13 @@ if (!selectedPendingInterview || newRating === 0) {
                             <DropdownMenuItem onClick={() => handleRerating(review)}>
                               Đánh giá lại
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-blue-600"
+                              // @ts-ignore
+                              onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${(review.cv_interviews as any)?.candidate_id || ''}`}
+                            >
+                              Gửi mail thông báo
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
