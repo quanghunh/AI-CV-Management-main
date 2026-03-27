@@ -1,16 +1,19 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Search, Plus, Eye, Edit, Trash2, Users, UserCheck, TrendingUp, Filter, Download, FileText, Brain, X, AlertTriangle, CheckCircle2, Info, MoreHorizontal } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Users, UserCheck, TrendingUp, Filter, Download, FileText, Brain, X, AlertTriangle, CheckCircle2, Info, MoreHorizontal, Tag } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { saveCandidateSkills, getCandidateSkills, type Skill } from "@/utils/skillsHelper"
+import { saveCandidateSkills, type Skill } from "@/utils/skillsHelper"
 import { SkillsInput } from "@/components/ui/skills-input"
 import { Input } from "@/components/ui/input"
 
 // ✅ THÊM IMPORT MỚI - Activity Logger
 import { ActivityLogger } from '@/lib/activityLogger';
 
-// Checkbox component inline definition (nếu chưa có trong project)
+// ✅ THÊM IMPORT - Category Dialog
+import { CandidateCategoryDialog } from "@/components/candidates/CandidateCategoryDialog"
+
+// Checkbox component inline definition
 const Checkbox = ({ id, checked, onCheckedChange, className }: { 
   id?: string; 
   checked: boolean; 
@@ -123,6 +126,22 @@ interface Job {
   location: string;
 }
 
+// ✅ THÊM - Source Item interface
+interface SourceItem {
+  value: string;
+  label: string;
+}
+
+// ✅ THÊM - Fallback sources khi DB chưa có bảng
+const FALLBACK_SOURCES: SourceItem[] = [
+  { value: 'Website', label: 'Website' },
+  { value: 'LinkedIn', label: 'LinkedIn' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'TopCV', label: 'TopCV' },
+  { value: 'Giới thiệu', label: 'Giới thiệu' },
+  { value: 'Khác', label: 'Khác' },
+]
+
 export function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -133,6 +152,10 @@ export function CandidatesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedCV | null>(null);
+
+  // ✅ THÊM STATE - Category management
+  const [sources, setSources] = useState<SourceItem[]>(FALLBACK_SOURCES);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   
   const [viewCandidate, setViewCandidate] = useState<Candidate | null>(null);
   const [editCandidate, setEditCandidate] = useState<Candidate | null>(null);
@@ -178,6 +201,7 @@ export function CandidatesPage() {
 
   useEffect(() => {
     fetchCandidates();
+    fetchSources(); // ✅ THÊM
   }, []);
 
   useEffect(() => {
@@ -213,6 +237,31 @@ export function CandidatesPage() {
       setMandatoryRequirementsNotes('');
     }
   }, [formData.job_id, jobs]);
+
+  // ✅ THÊM HÀM - Fetch sources từ DB
+  const fetchSources = async () => {
+    try {
+      const { data } = await supabase
+        .from('cv_candidate_categories')
+        .select('value, label')
+        .eq('type', 'source')
+        .order('sort_order', { ascending: true });
+
+      if (data && data.length > 0) {
+        setSources(data as SourceItem[]);
+      }
+      // Nếu lỗi hoặc không có data → giữ FALLBACK_SOURCES
+    } catch {
+      console.warn('cv_candidate_categories not available, using fallback sources');
+    }
+  };
+
+  // ✅ THÊM HÀM - Render source select items
+  const renderSourceItems = () => {
+    return sources.map(item => (
+      <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+    ));
+  };
 
   const fetchCandidates = async () => {
     setLoading(true);
@@ -290,100 +339,35 @@ export function CandidatesPage() {
       setParsedData(parsed);
 
       let filledCount = 0;
-      const foundInfo = [];
+      const foundInfo: string[] = [];
 
-      if (parsed.fullName) {
-        console.log('✅ Điền Họ và tên:', parsed.fullName);
-        handleInputChange('full_name', parsed.fullName);
-        foundInfo.push(`👤 Họ tên: ${parsed.fullName}`);
-        filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Họ và tên');
-      }
-
-      if (parsed.email) {
-        console.log('✅ Điền Email:', parsed.email);
-        handleInputChange('email', parsed.email);
-        foundInfo.push(`📧 Email: ${parsed.email}`);
-        filledCount++;
-      } else {
-        console.log(' Không tìm thấy Email');
-      }
-
-      if (parsed.phone) {
-        console.log('✅ Điền SĐT:', parsed.phone);
-        handleInputChange('phone_number', parsed.phone);
-        foundInfo.push(`📱 SĐT: ${parsed.phone}`);
-        filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy SĐT');
-      }
-
-      if (parsed.address) {
-        console.log('✅ Điền Địa chỉ:', parsed.address);
-        handleInputChange('address', parsed.address);
-        foundInfo.push(`📍 Địa chỉ: ${parsed.address}`);
-        filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Địa chỉ');
-      }
-
-      if (parsed.university) {
-        console.log('✅ Điền Trường học:', parsed.university);
-        handleInputChange('university', parsed.university);
-        foundInfo.push(`🎓 Trường: ${parsed.university}`);
-        filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Trường học');
-      }
-
-      if (parsed.education) {
-        console.log('✅ Điền Học vấn:', parsed.education);
-        handleInputChange('education', parsed.education);
-        foundInfo.push(`📚 Học vấn: ${parsed.education}`);
-        filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Học vấn');
-      }
-
+      if (parsed.fullName) { handleInputChange('full_name', parsed.fullName); foundInfo.push(`👤 Họ tên: ${parsed.fullName}`); filledCount++; }
+      if (parsed.email) { handleInputChange('email', parsed.email); foundInfo.push(`📧 Email: ${parsed.email}`); filledCount++; }
+      if (parsed.phone) { handleInputChange('phone_number', parsed.phone); foundInfo.push(`📱 SĐT: ${parsed.phone}`); filledCount++; }
+      if (parsed.address) { handleInputChange('address', parsed.address); foundInfo.push(`📍 Địa chỉ: ${parsed.address}`); filledCount++; }
+      if (parsed.university) { handleInputChange('university', parsed.university); foundInfo.push(`🎓 Trường: ${parsed.university}`); filledCount++; }
+      if (parsed.education) { handleInputChange('education', parsed.education); foundInfo.push(`📚 Học vấn: ${parsed.education}`); filledCount++; }
       if (parsed.experience) {
-        console.log('✅ Điền Kinh nghiệm:', parsed.experience.substring(0, 100));
         handleInputChange('experience', parsed.experience);
-        const expPreview = parsed.experience.length > 50 
-          ? parsed.experience.substring(0, 50) + '...' 
-          : parsed.experience;
+        const expPreview = parsed.experience.length > 50 ? parsed.experience.substring(0, 50) + '...' : parsed.experience;
         foundInfo.push(`💼 Kinh nghiệm: ${expPreview}`);
         filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Kinh nghiệm');
       }
-
-      if (parsed.skills && parsed.skills.length > 0) {
-        console.log('✅ Điền Skills:', parsed.skills);
+      // ✅ FIX dòng 784 - thêm optional chaining
+      if (parsed.skills && (parsed.skills?.length ?? 0) > 0) {
         handleInputChange('skills', parsed.skills);
-        foundInfo.push(`🔧 Kỹ năng: ${parsed.skills.length} kỹ năng (${parsed.skills.slice(0, 5).join(', ')}${parsed.skills.length > 5 ? '...' : ''})`);
+        foundInfo.push(`🔧 Kỹ năng: ${parsed.skills?.length ?? 0} kỹ năng (${parsed.skills?.slice(0, 5).join(', ')}${(parsed.skills?.length ?? 0) > 5 ? '...' : ''})`);
         filledCount++;
-      } else {
-        console.log('❌ Không tìm thấy Skills');
       }
 
-      console.log('=== TỔNG KẾT ===');
       console.log(`Đã điền: ${filledCount}/8 trường`);
 
       const message = filledCount > 0
-        ? `✅ Đã phân tích CV thành công!\n\n` +
-          `Tự động điền ${filledCount}/8 trường:\n${foundInfo.join('\n')}\n\n` +
-          `${filledCount < 8 ? '⚠️ Vui lòng bổ sung các trường còn thiếu.' : '✓ Tất cả thông tin đã được điền!'}`
-        : `⚠️ Không thể trích xuất thông tin từ CV.\n\n` +
-          `Vui lòng nhập thủ công hoặc thử file CV khác.`;
+        ? `✅ Đã phân tích CV thành công!\n\nTự động điền ${filledCount}/8 trường:\n${foundInfo.join('\n')}\n\n${filledCount < 8 ? '⚠️ Vui lòng bổ sung các trường còn thiếu.' : '✓ Tất cả thông tin đã được điền!'}`
+        : `⚠️ Không thể trích xuất thông tin từ CV.\n\nVui lòng nhập thủ công hoặc thử file CV khác.`;
 
       alert(message);
-
-      if (filledCount > 0) {
-        setTimeout(() => {
-          setCurrentTab('basic');
-        }, 300);
-      }
+      if (filledCount > 0) setTimeout(() => setCurrentTab('basic'), 300);
 
     } catch (error: any) {
       console.error('❌ Lỗi parse CV:', error);
@@ -398,7 +382,6 @@ export function CandidatesPage() {
     setParsedData(null);
   };
 
-  // ✅ CẬP NHẬT: handleSubmit - Thêm logging và RÀNG BUỘC TRẠNG THÁI "MỚI"
   const handleSubmit = async () => {
     if (!formData.full_name || !formData.email || !formData.job_id) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Vị trí ứng tuyển)');
@@ -442,7 +425,7 @@ export function CandidatesPage() {
           experience: formData.experience || null,
           education: formData.education || null,
           university: formData.university || null,
-          status: 'Mới', // 🔒 LUÔN LUÔN LÀ "MỚI" KHI TẠO
+          status: 'Mới',
           source: formData.source || null,
           cv_url: cvUrl,
           cv_file_name: cvFileName,
@@ -455,23 +438,15 @@ export function CandidatesPage() {
 
       if (error) throw error;
 
-      // Save skills
       await saveCandidateSkills(data.id, formData.skills);
 
-      // ✅ LOG ACTIVITY - Thêm ứng viên mới
       try {
         const jobTitle = jobs.find(j => j.id === formData.job_id)?.title;
-        await ActivityLogger.logCVSubmitted(
-          formData.full_name,
-          data.id,
-          jobTitle
-        );
+        await ActivityLogger.logCVSubmitted(formData.full_name, data.id, jobTitle);
       } catch (logError) {
         console.error('Failed to log activity:', logError);
-        // Không throw để không ảnh hưởng UX
       }
 
-      // Fetch full data
       const { data: fullData } = await supabase
         .from('cv_candidates')
         .select(`
@@ -486,7 +461,6 @@ export function CandidatesPage() {
 
       if (fullData) {
         setCandidates(prev => [fullData as Candidate, ...prev]);
-        
         setIsDialogOpen(false);
         resetForm();
         alert('✓ Thêm ứng viên thành công!');
@@ -499,7 +473,6 @@ export function CandidatesPage() {
     }
   };
 
-  // ✅ CẬP NHẬT: handleUpdateCandidate - Thêm logging
   const handleUpdateCandidate = async () => {
     if (!editCandidate) return;
     setIsSaving(true);
@@ -514,21 +487,15 @@ export function CandidatesPage() {
           experience: formData.experience || null,
           education: formData.education || null,
           university: formData.university || null,
-          // status: formData.status, // ⚠️ ĐÃ LOẠI BỎ CẬP NHẬT STATUS Ở ĐÂY NHƯ YÊU CẦU TRƯỚC
           source: formData.source || null,
         })
         .eq('id', editCandidate.id)
-        .select(`
-          *,
-          cv_jobs ( title, level )
-        `);
+        .select(`*, cv_jobs ( title, level )`);
 
       if (error) throw error;
 
-      // Save skills
       await saveCandidateSkills(editCandidate.id, formData.skills);
 
-      // ✅ LOG ACTIVITY - Cập nhật ứng viên
       try {
         await ActivityLogger.logCustomActivity(
           'Cập nhật thông tin ứng viên',
@@ -540,7 +507,6 @@ export function CandidatesPage() {
         console.error('Failed to log activity:', logError);
       }
 
-      // Fetch complete data
       const { data: completeData } = await supabase
         .from('cv_candidates')
         .select(`
@@ -555,10 +521,7 @@ export function CandidatesPage() {
 
       if (completeData) {
         const updatedCandidate = completeData as Candidate;
-        setCandidates(prev =>
-          prev.map(c => (c.id === editCandidate.id ? updatedCandidate : c))
-        );
-        
+        setCandidates(prev => prev.map(c => (c.id === editCandidate.id ? updatedCandidate : c)));
         setEditCandidate(null);
         resetForm();
         alert('✓ Cập nhật thông tin thành công!');
@@ -615,7 +578,6 @@ export function CandidatesPage() {
         }
         setViewCVCandidate(data as Candidate);
         
-        // ✅ LOG ACTIVITY - Xem CV (optional)
         try {
           await ActivityLogger.logCVViewed(candidate.full_name, candidate.id);
         } catch (logError) {
@@ -664,14 +626,12 @@ export function CandidatesPage() {
     setDeleteCandidate(candidate);
   };
 
-  // ✅ CẬP NHẬT: confirmDelete - Thêm logging
   const confirmDelete = async () => {
     if (!deleteCandidate) return;
 
-    const candidateName = deleteCandidate.full_name; // ✅ Lưu tên trước khi xóa
+    const candidateName = deleteCandidate.full_name;
 
     try {
-      // Delete CV file if exists
       if (deleteCandidate.cv_url) {
         const fileName = deleteCandidate.cv_url.split('/').pop();
         if (fileName) {
@@ -679,7 +639,6 @@ export function CandidatesPage() {
         }
       }
 
-      // Delete candidate
       const { error } = await supabase
         .from('cv_candidates')
         .delete()
@@ -687,14 +646,12 @@ export function CandidatesPage() {
 
       if (error) throw error;
 
-      // ✅ LOG ACTIVITY - Xóa ứng viên
       try {
         await ActivityLogger.logCVDeleted(candidateName);
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }
 
-      // Update UI
       setCandidates(prev => prev.filter(c => c.id !== deleteCandidate.id));
       setDeleteCandidate(null);
       alert('✓ Đã xóa ứng viên thành công!');
@@ -773,6 +730,24 @@ export function CandidatesPage() {
           <p className="text-xs sm:text-sm text-muted-foreground truncate">Quản lý và theo dõi tất cả ứng viên</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* ✅ THÊM - Nút Danh mục */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:flex items-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+            onClick={() => setIsCategoryDialogOpen(true)}
+          >
+            <Tag className="w-4 h-4" />
+            Danh mục
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="sm:hidden border-blue-200 text-blue-600"
+            onClick={() => setIsCategoryDialogOpen(true)}
+          >
+            <Tag className="w-4 h-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={fetchCandidates} className="hidden sm:flex">
             Làm mới
           </Button>
@@ -804,9 +779,7 @@ export function CandidatesPage() {
           <div className="flex flex-row w-full gap-1.5 sm:gap-2 mt-3 sm:mt-4">
             <button
               className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg overflow-hidden ${
-                currentTab === 'basic'
-                  ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                currentTab === 'basic' ? 'bg-blue-50 text-blue-600 border-2 border-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               onClick={() => setCurrentTab('basic')}
             >
@@ -814,9 +787,7 @@ export function CandidatesPage() {
             </button>
             <button
               className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg overflow-hidden ${
-                currentTab === 'cv'
-                  ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                currentTab === 'cv' ? 'bg-blue-50 text-blue-600 border-2 border-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               onClick={() => setCurrentTab('cv')}
             >
@@ -825,9 +796,7 @@ export function CandidatesPage() {
             {selectedJob?.mandatory_requirements && (
               <button
                 className={`flex-1 min-w-0 w-full px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg relative overflow-hidden ${
-                  currentTab === 'requirements'
-                    ? 'bg-amber-50 text-amber-700 border-2 border-amber-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  currentTab === 'requirements' ? 'bg-amber-50 text-amber-700 border-2 border-amber-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
                 onClick={() => setCurrentTab('requirements')}
               >
@@ -956,9 +925,19 @@ export function CandidatesPage() {
                   </div>
                 </div>
 
-                {/* 🔒 ĐÃ LOẠI BỎ CHỌN TRẠNG THÁI (MẶC ĐỊNH LÀ MỚI) */}
+                {/* ✅ CẬP NHẬT - Nguồn ứng tuyển với link quản lý danh mục */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nguồn ứng tuyển</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-gray-700">Nguồn ứng tuyển</label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:underline"
+                      onClick={() => setIsCategoryDialogOpen(true)}
+                    >
+                      <Tag className="w-3 h-3" />
+                      Quản lý nguồn
+                    </button>
+                  </div>
                   <Select
                     value={formData.source}
                     onValueChange={(value) => handleInputChange('source', value)}
@@ -967,12 +946,7 @@ export function CandidatesPage() {
                       <SelectValue placeholder="Chọn nguồn" />
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
-                      <SelectItem value="Website">Website</SelectItem>
-                      <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                      <SelectItem value="Facebook">Facebook</SelectItem>
-                      <SelectItem value="TopCV">TopCV</SelectItem>
-                      <SelectItem value="Giới thiệu">Giới thiệu</SelectItem>
-                      <SelectItem value="Khác">Khác</SelectItem>
+                      {renderSourceItems()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1009,12 +983,8 @@ export function CandidatesPage() {
                         </div>
                       </div>
                       <div className="text-center space-y-2">
-                        <p className="text-sm font-medium text-blue-700">
-                          Đang phân tích CV...
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          AI đang trích xuất thông tin từ CV của bạn
-                        </p>
+                        <p className="text-sm font-medium text-blue-700">Đang phân tích CV...</p>
+                        <p className="text-xs text-gray-500">AI đang trích xuất thông tin từ CV của bạn</p>
                         <div className="flex items-center justify-center space-x-1">
                           <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
                           <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
@@ -1022,21 +992,15 @@ export function CandidatesPage() {
                         </div>
                       </div>
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-xs text-blue-700 text-center">
-                          ⏱️ Quá trình này mất khoảng 10-30 giây
-                        </p>
+                        <p className="text-xs text-blue-700 text-center">⏱️ Quá trình này mất khoảng 10-30 giây</p>
                       </div>
                     </div>
                   ) : selectedFile ? (
                     <div className="space-y-3">
                       <FileText className="h-12 w-12 mx-auto text-green-600" />
                       <div>
-                        <p className="text-sm font-medium text-green-700">
-                          ✓ {selectedFile.name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {(selectedFile.size / 1024).toFixed(2)} KB
-                        </p>
+                        <p className="text-sm font-medium text-green-700">✓ {selectedFile.name}</p>
+                        <p className="text-xs text-gray-500 mt-1">{(selectedFile.size / 1024).toFixed(2)} KB</p>
                       </div>
                       <div className="flex gap-2 justify-center">
                         <label htmlFor="cv-upload">
@@ -1058,30 +1022,23 @@ export function CandidatesPage() {
                   ) : (
                     <label htmlFor="cv-upload" className="cursor-pointer block">
                       <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-sm text-gray-600 mb-2">
-                        Kéo thả file CV vào đây hoặc click để chọn
-                      </p>
-                      <Button variant="outline" size="sm" type="button">
-                        Chọn file
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Hỗ trợ: PDF, DOCX, TXT (tối đa 5MB)
-                      </p>
+                      <p className="text-sm text-gray-600 mb-2">Kéo thả file CV vào đây hoặc click để chọn</p>
+                      <Button variant="outline" size="sm" type="button">Chọn file</Button>
+                      <p className="text-xs text-gray-500 mt-2">Hỗ trợ: PDF, DOCX, TXT (tối đa 5MB)</p>
                     </label>
                   )}
                 </div>
                 
+                {/* ✅ FIX dòng 784 - optional chaining */}
                 {parsedData && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-blue-900 mb-2">
-                      ✓ Đã phân tích CV thành công
-                    </p>
+                    <p className="text-sm font-medium text-blue-900 mb-2">✓ Đã phân tích CV thành công</p>
                     <div className="text-xs text-blue-700 space-y-1">
                       {parsedData.email && <p>• Email: {parsedData.email}</p>}
                       {parsedData.phone && <p>• SĐT: {parsedData.phone}</p>}
                       {parsedData.university && <p>• Trường: {parsedData.university}</p>}
-                      {parsedData.skills && parsedData.skills.length > 0 && (
-                        <p>• Skills: {parsedData.skills.join(', ')}</p>
+                      {parsedData.skills && (parsedData.skills?.length ?? 0) > 0 && (
+                        <p>• Skills: {parsedData.skills?.join(', ')}</p>
                       )}
                     </div>
                   </div>
@@ -1196,7 +1153,7 @@ export function CandidatesPage() {
               <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải thông tin...</p>
             </div>
           ) : viewCandidate ? (
-            <div className="space-y-3 sm:space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-3 sm:gap-4 pb-3 sm:pb-4 border-b">
                 <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-blue-200 shrink-0">
                   <AvatarFallback className="text-lg sm:text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
@@ -1206,7 +1163,7 @@ export function CandidatesPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg sm:text-xl font-bold truncate">{viewCandidate.full_name}</h3>
                   <p className="text-xs sm:text-sm text-gray-500 truncate">{viewCandidate.cv_jobs?.title || 'N/A'}</p>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
                     {getStatusBadge(viewCandidate.status)}
                     {viewCandidate.mandatory_requirements_met && (
                       <Badge className="bg-green-100 text-green-700 border-green-300 text-xs sm:text-xs sm:text-sm">
@@ -1233,9 +1190,7 @@ export function CandidatesPage() {
 
               {viewCandidate.mandatory_requirements_notes && (
                 <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="text-xs sm:text-sm font-medium text-amber-900 block mb-1">
-                    Ghi chú yêu cầu bắt buộc
-                  </label>
+                  <label className="text-xs sm:text-sm font-medium text-amber-900 block mb-1">Ghi chú yêu cầu bắt buộc</label>
                   <p className="text-xs sm:text-sm text-amber-800">{viewCandidate.mandatory_requirements_notes}</p>
                 </div>
               )}
@@ -1243,9 +1198,10 @@ export function CandidatesPage() {
               <div>
                 <label className="text-xs sm:text-sm font-medium text-gray-500">Kỹ năng</label>
                 <div className="mt-1">
-                  {viewCandidate?.cv_candidate_skills && viewCandidate.cv_candidate_skills.length > 0 ? (
+                  {/* ✅ FIX dòng 1260-1262 */}
+                  {(viewCandidate?.cv_candidate_skills?.length ?? 0) > 0 ? (
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                      {viewCandidate.cv_candidate_skills.map((item, idx) => (
+                      {viewCandidate?.cv_candidate_skills?.map((item, idx) => (
                         <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                           {item.cv_skills.name}
                         </Badge>
@@ -1294,18 +1250,23 @@ export function CandidatesPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                {/* ĐÃ XÓA PHẦN CHỌN TRẠNG THÁI Ở ĐÂY */}
+                {/* ✅ CẬP NHẬT - Nguồn với link quản lý */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Nguồn</label>
+                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Nguồn</label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                      onClick={() => setIsCategoryDialogOpen(true)}
+                    >
+                      <Tag className="w-3 h-3" />
+                      Quản lý
+                    </button>
+                  </div>
                   <Select value={formData.source} onValueChange={(value) => handleInputChange('source', value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white z-50">
-                      <SelectItem value="Website">Website</SelectItem>
-                      <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                      <SelectItem value="Facebook">Facebook</SelectItem>
-                      <SelectItem value="TopCV">TopCV</SelectItem>
-                      <SelectItem value="Giới thiệu">Giới thiệu</SelectItem>
-                      <SelectItem value="Khác">Khác</SelectItem>
+                    <SelectTrigger><SelectValue placeholder="Chọn nguồn" /></SelectTrigger>
+                    <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
+                      {renderSourceItems()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1343,7 +1304,7 @@ export function CandidatesPage() {
               <p className="text-gray-500 mt-3 sm:mt-4 text-xs sm:text-sm">Đang tải CV...</p>
             </div>
           ) : viewCVCandidate?.cv_url ? (
-            <div className="space-y-3 sm:space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm sm:text-base truncate">{viewCVCandidate.cv_file_name}</p>
@@ -1384,12 +1345,12 @@ export function CandidatesPage() {
                   {analyzeCVCandidate.cv_parsed_data.email && <div><span className="font-medium">Email:</span> {analyzeCVCandidate.cv_parsed_data.email}</div>}
                   {analyzeCVCandidate.cv_parsed_data.phone && <div><span className="font-medium">Số điện thoại:</span> {analyzeCVCandidate.cv_parsed_data.phone}</div>}
                   {analyzeCVCandidate.cv_parsed_data.university && <div><span className="font-medium">Trường học:</span> {analyzeCVCandidate.cv_parsed_data.university}</div>}
-                  
-                  {analyzeCVCandidate.cv_parsed_data.skills && analyzeCVCandidate.cv_parsed_data.skills.length > 0 && (
+                  {/* ✅ FIX dòng 1033-1037 */}
+                  {analyzeCVCandidate.cv_parsed_data.skills && (analyzeCVCandidate.cv_parsed_data.skills?.length ?? 0) > 0 && (
                     <div>
                       <span className="font-medium">Kỹ năng phát hiện từ CV:</span>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {analyzeCVCandidate.cv_parsed_data.skills.map((skill: string, idx: number) => (
+                        {analyzeCVCandidate.cv_parsed_data.skills?.map((skill: string, idx: number) => (
                           <Badge key={idx} variant="outline" className="bg-white">{skill}</Badge>
                         ))}
                       </div>
@@ -1400,9 +1361,7 @@ export function CandidatesPage() {
 
               {analyzeCVCandidate.mandatory_requirements_met !== undefined && (
                 <div className={`p-4 border-2 rounded-lg ${
-                  analyzeCVCandidate.mandatory_requirements_met 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-amber-50 border-amber-200'
+                  analyzeCVCandidate.mandatory_requirements_met ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
                 }`}>
                   <div className="flex items-start gap-2">
                     {analyzeCVCandidate.mandatory_requirements_met ? (
@@ -1412,29 +1371,26 @@ export function CandidatesPage() {
                     )}
                     <div>
                       <h4 className={`font-semibold mb-1 ${
-                        analyzeCVCandidate.mandatory_requirements_met 
-                          ? 'text-green-900' 
-                          : 'text-amber-900'
+                        analyzeCVCandidate.mandatory_requirements_met ? 'text-green-900' : 'text-amber-900'
                       }`}>
                         {analyzeCVCandidate.mandatory_requirements_met 
                           ? 'Ứng viên đáp ứng yêu cầu bắt buộc' 
                           : 'Chưa xác nhận yêu cầu bắt buộc'}
                       </h4>
                       {analyzeCVCandidate.mandatory_requirements_notes && (
-                        <p className="text-sm text-gray-700 mt-1">
-                          {analyzeCVCandidate.mandatory_requirements_notes}
-                        </p>
+                        <p className="text-sm text-gray-700 mt-1">{analyzeCVCandidate.mandatory_requirements_notes}</p>
                       )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {analyzeCVCandidate.cv_candidate_skills && analyzeCVCandidate.cv_candidate_skills.length > 0 && (
+              {/* ✅ FIX dòng 1037 */}
+              {(analyzeCVCandidate?.cv_candidate_skills?.length ?? 0) > 0 && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <h4 className="font-semibold text-green-900 mb-2">Kỹ năng đã lưu trong hệ thống</h4>
                   <div className="flex flex-wrap gap-2">
-                    {analyzeCVCandidate.cv_candidate_skills.map((item: any, idx: number) => (
+                    {analyzeCVCandidate?.cv_candidate_skills?.map((item: any, idx: number) => (
                       <Badge key={idx} variant="outline" className="bg-white text-green-700 border-green-200">
                         {item.cv_skills.name}
                       </Badge>
@@ -1448,7 +1404,7 @@ export function CandidatesPage() {
                 <div className="space-y-2 text-sm text-gray-700">
                   <p>• Độ hoàn thiện thông tin: {analyzeCVCandidate.cv_parsed_data.email && analyzeCVCandidate.cv_parsed_data.phone ? 'Tốt' : 'Cần bổ sung'}</p>
                   <p>• Số kỹ năng phát hiện: {analyzeCVCandidate.cv_parsed_data.skills?.length || 0}</p>
-                  <p>• Số kỹ năng đã lưu: {analyzeCVCandidate.cv_candidate_skills?.length || 0}</p>
+                  <p>• Số kỹ năng đã lưu: {analyzeCVCandidate?.cv_candidate_skills?.length || 0}</p>
                   <p>• Yêu cầu bắt buộc: {analyzeCVCandidate.mandatory_requirements_met ? '✓ Đã đáp ứng' : '⚠️ Chưa xác nhận'}</p>
                   <p>• Trạng thái hiện tại: {analyzeCVCandidate.status}</p>
                 </div>
@@ -1480,9 +1436,7 @@ export function CandidatesPage() {
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Trạng thái</label>
               <Select value={tempFilterStatus} onValueChange={setTempFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tất cả trạng thái" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tất cả trạng thái" /></SelectTrigger>
                 <SelectContent className="z-[60] bg-white shadow-lg border border-gray-200">
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
                   {uniqueStatuses.map(status => (
@@ -1494,9 +1448,7 @@ export function CandidatesPage() {
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Vị trí</label>
               <Select value={tempFilterPosition} onValueChange={setTempFilterPosition}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tất cả vị trí" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tất cả vị trí" /></SelectTrigger>
                 <SelectContent className="z-60 bg-white shadow-lg border border-gray-200">
                   <SelectItem value="all">Tất cả vị trí</SelectItem>
                   {uniquePositions.map(pos => (
@@ -1508,9 +1460,7 @@ export function CandidatesPage() {
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Cấp độ</label>
               <Select value={tempFilterLevel} onValueChange={setTempFilterLevel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tất cả cấp độ" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tất cả cấp độ" /></SelectTrigger>
                 <SelectContent className="z-60 bg-white shadow-lg border border-gray-200">
                   <SelectItem value="all">Tất cả cấp độ</SelectItem>
                   {uniqueLevels.map(level => (
@@ -1519,20 +1469,14 @@ export function CandidatesPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* ✅ CẬP NHẬT - Nguồn dùng dynamic */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-1.5">Nguồn</label>
               <Select value={tempFilterSource} onValueChange={setTempFilterSource}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tất cả nguồn" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tất cả nguồn" /></SelectTrigger>
                 <SelectContent className="z-60 bg-white shadow-lg border border-gray-200">
                   <SelectItem value="all">Tất cả nguồn</SelectItem>
-                  <SelectItem value="Website">Website</SelectItem>
-                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
-                  <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="TopCV">TopCV</SelectItem>
-                  <SelectItem value="Giới thiệu">Giới thiệu</SelectItem>
-                  <SelectItem value="Khác">Khác</SelectItem>
+                  {renderSourceItems()}
                 </SelectContent>
               </Select>
             </div>
@@ -1625,7 +1569,7 @@ export function CandidatesPage() {
         </div>
       ) : (
         <Card className="shadow-sm border-2 border-gray-100 overflow-hidden">
-          {/* Desktop Table - shows on sm and up */}
+          {/* Desktop Table */}
           <div className="hidden sm:block overflow-x-auto">
             <Table>
               <TableHeader>
@@ -1668,14 +1612,15 @@ export function CandidatesPage() {
                     </TableCell>
                     <TableCell>{getStatusBadge(candidate.status)}</TableCell>
                     <TableCell>
+                      {/* ✅ FIX dòng 1265 */}
                       <div className="flex flex-wrap gap-1 max-w-[150px] sm:max-w-[300px]">
-                        {candidate.cv_candidate_skills?.slice(0, 3).map((item, idx) => (
+                        {candidate?.cv_candidate_skills?.slice(0, 3).map((item, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs">
                             {item.cv_skills.name}
                           </Badge>
                         ))}
-                        {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">+{candidate.cv_candidate_skills.length - 3}</Badge>
+                        {(candidate?.cv_candidate_skills?.length ?? 0) > 3 && (
+                          <Badge variant="secondary" className="text-xs">+{(candidate?.cv_candidate_skills?.length ?? 0) - 3}</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -1716,7 +1661,7 @@ export function CandidatesPage() {
             </Table>
           </div>
 
-          {/* Mobile Card Layout - shows only on mobile */}
+          {/* Mobile Card Layout */}
           <div className="sm:hidden space-y-3">
             {filteredCandidates.map((candidate) => (
               <div key={candidate.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors shadow-sm">
@@ -1745,16 +1690,17 @@ export function CandidatesPage() {
                   </div>
                 </div>
 
-                {candidate.cv_candidate_skills && candidate.cv_candidate_skills.length > 0 && (
+                {/* ✅ FIX dòng 1265 */}
+                {(candidate?.cv_candidate_skills?.length ?? 0) > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {candidate.cv_candidate_skills.slice(0, 4).map((item, idx) => (
+                    {candidate?.cv_candidate_skills?.slice(0, 4).map((item, idx) => (
                       <Badge key={idx} variant="secondary" className="text-xs">
                         {item.cv_skills.name}
                       </Badge>
                     ))}
-                    {candidate.cv_candidate_skills.length > 4 && (
+                    {(candidate?.cv_candidate_skills?.length ?? 0) > 4 && (
                       <Badge variant="secondary" className="text-xs">
-                        +{candidate.cv_candidate_skills.length - 4}
+                        +{(candidate?.cv_candidate_skills?.length ?? 0) - 4}
                       </Badge>
                     )}
                   </div>
@@ -1831,6 +1777,13 @@ export function CandidatesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ✅ THÊM - Category Manager Dialog */}
+      <CandidateCategoryDialog
+        open={isCategoryDialogOpen}
+        onOpenChange={setIsCategoryDialogOpen}
+        onCategoriesUpdated={fetchSources}
+      />
     </div>
   );
 }
