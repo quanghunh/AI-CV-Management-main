@@ -37,8 +37,20 @@ interface EmailTemplate {
 interface EmailHistory {
   id: string; subject: string; status: string; sent_at: string
   candidate_id?: string; external_id?: string
-  cv_candidates?: { full_name: string; email: string } | null
-  cv_email_templates?: { name: string } | null
+  // Supabase foreign-key joins can return arrays — use any to avoid TS2352
+  cv_candidates?: any
+  cv_email_templates?: any
+}
+
+// typed accessor helpers
+const getHistoryCandidate = (h: EmailHistory): { full_name: string; email: string } | null => {
+  if (!h.cv_candidates) return null
+  return Array.isArray(h.cv_candidates) ? (h.cv_candidates[0] ?? null) : h.cv_candidates
+}
+const getHistoryTemplateName = (h: EmailHistory): string | null => {
+  if (!h.cv_email_templates) return null
+  const t = Array.isArray(h.cv_email_templates) ? (h.cv_email_templates[0] ?? null) : h.cv_email_templates
+  return t?.name ?? null
 }
 
 interface Candidate {
@@ -445,10 +457,11 @@ export function EmailManagementPage() {
         external_id: (resData as any).id || null,
       }])
 
-      // bump usage count
+      // bump usage count (fire-and-forget, ignore errors)
       if (opts.templateId) {
-        await supabase.rpc('increment_template_usage', { template_id: opts.templateId })
-          .catch(() => {})
+        try {
+          await supabase.rpc('increment_template_usage', { template_id: opts.templateId })
+        } catch (_) { /* ignore */ }
       }
 
       return { success: true }
@@ -821,18 +834,21 @@ export function EmailManagementPage() {
                     {history.map(h => (
                       <tr key={h.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3">
-                          {h.cv_candidates ? (
-                            <div>
-                              <p className="font-medium text-gray-900 truncate max-w-[140px]">{h.cv_candidates.full_name}</p>
-                              <p className="text-xs text-gray-400 truncate max-w-[140px]">{h.cv_candidates.email}</p>
-                            </div>
-                          ) : <span className="text-gray-400">—</span>}
+                          {(() => {
+                            const c = getHistoryCandidate(h)
+                            return c ? (
+                              <div>
+                                <p className="font-medium text-gray-900 truncate max-w-[140px]">{c.full_name}</p>
+                                <p className="text-xs text-gray-400 truncate max-w-[140px]">{c.email}</p>
+                              </div>
+                            ) : <span className="text-gray-400">—</span>
+                          })()}
                         </td>
                         <td className="px-4 py-3 max-w-[200px]">
                           <p className="truncate text-gray-800">{h.subject}</p>
                         </td>
                         <td className="px-4 py-3 text-gray-500">
-                          {h.cv_email_templates?.name || '—'}
+                          {getHistoryTemplateName(h) || '—'}
                         </td>
                         <td className="px-4 py-3">
                           {h.status === 'sent' ? (
