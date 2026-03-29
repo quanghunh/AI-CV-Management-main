@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Plus, Mail, Send, TrendingUp, Clock, FileText, Eye, Filter, Sparkles, Users, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { Search, Plus, Mail, Send, TrendingUp, Clock, FileText, Eye, Filter, Sparkles, Users, CheckCircle, AlertCircle, RefreshCw, Zap, ToggleLeft, ToggleRight, Trash2, Pencil, ChevronDown } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,36 @@ interface EmailTemplate {
   email_categories: EmailCategory | null
 }
 
+interface Campaign {
+  id: string
+  name: string
+  description?: string
+  trigger: string
+  template_id?: string
+  is_active: boolean
+  delay_hours: number
+  cc_emails?: string
+  conditions?: { result?: string; new_status?: string } | null
+  created_at?: string
+  cv_email_templates?: { name: string; subject: string } | null
+}
+
+interface CampaignLog {
+  id: string
+  campaign_name?: string
+  email_sent_to?: string
+  status: string
+  error_message?: string
+  triggered_at: string
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  interview_created: 'Khi tạo lịch phỏng vấn mới',
+  interview_rescheduled: 'Khi thay đổi lịch phỏng vấn',
+  interview_result_published: 'Khi công bố kết quả phỏng vấn',
+  candidate_status_changed: 'Khi trạng thái ứng viên thay đổi',
+}
+
 const getCategoryBadge = (category: string) => {
   const colors: Record<string, string> = {
     'Interview': 'bg-purple-50 text-purple-700 border-purple-200',
@@ -64,7 +94,7 @@ export function EmailManagementPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [categories, setCategories] = useState<EmailCategory[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentTab, setCurrentTab] = useState<'templates' | 'history' | 'statistical'>('templates')
+  const [currentTab, setCurrentTab] = useState<'templates' | 'history' | 'statistical' | 'campaigns'>('templates')
   const [stats, setStats] = useState({
     totalSent: 0,
     openRate: '0.0',
@@ -85,6 +115,23 @@ export function EmailManagementPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [emailSendingStatus, setEmailSendingStatus] = useState<{ [key: string]: 'idle' | 'sending' | 'success' | 'error' }>({})
+
+  // --- Campaign states ---
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [campaignLogs, setCampaignLogs] = useState<CampaignLog[]>([])
+  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false)
+  const [editCampaign, setEditCampaign] = useState<Campaign | null>(null)
+  const [campaignForm, setCampaignForm] = useState({
+    name: '',
+    description: '',
+    trigger: 'interview_created',
+    template_id: '',
+    is_active: true,
+    delay_hours: 0,
+    cc_emails: '',
+    condition_result: ''  // '' = không lọc, 'Đạt' | 'Không đạt'
+  })
+  const [isSavingCampaign, setIsSavingCampaign] = useState(false)
 
   const [composeForm, setComposeForm] = useState({
     candidate_id: '',
@@ -203,7 +250,7 @@ export function EmailManagementPage() {
 
   const fetchData = async () => {
     setLoading(true)
-    await Promise.all([fetchTemplates(), fetchCategories(), fetchStats(), fetchHistory()])
+    await Promise.all([fetchTemplates(), fetchCategories(), fetchStats(), fetchHistory(), fetchCampaigns()])
     setLoading(false)
   }
 
@@ -305,6 +352,105 @@ export function EmailManagementPage() {
     } catch (error) {
       console.error('Lỗi:', error)
     }
+  }
+
+  // --- Campaign Fetch ---
+  const fetchCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cv_email_campaigns')
+        .select(`
+          *,
+          cv_email_templates ( name, subject )
+        `)
+        .order('created_at', { ascending: false })
+      if (data) setCampaigns(data as Campaign[])
+      if (error) console.error('Lỗi khi tải campaigns:', error)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const fetchCampaignLogs = async () => {
+    try {
+      const { data } = await supabase
+        .from('cv_campaign_logs')
+        .select('*')
+        .order('triggered_at', { ascending: false })
+        .limit(50)
+      if (data) setCampaignLogs(data as CampaignLog[])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // --- Campaign CRUD ---
+  const openCreateCampaign = () => {
+    setEditCampaign(null)
+    setCampaignForm({ name: '', description: '', trigger: 'interview_created', template_id: '', is_active: true, delay_hours: 0, cc_emails: '', condition_result: '' })
+    setIsCampaignDialogOpen(true)
+  }
+
+  const openEditCampaign = (c: Campaign) => {
+    setEditCampaign(c)
+    setCampaignForm({
+      name: c.name,
+      description: c.description || '',
+      trigger: c.trigger,
+      template_id: c.template_id || '',
+      is_active: c.is_active,
+      delay_hours: c.delay_hours,
+      cc_emails: c.cc_emails || '',
+      condition_result: c.conditions?.result || ''
+    })
+    setIsCampaignDialogOpen(true)
+  }
+
+  const handleSaveCampaign = async () => {
+    if (!campaignForm.name || !campaignForm.trigger || !campaignForm.template_id) {
+      alert('Vui lòng điền Tên, Trigger và chọn Template')
+      return
+    }
+    setIsSavingCampaign(true)
+    try {
+      const payload = {
+        name: campaignForm.name,
+        description: campaignForm.description || null,
+        trigger: campaignForm.trigger,
+        template_id: campaignForm.template_id,
+        is_active: campaignForm.is_active,
+        delay_hours: campaignForm.delay_hours,
+        cc_emails: campaignForm.cc_emails || null,
+        conditions: campaignForm.condition_result ? { result: campaignForm.condition_result } : null,
+        updated_at: new Date().toISOString()
+      }
+      if (editCampaign) {
+        const { error } = await supabase.from('cv_email_campaigns').update(payload).eq('id', editCampaign.id)
+        if (error) throw error
+        alert('✓ Đã cập nhật campaign!')
+      } else {
+        const { error } = await supabase.from('cv_email_campaigns').insert([payload])
+        if (error) throw error
+        alert('✓ Đã tạo campaign mới!')
+      }
+      setIsCampaignDialogOpen(false)
+      fetchCampaigns()
+    } catch (e: any) {
+      alert('Lỗi: ' + e.message)
+    } finally {
+      setIsSavingCampaign(false)
+    }
+  }
+
+  const handleToggleCampaign = async (c: Campaign) => {
+    const { error } = await supabase.from('cv_email_campaigns').update({ is_active: !c.is_active }).eq('id', c.id)
+    if (!error) setCampaigns(prev => prev.map(x => x.id === c.id ? { ...x, is_active: !c.is_active } : x))
+  }
+
+  const handleDeleteCampaign = async (c: Campaign) => {
+    if (!confirm(`Xóa campaign "${c.name}"?`)) return
+    const { error } = await supabase.from('cv_email_campaigns').delete().eq('id', c.id)
+    if (!error) setCampaigns(prev => prev.filter(x => x.id !== c.id))
   }
 
   const formatEmailContent = (content: string, subject?: string) => {
@@ -760,42 +906,41 @@ export function EmailManagementPage() {
       <div className="flex items-center gap-6 border-b">
         <button
           className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            currentTab === 'templates'
-              ? 'text-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+            currentTab === 'templates' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setCurrentTab('templates')}
         >
           Templates ( {filteredTemplates.length} )
-          {currentTab === 'templates' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-          )}
+          {currentTab === 'templates' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
         </button>
         <button
           className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            currentTab === 'history'
-              ? 'text-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+            currentTab === 'history' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setCurrentTab('history')}
         >
           History
-          {currentTab === 'history' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-          )}
+          {currentTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
         </button>
         <button
           className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            currentTab === 'statistical'
-              ? 'text-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+            currentTab === 'statistical' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setCurrentTab('statistical')}
         >
           Statistical
-          {currentTab === 'statistical' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-          )}
+          {currentTab === 'statistical' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
+        </button>
+        <button
+          className={`pb-3 px-1 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${
+            currentTab === 'campaigns' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+          }`}
+          onClick={() => { setCurrentTab('campaigns'); fetchCampaigns(); fetchCampaignLogs(); }}
+        >
+          <Zap className="h-4 w-4" />
+          Campaigns
+          <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full font-semibold">{campaigns.length}</span>
+          {currentTab === 'campaigns' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
         </button>
       </div>
 
@@ -1342,6 +1487,265 @@ export function EmailManagementPage() {
         </DialogContent>
       </Dialog>
     </div>
+
+      {/* ==================== CAMPAIGNS TAB ==================== */}
+      {currentTab === 'campaigns' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Email Campaigns Tự Động</h3>
+              <p className="text-sm text-gray-500 mt-0.5">Tự động gửi email khi sự kiện xảy ra trong hệ thống</p>
+            </div>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={openCreateCampaign}>
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo Campaign
+            </Button>
+          </div>
+
+          {/* Campaign List */}
+          {campaigns.length === 0 ? (
+            <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
+              <Zap className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+              <p className="text-gray-500 font-medium">Chưa có campaign nào</p>
+              <p className="text-gray-400 text-sm mt-1">Tạo campaign đầu tiên để tự động gửi email</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {campaigns.map(c => (
+                <div key={c.id} className={`bg-white border rounded-xl p-4 flex items-center gap-4 shadow-sm transition-all ${c.is_active ? 'border-blue-100' : 'border-gray-200 opacity-70'}`}>
+                  {/* Status indicator */}
+                  <div className={`w-2 h-10 rounded-full flex-shrink-0 ${c.is_active ? 'bg-green-400' : 'bg-gray-300'}`} />
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{c.name}</span>
+                      <Badge variant="outline" className={c.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500'}>
+                        {c.is_active ? 'Đang bật' : 'Đã tắt'}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-0.5 flex flex-wrap gap-2 items-center">
+                      <span><Zap className="inline h-3 w-3 mr-0.5" /> {TRIGGER_LABELS[c.trigger] || c.trigger}</span>
+                      {c.conditions?.result && (
+                        <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-200 text-[11px]">
+                          Lọc kết quả: <b>{c.conditions.result}</b>
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Template: <span className="text-gray-700 font-medium">{(c as any).cv_email_templates?.name || 'Chưa chọn'}</span>
+                      {c.delay_hours > 0 && <span className="ml-2">· Gửi sau {c.delay_hours}h</span>}
+                      {c.cc_emails && <span className="ml-2">· CC: {c.cc_emails}</span>}
+                    </p>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleToggleCampaign(c)}
+                      className={`p-1.5 rounded-lg transition-colors ${c.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                      title={c.is_active ? 'Tắt campaign' : 'Bật campaign'}
+                    >
+                      {c.is_active ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+                    </button>
+                    <button onClick={() => openEditCampaign(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Chỉnh sửa">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => handleDeleteCampaign(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Xóa">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Campaign Logs */}
+          {campaignLogs.length > 0 && (
+            <div>
+              <h4 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                Lịch sử Campaign (50 gần nhất)
+              </h4>
+              <div className="border rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Campaign</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Gửi đến</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Trạng thái</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {campaignLogs.map(log => (
+                      <tr key={log.id}>
+                        <td className="px-4 py-2.5 font-medium text-gray-800">{log.campaign_name || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-600">{log.email_sent_to || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <Badge variant="outline" className={
+                            log.status === 'sent' ? 'bg-green-50 text-green-700 border-green-200' :
+                            log.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                            'bg-gray-50 text-gray-500'
+                          }>
+                            {log.status === 'sent' ? 'Đã gửi' : log.status === 'failed' ? 'Thất bại' : 'Bỏ qua'}
+                          </Badge>
+                          {log.error_message && <p className="text-xs text-red-500 mt-0.5">{log.error_message}</p>}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-500 text-xs">
+                          {new Date(log.triggered_at).toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ======= Dialog Tạo/Sửa Campaign ======= */}
+      <Dialog open={isCampaignDialogOpen} onOpenChange={setIsCampaignDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editCampaign ? 'Chỉnh sửa Campaign' : 'Tạo Campaign Mới'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            {/* Tên */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Tên Campaign *</label>
+              <Input
+                placeholder="VD: Thông báo lịch phỏng vấn"
+                value={campaignForm.name}
+                onChange={e => setCampaignForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            {/* Mô tả */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Mô tả</label>
+              <Input
+                placeholder="Tóm tắt mục đích campaign"
+                value={campaignForm.description}
+                onChange={e => setCampaignForm(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+            {/* Trigger */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Điều kiện kích hoạt (Trigger) *</label>
+              <Select value={campaignForm.trigger} onValueChange={v => setCampaignForm(prev => ({ ...prev, trigger: v }))}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {Object.entries(TRIGGER_LABELS).map(([val, label]) => (
+                    <SelectItem key={val} value={val}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-blue-600 mt-1">
+                <Zap className="inline h-3 w-3 mr-0.5" />
+                Campaign sẽ tự động chạy khi sự kiện này xảy ra
+              </p>
+            </div>
+            {/* Condition: Filter by Result (chỉ hiện khi Trigger = Công bố kết quả) */}
+            {campaignForm.trigger === 'interview_result_published' && (
+              <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                <label className="block text-sm font-medium mb-1 text-blue-900">Điều kiện lọc: Kết quả phỏng vấn</label>
+                <Select value={campaignForm.condition_result} onValueChange={v => setCampaignForm(prev => ({ ...prev, condition_result: v }))}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Không lọc (gửi cho cả Đạt & Không đạt)" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value=" ">Không lọc (gửi cho cả hai)</SelectItem>
+                    <SelectItem value="Đạt">Chỉ gửi khi: Đạt</SelectItem>
+                    <SelectItem value="Không đạt">Chỉ gửi khi: Không đạt</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-blue-600 mt-1">
+                  Chỉ gửi email bằng template này nếu kết quả phỏng vấn khớp với lựa chọn trên.
+                </p>
+              </div>
+            )}
+            {/* Template */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Template Email *</label>
+              <Select value={campaignForm.template_id} onValueChange={v => setCampaignForm(prev => ({ ...prev, template_id: v }))}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Chọn template..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {templates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {campaignForm.template_id && (
+                <div className="text-xs text-gray-500 mt-1.5 bg-gray-50 rounded p-2 space-y-0.5">
+                  <p className="font-medium text-gray-600 mb-1">Biến hỗ trợ trong nội dung template:</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;candidateName&#125;&#125;</code> – Tên ứng viên</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;position&#125;&#125;</code> – Vị trí ứng tuyển</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;companyName&#125;&#125;</code> – Tên công ty (lấy từ Settings)</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;interviewTime&#125;&#125;</code> – Ngày & giờ phỏng vấn</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;interviewType&#125;&#125;</code> – Hình thức (Online / Trực tiếp)</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;interviewLocation&#125;&#125;</code> – Địa điểm / Link phỏng vấn</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;interviewerName&#125;&#125;</code> – Người phỏng vấn</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;result&#125;&#125;</code> – Kết quả (Đạt / Không đạt)</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;rating&#125;&#125;</code> – Điểm đánh giá (1-5)</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;feedback&#125;&#125;</code> – Nhận xét từ người phỏng vấn</p>
+                  <p><code className="bg-white border px-1 rounded">&#123;&#123;confirmDeadline&#125;&#125;</code> – Hạn xác nhận (ngày trước PV)</p>
+                </div>
+              )}
+            </div>
+            {/* Delay + CC */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Gửi sau (giờ)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={campaignForm.delay_hours}
+                  onChange={e => setCampaignForm(prev => ({ ...prev, delay_hours: parseInt(e.target.value) || 0 }))}
+                />
+                <p className="text-xs text-gray-400 mt-0.5">0 = gửi ngay</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">CC Email</label>
+                <Input
+                  placeholder="a@b.com, c@d.com"
+                  value={campaignForm.cc_emails}
+                  onChange={e => setCampaignForm(prev => ({ ...prev, cc_emails: e.target.value }))}
+                />
+              </div>
+            </div>
+            {/* Toggle is_active */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium">Trạng thái campaign</p>
+                <p className="text-xs text-gray-500">{campaignForm.is_active ? 'Đang bật – sẽ tự gửi email' : 'Đang tắt – không gửi email'}</p>
+              </div>
+              <button
+                onClick={() => setCampaignForm(prev => ({ ...prev, is_active: !prev.is_active }))}
+                className={`transition-colors ${campaignForm.is_active ? 'text-green-600' : 'text-gray-400'}`}
+              >
+                {campaignForm.is_active
+                  ? <ToggleRight className="h-8 w-8" />
+                  : <ToggleLeft className="h-8 w-8" />}
+              </button>
+            </div>
+            {/* Buttons */}
+            <div className="flex gap-3 pt-2 border-t">
+              <Button variant="outline" onClick={() => setIsCampaignDialogOpen(false)}>Hủy</Button>
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleSaveCampaign}
+                disabled={isSavingCampaign}
+              >
+                {isSavingCampaign ? 'Đang lưu...' : editCampaign ? 'Cập nhật' : 'Tạo Campaign'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </>
   )

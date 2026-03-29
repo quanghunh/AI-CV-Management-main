@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { Plus, Calendar, Clock, CheckCircle, XCircle, MoreHorizontal, Search, User, Briefcase, MapPin, Video, X, Star, Pencil, Mail } from 'lucide-react'
+import { fireCampaign } from '@/utils/campaignTriggerEngine'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -358,6 +359,19 @@ const interviewDateTime = new Date(parseInt(year), parseInt(month) - 1, parseInt
       setIsDialogOpen(false);
 
       alert('Tạo lịch phỏng vấn thành công!');
+
+      // 📧 Campaign: Kích hoạt campaign interview_created
+      if (formData.candidate_id) {
+        fireCampaign('interview_created', {
+          candidateId: formData.candidate_id,
+          candidateName: selectedCandidate?.full_name,
+          interviewDate: localDate.toISOString(),
+          interviewFormat: formData.format,
+          interviewLocation: formData.location,
+          jobTitle: selectedCandidate?.cv_jobs?.title || jobs.find(j => j.id === formData.job_id)?.title,
+          interviewerName: formData.interviewer,
+        }).catch(console.error);
+      }
     } catch (error) {
       console.error('Error creating interview:', error);
       alert('Có lỗi xảy ra khi tạo lịch phỏng vấn!');
@@ -572,6 +586,15 @@ setInterviews(prev => prev.map(i =>
       setIsEditDialogOpen(false);
       setFormErrors({ interview_date: "", interview_time: "", duration: "" });
       alert('Cập nhật lịch phỏng vấn thành công!');
+
+      // 📧 Campaign: Kích hoạt campaign interview_rescheduled
+      fireCampaign('interview_rescheduled', {
+        interviewId: editFormData.id,
+        interviewDate: isoDateTimeString,
+        interviewFormat: editFormData.format,
+        interviewLocation: editFormData.location,
+        interviewerName: editFormData.interviewer,
+      }).catch(console.error);
     } catch (error: any) {
       console.error('❌ Error updating interview:', error);
       alert(`Có lỗi xảy ra khi cập nhật: ${error.message || 'Unknown error'}`);
