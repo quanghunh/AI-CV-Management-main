@@ -10,6 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabaseClient"
+
+// ✅ THÊM IMPORT
+import { RoleManagerDialog } from "@/components/users/RoleManagerDialog"
+
 import {
   Users,
   Plus,
@@ -45,6 +49,8 @@ type Role = {
   roles: number
   name: string
   description?: string
+  color?: string
+  icon?: string
 }
 
 type ActivityLog = {
@@ -79,6 +85,9 @@ export default function UsersPage() {
     name: string
   } | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+
+  // ✅ THÊM STATE - Role Manager
+  const [isRoleManagerOpen, setIsRoleManagerOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -242,34 +251,15 @@ export default function UsersPage() {
       setCreating(true)
       setError(null)
 
-      if (!formData.name.trim()) {
-        setError("❌ Vui lòng nhập họ tên")
-        return
-      }
-      
-      if (!formData.email.trim()) {
-        setError("❌ Vui lòng nhập email")
-        return
-      }
-      
-      if (!validateEmail(formData.email.trim())) {
-        setError("❌ Email không hợp lệ")
-        return
-      }
-      
-      if (!formData.role_id) {
-        setError("❌ Vui lòng chọn vai trò")
-        return
-      }
+      if (!formData.name.trim()) { setError("❌ Vui lòng nhập họ tên"); return }
+      if (!formData.email.trim()) { setError("❌ Vui lòng nhập email"); return }
+      if (!validateEmail(formData.email.trim())) { setError("❌ Email không hợp lệ"); return }
+      if (!formData.role_id) { setError("❌ Vui lòng chọn vai trò"); return }
 
       const password = formData.password.trim() || generatePassword()
-      
-      if (password.length < 6) {
-        setError("❌ Mật khẩu phải có ít nhất 6 ký tự")
-        return
-      }
+      if (password.length < 6) { setError("❌ Mật khẩu phải có ít nhất 6 ký tự"); return }
 
-      const { data: existingUsers, error: checkError } = await supabase
+      const { data: existingUsers } = await supabase
         .from('cv_profiles')
         .select('email')
         .ilike('email', formData.email.trim())
@@ -281,7 +271,7 @@ export default function UsersPage() {
       }
 
       console.log('🚀 Creating user with RPC function...')
-      
+
       const { data, error: rpcError } = await supabase.rpc('create_cv_user_simple', {
         p_email: formData.email.trim(),
         p_password: password,
@@ -292,15 +282,13 @@ export default function UsersPage() {
 
       if (rpcError) {
         console.error('❌ RPC error:', rpcError)
-        
         const errorMessage = rpcError.message || ''
-        
         if (errorMessage.includes('Email đã tồn tại')) {
           setError("❌ Email này đã được sử dụng")
         } else if (errorMessage.includes('gen_salt') || errorMessage.includes('pgcrypto')) {
-          setError("❌ Lỗi hệ thống: Thiếu extension pgcrypto. Vui lòng chạy SQL trong artifact.")
+          setError("❌ Lỗi hệ thống: Thiếu extension pgcrypto.")
         } else if (errorMessage.includes('undefined_function') || rpcError.code === '42883') {
-          setError("❌ Function create_cv_user_simple chưa được tạo. Vui lòng chạy SQL setup.")
+          setError("❌ Function create_cv_user_simple chưa được tạo.")
         } else if (errorMessage.includes('permission denied')) {
           setError("❌ Không có quyền thực hiện. Vui lòng kiểm tra RLS policies.")
         } else {
@@ -309,10 +297,7 @@ export default function UsersPage() {
         return
       }
 
-      if (!data) {
-        setError("❌ Không nhận được phản hồi từ server")
-        return
-      }
+      if (!data) { setError("❌ Không nhận được phản hồi từ server"); return }
 
       console.log('✅ User created successfully with ID:', data)
 
@@ -331,7 +316,7 @@ export default function UsersPage() {
         role_id: roles.find((r: Role) => r.name.toLowerCase() === 'user')?.roles.toString() || roles[0]?.roles.toString() || "",
         status: "ACTIVE",
       })
-      
+
       await fetchUsers()
 
     } catch (error: unknown) {
@@ -360,15 +345,8 @@ export default function UsersPage() {
       setUpdating(true)
       setError(null)
 
-      if (!editFormData.name.trim()) {
-        setError("❌ Vui lòng nhập họ tên")
-        return
-      }
-
-      if (!editFormData.role_id) {
-        setError("❌ Vui lòng chọn vai trò")
-        return
-      }
+      if (!editFormData.name.trim()) { setError("❌ Vui lòng nhập họ tên"); return }
+      if (!editFormData.role_id) { setError("❌ Vui lòng chọn vai trò"); return }
 
       console.log('🔄 Updating user...')
 
@@ -386,11 +364,9 @@ export default function UsersPage() {
       }
 
       console.log('✅ User updated successfully')
-
       setIsEditDialogOpen(false)
       setEditingUser(null)
       await fetchUsers()
-
       alert("✅ Đã cập nhật thông tin người dùng thành công!")
 
     } catch (error: unknown) {
@@ -405,21 +381,12 @@ export default function UsersPage() {
   const handleDeleteUser = async (userId: string) => {
     const user = users.find((u: User) => u.id === userId)
 
-    if (!confirm(`⚠️ Bạn có chắc chắn muốn xóa người dùng "${user?.name}"?\n\nLưu ý: Thao tác này không thể hoàn tác.`)) {
-      return
-    }
+    if (!confirm(`⚠️ Bạn có chắc chắn muốn xóa người dùng "${user?.name}"?\n\nLưu ý: Thao tác này không thể hoàn tác.`)) return
 
     try {
-      await supabase
-        .from('cv_user_roles')
-        .delete()
-        .eq('user_id', userId)
+      await supabase.from('cv_user_roles').delete().eq('user_id', userId)
 
-      const { error: deleteError } = await supabase
-        .from('cv_profiles')
-        .delete()
-        .eq('id', userId)
-
+      const { error: deleteError } = await supabase.from('cv_profiles').delete().eq('id', userId)
       if (deleteError) throw deleteError
 
       if (user?.auth_user_id) {
@@ -451,40 +418,32 @@ export default function UsersPage() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role.toUpperCase()) {
-      case "ADMIN":
-        return "bg-red-100 text-red-700 hover:bg-red-100"
-      case "INTERVIEWER":
-        return "bg-blue-100 text-blue-700 hover:bg-blue-100"
-      case "HR":
-        return "bg-purple-100 text-purple-700 hover:bg-purple-100"
-      case "USER":
-        return "bg-gray-100 text-gray-700 hover:bg-gray-100"
-      default:
-        return "bg-gray-100 text-gray-700 hover:bg-gray-100"
+      case "ADMIN": return "bg-red-100 text-red-700 hover:bg-red-100"
+      case "INTERVIEWER": return "bg-blue-100 text-blue-700 hover:bg-blue-100"
+      case "HR": return "bg-purple-100 text-purple-700 hover:bg-purple-100"
+      case "USER": return "bg-gray-100 text-gray-700 hover:bg-gray-100"
+      default: return "bg-gray-100 text-gray-700 hover:bg-gray-100"
     }
   }
 
   const getRoleIcon = (role: string) => {
+    // ✅ Ưu tiên icon từ cv_roles nếu có
+    const roleData = roles.find(r => r.name.toUpperCase() === role.toUpperCase())
+    if (roleData?.icon) return <span className="text-sm">{roleData.icon}</span>
+
     switch (role.toUpperCase()) {
-      case "ADMIN":
-        return <Shield className="h-3 w-3" />
-      case "INTERVIEWER":
-        return <UserCircle className="h-3 w-3" />
-      case "HR":
-        return <Users className="h-3 w-3" />
-      default:
-        return <UserCircle className="h-3 w-3" />
+      case "ADMIN": return <Shield className="h-3 w-3" />
+      case "INTERVIEWER": return <UserCircle className="h-3 w-3" />
+      case "HR": return <Users className="h-3 w-3" />
+      default: return <UserCircle className="h-3 w-3" />
     }
   }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+      hour: '2-digit', minute: '2-digit',
+      day: '2-digit', month: '2-digit', year: 'numeric'
     })
   }
 
@@ -497,8 +456,11 @@ export default function UsersPage() {
     return labels[action] || action
   }
 
+  // ==================== RENDER ====================
+
   return (
     <>
+      {/* Mobile not supported */}
       <div className="sm:hidden flex flex-col items-center justify-center min-h-[80vh] p-6 text-center space-y-4">
         <div className="bg-gray-100 p-4 rounded-full">
           <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -508,702 +470,687 @@ export default function UsersPage() {
         <h2 className="text-xl font-bold text-gray-800">Không hỗ trợ di động</h2>
         <p className="text-gray-500">Do not support for device mobile, We're Launching Soon</p>
       </div>
+
       <div className="hidden sm:block">
         <div className="container mx-auto py-10 px-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8 text-blue-600" />
-            Quản lý người dùng
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Quản lý tài khoản và phân quyền người dùng trong hệ thống
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={handleSync} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" /> Thêm người dùng
-          </Button>
-          <Button variant="outline" onClick={fetchActivityLogs}>
-            <Activity className="h-4 w-4 mr-2" /> Lịch sử
-          </Button>
-        </div>
-      </div>
 
-      {lastSync && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-          <CheckCircle2 className="h-4 w-4 text-blue-600" />
-          <span>Đồng bộ lần cuối: {lastSync}</span>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 mb-4">
-          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">{error}</p>
-        </div>
-      )}
-
-      <div className="rounded-lg border bg-white shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead className="w-[50px]"></TableHead>
-              <TableHead className="font-semibold">Họ tên</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Vai trò</TableHead>
-              <TableHead className="font-semibold">Trạng thái</TableHead>
-              <TableHead className="font-semibold">Ngày tạo</TableHead>
-              <TableHead className="w-[120px] text-center font-semibold">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="flex flex-col items-center gap-2">
-                    <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-                    <p className="text-sm text-muted-foreground">Đang tải...</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="flex flex-col items-center gap-2">
-                    <Users className="h-12 w-12 text-gray-300" />
-                    <p className="text-muted-foreground">Chưa có người dùng nào</p>
-                    <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm" className="mt-2">
-                      <Plus className="h-4 w-4 mr-2" /> Tạo người dùng đầu tiên
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.id} className="hover:bg-gray-50">
-                  <TableCell>
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
-                        {user.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      {user.email}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${getRoleBadgeColor(user.role)} flex items-center gap-1 w-fit`}>
-                      {getRoleIcon(user.role)}
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === "ACTIVE" ? "default" : "secondary"} className="w-fit">
-                      {user.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">{formatDate(user.created_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 justify-center">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 hover:bg-blue-100 hover:text-blue-700"
-                        onClick={() => handleEditUser(user)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 hover:bg-red-100 hover:text-red-700"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Plus className="h-5 w-5 text-blue-600" />
-              </div>
-              Thêm người dùng mới
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Tạo tài khoản mới để người dùng có thể đăng nhập vào hệ thống
-            </p>
-          </DialogHeader>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-5 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-1">
-                <span>Họ và tên</span> <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                placeholder="Nguyễn Văn A"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-1">
-                <span>Email</span> <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="example@company.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="h-11"
-              />
-              <p className="text-xs text-muted-foreground">Email sẽ được dùng để đăng nhập</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">
-                <span>Mật khẩu</span> <span className="text-xs text-muted-foreground">(Tùy chọn)</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Để trống để tạo tự động"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="h-11 pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Hệ thống sẽ tự động tạo mật khẩu mạnh nếu bạn để trống
+          {/* ===== HEADER ===== */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Users className="h-8 w-8 text-blue-600" />
+                Quản lý người dùng
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Quản lý tài khoản và phân quyền người dùng trong hệ thống
               </p>
             </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon" onClick={handleSync} disabled={syncing}>
+                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="role" className="flex items-center gap-1">
-                <span>Vai trò</span> <span className="text-red-500">*</span>
-              </Label>
-              <Select 
-                value={formData.role_id} 
-                onValueChange={(value) => setFormData({ ...formData, role_id: value })}
+              {/* ✅ THÊM - Nút Quản lý vai trò */}
+              <Button
+                variant="outline"
+                onClick={() => setIsRoleManagerOpen(true)}
+                className="border-blue-200 text-blue-600 hover:bg-blue-50"
               >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Chọn vai trò">
-                    {formData.role_id && roles.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(roles.find((r: Role) => r.roles.toString() === formData.role_id)?.name || '')}
-                        <span>{roles.find((r: Role) => r.roles.toString() === formData.role_id)?.name}</span>
-                      </div>
-                    ) : (
-                      "Chọn vai trò"
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  side="bottom"
-                  align="start"
-                  sideOffset={5}
-                  className="bg-white border shadow-lg max-h-80 overflow-y-auto"
-                  style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
-                >
-                  {roles.map((role) => (
-                    <SelectItem 
-                      key={role.roles} 
-                      value={role.roles.toString()}
-                      className="cursor-pointer hover:bg-accent focus:bg-accent"
-                    >
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role.name)}
-                        <span>{role.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {roles.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {roles.length} vai trò khả dụng
-                </p>
-              )}
-            </div>
+                <Shield className="h-4 w-4 mr-2" />
+                Quản lý vai trò
+              </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Trạng thái</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue>
-                    {formData.status === "ACTIVE" ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        Hoạt động
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-                        Không hoạt động
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  side="bottom"
-                  align="start"
-                  sideOffset={5}
-                  className="bg-white border shadow-lg"
-                  style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
-                >
-                  <SelectItem value="ACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      Hoạt động
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="INACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-                      Không hoạt động
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" /> Thêm người dùng
+              </Button>
+              <Button variant="outline" onClick={fetchActivityLogs}>
+                <Activity className="h-4 w-4 mr-2" /> Lịch sử
+              </Button>
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsDialogOpen(false)
-                setError(null)
-              }} 
-              disabled={creating}
-            >
-              Hủy
-            </Button>
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700" 
-              onClick={handleCreateUser} 
-              disabled={creating}
-            >
-              {creating ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Đang tạo...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Tạo tài khoản
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Edit className="h-5 w-5 text-orange-600" />
-              </div>
-              Chỉnh sửa người dùng
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Cập nhật thông tin người dùng: {editingUser?.name}
-            </p>
-          </DialogHeader>
+          {lastSync && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+              <CheckCircle2 className="h-4 w-4 text-blue-600" />
+              <span>Đồng bộ lần cuối: {lastSync}</span>
+            </div>
+          )}
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 mb-4">
+              <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
-          <div className="space-y-5 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name" className="flex items-center gap-1">
-                <span>Họ và tên</span> <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit-name"
-                placeholder="Nguyễn Văn A"
-                value={editFormData.name}
-                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <div className="h-11 px-3 py-2 bg-gray-50 border rounded-md flex items-center text-gray-500">
-                <Mail className="h-4 w-4 mr-2" />
-                {editingUser?.email}
-              </div>
-              <p className="text-xs text-muted-foreground">Email không thể thay đổi</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-role" className="flex items-center gap-1">
-                <span>Vai trò</span> <span className="text-red-500">*</span>
-              </Label>
-              <Select 
-                value={editFormData.role_id} 
-                onValueChange={(value) => setEditFormData({ ...editFormData, role_id: value })}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Chọn vai trò">
-                    {editFormData.role_id && roles.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(roles.find((r: Role) => r.roles.toString() === editFormData.role_id)?.name || '')}
-                        <span>{roles.find((r: Role) => r.roles.toString() === editFormData.role_id)?.name}</span>
+          {/* ===== TABLE ===== */}
+          <div className="rounded-lg border bg-white shadow-sm">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="font-semibold">Họ tên</TableHead>
+                  <TableHead className="font-semibold">Email</TableHead>
+                  <TableHead className="font-semibold">Vai trò</TableHead>
+                  <TableHead className="font-semibold">Trạng thái</TableHead>
+                  <TableHead className="font-semibold">Ngày tạo</TableHead>
+                  <TableHead className="w-[120px] text-center font-semibold">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                        <p className="text-sm text-muted-foreground">Đang tải...</p>
                       </div>
-                    ) : (
-                      "Chọn vai trò"
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  side="bottom"
-                  align="start"
-                  sideOffset={5}
-                  className="bg-white border shadow-lg max-h-80 overflow-y-auto"
-                  style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
-                >
-                  {roles.map((role) => (
-                    <SelectItem 
-                      key={role.roles} 
-                      value={role.roles.toString()}
-                      className="cursor-pointer hover:bg-accent focus:bg-accent"
-                    >
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(role.name)}
-                        <span>{role.name}</span>
+                    </TableCell>
+                  </TableRow>
+                ) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Users className="h-12 w-12 text-gray-300" />
+                        <p className="text-muted-foreground">Chưa có người dùng nào</p>
+                        <Button onClick={() => setIsDialogOpen(true)} variant="outline" size="sm" className="mt-2">
+                          <Plus className="h-4 w-4 mr-2" /> Tạo người dùng đầu tiên
+                        </Button>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select 
-                value={editFormData.status} 
-                onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue>
-                    {editFormData.status === "ACTIVE" ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        Hoạt động
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-                        Không hoạt động
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  side="bottom"
-                  align="start"
-                  sideOffset={5}
-                  className="bg-white border shadow-lg"
-                  style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
-                >
-                  <SelectItem value="ACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      Hoạt động
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="INACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-                      Không hoạt động
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
+                            {user.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          {user.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getRoleBadgeColor(user.role)} flex items-center gap-1 w-fit`}>
+                          {getRoleIcon(user.role)}
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === "ACTIVE" ? "default" : "secondary"} className="w-fit">
+                          {user.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">{formatDate(user.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 hover:bg-blue-100 hover:text-blue-700"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 hover:bg-red-100 hover:text-red-700"
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsEditDialogOpen(false)
-                setEditingUser(null)
-                setError(null)
-              }} 
-              disabled={updating}
-            >
-              Hủy
-            </Button>
-            <Button 
-              className="bg-orange-600 hover:bg-orange-700" 
-              onClick={handleUpdateUser} 
-              disabled={updating}
-            >
-              {updating ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Đang cập nhật...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Cập nhật
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 bg-green-100 rounded-full">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-2xl">Tạo tài khoản thành công!</DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Thông tin đăng nhập đã được tạo
+          {/* ===== DIALOG THÊM NGƯỜI DÙNG ===== */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Plus className="h-5 w-5 text-blue-600" />
+                  </div>
+                  Thêm người dùng mới
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Tạo tài khoản mới để người dùng có thể đăng nhập vào hệ thống
                 </p>
-              </div>
-            </div>
-          </DialogHeader>
+              </DialogHeader>
 
-          {createdCredentials && (
-            <div className="space-y-4 py-4">
-              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  <p className="text-sm font-semibold text-blue-900">Thông tin đăng nhập</p>
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              <div className="space-y-5 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="flex items-center gap-1">
+                    <span>Họ và tên</span> <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder="Nguyễn Văn A"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="h-11"
+                  />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-blue-700 uppercase">Họ tên</Label>
-                    <div className="p-3 bg-white rounded-md border border-blue-200">
-                      <p className="font-medium text-gray-900">{createdCredentials.name}</p>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-1">
+                    <span>Email</span> <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="example@company.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">Email sẽ được dùng để đăng nhập</p>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-blue-700 uppercase">Email</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 p-3 bg-white rounded-md border border-blue-200 flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <p className="font-medium text-gray-900">{createdCredentials.email}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="password">
+                    <span>Mật khẩu</span> <span className="text-xs text-muted-foreground">(Tùy chọn)</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Để trống để tạo tự động"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="h-11 pr-10"
+                    />
+                    <Button
+                      type="button" variant="ghost" size="icon"
+                      className="absolute right-0 top-0 h-full hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Hệ thống sẽ tự động tạo mật khẩu mạnh nếu bạn để trống
+                  </p>
+                </div>
+
+                {/* ✅ Vai trò — có link "Thêm vai trò mới" */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="role" className="flex items-center gap-1">
+                      <span>Vai trò</span> <span className="text-red-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                      onClick={() => setIsRoleManagerOpen(true)}
+                    >
+                      <Shield className="w-3 h-3" />
+                      Quản lý vai trò
+                    </button>
+                  </div>
+                  <Select
+                    value={formData.role_id}
+                    onValueChange={(value) => setFormData({ ...formData, role_id: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Chọn vai trò">
+                        {formData.role_id && roles.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const r = roles.find((r: Role) => r.roles.toString() === formData.role_id)
+                              return r?.icon ? <span>{r.icon}</span> : getRoleIcon(r?.name || '')
+                            })()}
+                            <span>{roles.find((r: Role) => r.roles.toString() === formData.role_id)?.name}</span>
+                          </div>
+                        ) : "Chọn vai trò"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper" side="bottom" align="start" sideOffset={5}
+                      className="bg-white border shadow-lg max-h-80 overflow-y-auto"
+                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                    >
+                      {roles.map((role) => (
+                        <SelectItem
+                          key={role.roles}
+                          value={role.roles.toString()}
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                        >
+                          <div className="flex items-center gap-2">
+                            {role.icon
+                              ? <span>{role.icon}</span>
+                              : getRoleIcon(role.name)
+                            }
+                            <span>{role.name}</span>
+                            {role.description && (
+                              <span className="text-xs text-gray-400 ml-1">— {role.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {/* Shortcut thêm vai trò mới ngay trong dropdown */}
+                      <div className="border-t mt-1 pt-1">
+                        <button
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                          onClick={() => {
+                            setIsDialogOpen(false)
+                            setIsRoleManagerOpen(true)
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Thêm vai trò mới...
+                        </button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyToClipboard(createdCredentials.email, 'email')}
-                        className="h-11 w-11 border-blue-200 hover:bg-blue-50"
-                      >
-                        {copiedField === 'email' ? 
-                          <Check className="h-4 w-4 text-green-600" /> : 
-                          <Copy className="h-4 w-4 text-blue-600" />
-                        }
-                      </Button>
+                    </SelectContent>
+                  </Select>
+                  {roles.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{roles.length} vai trò khả dụng</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Trạng thái</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue>
+                        {formData.status === "ACTIVE" ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                            Hoạt động
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+                            Không hoạt động
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper" side="bottom" align="start" sideOffset={5}
+                      className="bg-white border shadow-lg"
+                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                    >
+                      <SelectItem value="ACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-500"></div>Hoạt động
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="INACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-gray-400"></div>Không hoạt động
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setIsDialogOpen(false); setError(null) }}
+                  disabled={creating}
+                >
+                  Hủy
+                </Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreateUser} disabled={creating}>
+                  {creating ? (
+                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Đang tạo...</>
+                  ) : (
+                    <><CheckCircle2 className="h-4 w-4 mr-2" />Tạo tài khoản</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ===== DIALOG CHỈNH SỬA NGƯỜI DÙNG ===== */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl flex items-center gap-2">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Edit className="h-5 w-5 text-orange-600" />
+                  </div>
+                  Chỉnh sửa người dùng
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Cập nhật thông tin người dùng: {editingUser?.name}
+                </p>
+              </DialogHeader>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              <div className="space-y-5 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name" className="flex items-center gap-1">
+                    <span>Họ và tên</span> <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    placeholder="Nguyễn Văn A"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <div className="h-11 px-3 py-2 bg-gray-50 border rounded-md flex items-center text-gray-500">
+                    <Mail className="h-4 w-4 mr-2" />
+                    {editingUser?.email}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Email không thể thay đổi</p>
+                </div>
+
+                {/* ✅ Vai trò — có link quản lý */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-role" className="flex items-center gap-1">
+                      <span>Vai trò</span> <span className="text-red-500">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                      onClick={() => setIsRoleManagerOpen(true)}
+                    >
+                      <Shield className="w-3 h-3" />
+                      Quản lý vai trò
+                    </button>
+                  </div>
+                  <Select
+                    value={editFormData.role_id}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, role_id: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Chọn vai trò">
+                        {editFormData.role_id && roles.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const r = roles.find((r: Role) => r.roles.toString() === editFormData.role_id)
+                              return r?.icon ? <span>{r.icon}</span> : getRoleIcon(r?.name || '')
+                            })()}
+                            <span>{roles.find((r: Role) => r.roles.toString() === editFormData.role_id)?.name}</span>
+                          </div>
+                        ) : "Chọn vai trò"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper" side="bottom" align="start" sideOffset={5}
+                      className="bg-white border shadow-lg max-h-80 overflow-y-auto"
+                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                    >
+                      {roles.map((role) => (
+                        <SelectItem
+                          key={role.roles}
+                          value={role.roles.toString()}
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                        >
+                          <div className="flex items-center gap-2">
+                            {role.icon ? <span>{role.icon}</span> : getRoleIcon(role.name)}
+                            <span>{role.name}</span>
+                            {role.description && (
+                              <span className="text-xs text-gray-400 ml-1">— {role.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Trạng thái</Label>
+                  <Select
+                    value={editFormData.status}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue>
+                        {editFormData.status === "ACTIVE" ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500"></div>Hoạt động
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-gray-400"></div>Không hoạt động
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper" side="bottom" align="start" sideOffset={5}
+                      className="bg-white border shadow-lg"
+                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                    >
+                      <SelectItem value="ACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-500"></div>Hoạt động
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="INACTIVE" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-gray-400"></div>Không hoạt động
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setIsEditDialogOpen(false); setEditingUser(null); setError(null) }}
+                  disabled={updating}
+                >
+                  Hủy
+                </Button>
+                <Button className="bg-orange-600 hover:bg-orange-700" onClick={handleUpdateUser} disabled={updating}>
+                  {updating ? (
+                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Đang cập nhật...</>
+                  ) : (
+                    <><CheckCircle2 className="h-4 w-4 mr-2" />Cập nhật</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ===== DIALOG SUCCESS ===== */}
+          <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <CheckCircle2 className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-2xl">Tạo tài khoản thành công!</DialogTitle>
+                    <p className="text-sm text-muted-foreground mt-1">Thông tin đăng nhập đã được tạo</p>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {createdCredentials && (
+                <div className="space-y-4 py-4">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Shield className="h-5 w-5 text-blue-600" />
+                      <p className="text-sm font-semibold text-blue-900">Thông tin đăng nhập</p>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-blue-700 uppercase">Họ tên</Label>
+                        <div className="p-3 bg-white rounded-md border border-blue-200">
+                          <p className="font-medium text-gray-900">{createdCredentials.name}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-blue-700 uppercase">Email</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 p-3 bg-white rounded-md border border-blue-200 flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <p className="font-medium text-gray-900">{createdCredentials.email}</p>
+                          </div>
+                          <Button
+                            variant="outline" size="icon"
+                            onClick={() => copyToClipboard(createdCredentials.email, 'email')}
+                            className="h-11 w-11 border-blue-200 hover:bg-blue-50"
+                          >
+                            {copiedField === 'email' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-blue-600" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-blue-700 uppercase">Mật khẩu</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 p-3 bg-white rounded-md border border-blue-200">
+                            <p className="font-mono text-sm font-semibold text-gray-900">
+                              {showPassword ? createdCredentials.password : '••••••••••••'}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline" size="icon"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="h-11 w-11 border-blue-200 hover:bg-blue-50"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4 text-blue-600" /> : <Eye className="h-4 w-4 text-blue-600" />}
+                          </Button>
+                          <Button
+                            variant="outline" size="icon"
+                            onClick={() => copyToClipboard(createdCredentials.password, 'password')}
+                            className="h-11 w-11 border-blue-200 hover:bg-blue-50"
+                          >
+                            {copiedField === 'password' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-blue-600" />}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-blue-700 uppercase">Mật khẩu</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 p-3 bg-white rounded-md border border-blue-200">
-                        <p className="font-mono text-sm font-semibold text-gray-900">
-                          {showPassword ? createdCredentials.password : '••••••••••••'}
+                  <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
+                    <div className="flex gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-amber-900 mb-1">Lưu ý quan trọng</p>
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                          Thông tin này chỉ hiển thị <strong>một lần duy nhất</strong>.
+                          Vui lòng sao chép và gửi cho người dùng ngay.
+                          Người dùng có thể đăng nhập bằng email và mật khẩu này tại trang <strong>/login</strong>.
+                          Khuyến nghị đổi mật khẩu sau khi đăng nhập lần đầu.
                         </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="h-11 w-11 border-blue-200 hover:bg-blue-50"
-                      >
-                        {showPassword ? 
-                          <EyeOff className="h-4 w-4 text-blue-600" /> : 
-                          <Eye className="h-4 w-4 text-blue-600" />
-                        }
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyToClipboard(createdCredentials.password, 'password')}
-                        className="h-11 w-11 border-blue-200 hover:bg-blue-50"
-                      >
-                        {copiedField === 'password' ? 
-                          <Check className="h-4 w-4 text-green-600" /> : 
-                          <Copy className="h-4 w-4 text-blue-600" />
-                        }
-                      </Button>
                     </div>
                   </div>
                 </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 w-full h-11"
+                  onClick={() => { setIsSuccessDialogOpen(false); setCreatedCredentials(null); setShowPassword(false) }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Đã lưu thông tin
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ===== DIALOG LỊCH SỬ ===== */}
+          <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
+            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between border-b pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Activity className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Lịch sử hoạt động</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Theo dõi các thao tác quản lý người dùng gần đây</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsActivityDialogOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
 
-              <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                <div className="flex gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-900 mb-1">Lưu ý quan trọng</p>
-                    <p className="text-xs text-amber-800 leading-relaxed">
-                      Thông tin này chỉ hiển thị <strong>một lần duy nhất</strong>. 
-                      Vui lòng sao chép và gửi cho người dùng ngay qua email hoặc các kênh liên lạc khác.
-                      <br/><br/>
-                      Người dùng có thể đăng nhập bằng email và mật khẩu này tại trang <strong>/login</strong>.
-                      Khuyến nghị người dùng đổi mật khẩu sau khi đăng nhập lần đầu.
+              <div className="flex-1 overflow-y-auto py-4">
+                {activityLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
+                    <p className="text-sm text-muted-foreground">Đang tải lịch sử...</p>
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Activity className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                    <p className="text-base text-foreground font-medium">Chưa có hoạt động nào</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Các thao tác quản lý người dùng sẽ được ghi lại tại đây
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700 w-full h-11" 
-              onClick={() => {
-                setIsSuccessDialogOpen(false)
-                setCreatedCredentials(null)
-                setShowPassword(false)
-              }}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Đã lưu thông tin
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between border-b pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Activity className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Lịch sử hoạt động</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Theo dõi các thao tác quản lý người dùng gần đây
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={() => setIsActivityDialogOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto py-4">
-            {activityLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
-                <p className="text-sm text-muted-foreground">Đang tải lịch sử...</p>
-              </div>
-            ) : activities.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Activity className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                <p className="text-base text-foreground font-medium">Chưa có hoạt động nào</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Các thao tác quản lý người dùng sẽ được ghi lại tại đây
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {activities.map((activity) => (
-                  <div 
-                    key={activity.id} 
-                    className="flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
-                      <Activity className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-foreground">
-                          {activity.user_name || 'Hệ thống'}
-                        </p>
-                        <Badge variant="secondary" className="text-xs">
-                          {getActionLabel(activity.action)}
-                        </Badge>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                          <Activity className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-foreground">{activity.user_name || 'Hệ thống'}</p>
+                            <Badge variant="secondary" className="text-xs">{getActionLabel(activity.action)}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{activity.details}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(activity.created_at)}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {activity.details}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(activity.created_at)}
-                      </p>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* ✅ THÊM - Role Manager Dialog */}
+          <RoleManagerDialog
+            open={isRoleManagerOpen}
+            onOpenChange={setIsRoleManagerOpen}
+            onRolesUpdated={fetchRoles}
+          />
+
+        </div>
       </div>
     </>
   )
