@@ -1358,6 +1358,57 @@ Begin your response now:"""
             detail=f"Error generating interview questions: {str(e)}"
         )
 
+from pydantic import EmailStr
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+class SendEmailRequest(BaseModel):
+    subject: str
+    body_html: str
+    body_text: Optional[str] = None
+    to: List[str]
+    cc: Optional[List[str]] = None
+    app_password: str
+    sender_email: str
+    sender_name: Optional[str] = "Recruit AI"
+
+@app.post("/api/send-email")
+async def send_email(req: SendEmailRequest):
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = req.subject
+        msg["From"] = f"{req.sender_name} <{req.sender_email}>"
+        msg["To"] = ", ".join(req.to)
+        if req.cc:
+            msg["Cc"] = ", ".join(req.cc)
+            
+        if req.body_text:
+            msg.attach(MIMEText(req.body_text, "plain"))
+        else:
+            msg.attach(MIMEText("Please view this email in an HTML-compatible client.", "plain"))
+            
+        msg.attach(MIMEText(req.body_html, "html"))
+        
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(req.sender_email, req.app_password)
+        
+        recipients = req.to.copy()
+        if req.cc:
+            recipients.extend(req.cc)
+            
+        server.sendmail(req.sender_email, recipients, msg.as_string())
+        server.quit()
+        
+        return {"success": True, "message": "Email sent successfully"}
+    except Exception as e:
+        print(f"❌ Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))  # Đọc PORT từ Railway

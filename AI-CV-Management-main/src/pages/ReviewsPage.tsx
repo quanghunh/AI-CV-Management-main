@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 // ✅ ADDED: AlertTriangle
 import { RefreshCw, FileText, Star, TrendingUp, MoreHorizontal, X, AlertTriangle } from "lucide-react"
+import { fireCampaign } from '@/utils/campaignTriggerEngine'
 import { supabase } from "@/lib/supabaseClient"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -213,6 +214,7 @@ if (!selectedPendingInterview || newRating === 0) {
       if (updateError) throw updateError;
 
       // ✅ 3. LOGIC TỪ VERSION 1: CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
+      let resolvedCandidateId: string | undefined
       if (reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') {
         const { data: interviewData } = await supabase
           .from('cv_interviews')
@@ -221,6 +223,7 @@ if (!selectedPendingInterview || newRating === 0) {
           .single();
 
         if (interviewData?.candidate_id) {
+          resolvedCandidateId = interviewData.candidate_id
           const newCandidateStatus = reviewOutcome === 'Đạt' ? 'Chấp nhận' : 'Từ chối';
           
           const { error: candidateUpdateError } = await supabase
@@ -237,6 +240,11 @@ if (!selectedPendingInterview || newRating === 0) {
       // 4. Refresh dữ liệu
       await getReviews();
 
+      // Capture trước khi reset state
+      const capturedRating = newRating;
+      const capturedNote = newNote;
+      const capturedOutcome = reviewOutcome;
+
       // 5. Đóng dialog và reset form
       setIsNewReviewDialogOpen(false);
       setSelectedPendingInterview(null);
@@ -245,6 +253,18 @@ if (!selectedPendingInterview || newRating === 0) {
       setReviewOutcome('Đạt');
 
       alert('Đánh giá đã được lưu thành công!');
+
+      // 📧 Campaign: Kích hoạt campaign interview_result_published
+      fireCampaign('interview_result_published', {
+        candidateId: resolvedCandidateId,
+        interviewId: selectedPendingInterview.id,
+        interviewDate: selectedPendingInterview.interview_date,
+        jobTitle: selectedPendingInterview.cv_candidates?.cv_jobs?.title,
+        interviewerName: selectedPendingInterview.interviewer,
+        result: capturedOutcome,
+        rating: capturedRating,
+        feedback: capturedNote,
+      }).catch(console.error);
     } catch (error) {
       console.error('Error submitting review:', error);
       alert('Có lỗi xảy ra khi lưu đánh giá!');
@@ -520,6 +540,13 @@ if (!selectedPendingInterview || newRating === 0) {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleRerating(review)}>
                               Đánh giá lại
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-blue-600"
+                              // @ts-ignore
+                              onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${(review.cv_interviews as any)?.candidate_id || ''}`}
+                            >
+                              Gửi mail thông báo
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
