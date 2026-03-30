@@ -1,1087 +1,784 @@
 // src/components/settings/CompanySettings.tsx
+"use client"
 
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, Building2, Globe, Languages, Palette, RefreshCw, Check, X, Image as ImageIcon } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
-import { useTranslation } from 'react-i18next'
+import {
+  Upload, Building2, Globe, Palette, RefreshCw, Check, X,
+  Image as ImageIcon, Mail, MapPin, Info, CheckCircle2, AlertCircle
+} from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface CompanySettingsProps {
-  profile: any;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  profile: any
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }
 
-// Hàm chuyển đổi hex sang HSL
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001'
+const BUCKET_NAME = 'logos'
+const LOGO_PATH = 'company_logo'
+
+const COLOR_PRESETS = [
+  { name: 'Mặc định',  button: '#222831', menu: '#e8f4fa' },
+  { name: 'Xanh dương', button: '#2563eb', menu: '#dbeafe' },
+  { name: 'Xanh lá',   button: '#16a34a', menu: '#dcfce7' },
+  { name: 'Tím',       button: '#9333ea', menu: '#f3e8ff' },
+  { name: 'Cam',       button: '#ea580c', menu: '#ffedd5' },
+  { name: 'Hồng',      button: '#db2777', menu: '#fce7f3' },
+  { name: 'Chàm',      button: '#4f46e5', menu: '#e0e7ff' },
+  { name: 'Xanh ngọc', button: '#0d9488', menu: '#ccfbf1' },
+  { name: 'Đỏ',        button: '#dc2626', menu: '#fee2e2' },
+  { name: 'Xám',       button: '#475569', menu: '#f1f5f9' },
+  { name: 'Lá emerald',button: '#059669', menu: '#d1fae5' },
+  { name: 'Vàng',      button: '#d97706', menu: '#fef3c7' },
+]
+
+// ─── Color utilities ──────────────────────────────────────────────────────────
+
 const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
-  hex = hex.replace('#', '');
-  
-  const r = parseInt(hex.substring(0, 2), 16) / 255;
-  const g = parseInt(hex.substring(2, 4), 16) / 255;
-  const b = parseInt(hex.substring(4, 6), 16) / 255;
-  
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
-  
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.substring(0, 2), 16) / 255
+  const g = parseInt(clean.substring(2, 4), 16) / 255
+  const b = parseInt(clean.substring(4, 6), 16) / 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  let h = 0, s = 0
+  const l = (max + min) / 2
   if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
     switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+      case g: h = ((b - r) / d + 2) / 6; break
+      case b: h = ((r - g) / d + 4) / 6; break
     }
   }
-  
-  return {
-    h: Math.round(h * 360),
-    s: Math.round(s * 100),
-    l: Math.round(l * 100)
-  };
-};
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
+}
 
-// Áp dụng màu sắc vào @theme variables của Tailwind v4
 const applyThemeColors = (buttonColor: string, menuColor: string) => {
-  const root = document.documentElement;
-  
-  const buttonHSL = hexToHSL(buttonColor);
-  const menuHSL = hexToHSL(menuColor);
-  
-  root.style.setProperty('--primary', `${buttonHSL.h} ${buttonHSL.s}% ${buttonHSL.l}%`);
-  const primaryForeground = buttonHSL.l > 55 ? '0 0% 10%' : '0 0% 100%';
-  root.style.setProperty('--primary-foreground', primaryForeground);
-  
-  root.style.setProperty('--secondary', `${menuHSL.h} ${menuHSL.s}% ${menuHSL.l}%`);
-  const secondaryForeground = menuHSL.l > 55 ? '222.2 47.4% 11.2%' : '0 0% 100%';
-  root.style.setProperty('--secondary-foreground', secondaryForeground);
-  
-  const accentL = Math.min(buttonHSL.l + 45, 95);
-  root.style.setProperty('--accent', `${buttonHSL.h} ${Math.max(buttonHSL.s - 20, 30)}% ${accentL}%`);
-  root.style.setProperty('--accent-foreground', `${buttonHSL.h} ${buttonHSL.s}% ${buttonHSL.l}%`);
-  
-  root.style.setProperty('--muted', `${menuHSL.h} ${Math.max(menuHSL.s - 10, 0)}% ${Math.min(menuHSL.l + 2, 98)}%`);
-  const mutedForeground = menuHSL.l > 70 ? '215.4 16.3% 46.9%' : '0 0% 60%';
-  root.style.setProperty('--muted-foreground', mutedForeground);
-  
-  root.style.setProperty('--ring', `${buttonHSL.h} ${buttonHSL.s}% ${buttonHSL.l}%`);
-  
-  const borderL = Math.min(menuHSL.l + 10, 95);
-  root.style.setProperty('--border', `${menuHSL.h} ${Math.max(menuHSL.s - 20, 15)}% ${borderL}%`);
-  
-  root.style.setProperty('--sidebar-bg', buttonColor);
-  root.style.setProperty('--sidebar-text', '#FFFFFF');
-  root.style.setProperty('--sidebar-active', `${buttonHSL.h} ${Math.min(buttonHSL.s + 10, 100)}% ${Math.min(buttonHSL.l + 10, 90)}%`);
-  root.style.setProperty('--sidebar-hover', `${buttonHSL.h} ${buttonHSL.s}% ${Math.min(buttonHSL.l + 5, 85)}%`);
-  
-  root.style.setProperty('--card-highlight', menuColor);
-  root.style.setProperty('--card-border', `hsl(${menuHSL.h} ${Math.max(menuHSL.s - 15, 0)}% ${Math.max(menuHSL.l - 10, 80)}%)`);
-};
+  const root = document.documentElement
+  const btn = hexToHSL(buttonColor)
+  const mnu = hexToHSL(menuColor)
 
-const saveColors = (buttonColor: string, menuColor: string) => {
-  localStorage.setItem('theme-button-color', buttonColor);
-  localStorage.setItem('theme-menu-color', menuColor);
-};
+  root.style.setProperty('--primary', `${btn.h} ${btn.s}% ${btn.l}%`)
+  root.style.setProperty('--primary-foreground', btn.l > 55 ? '0 0% 10%' : '0 0% 100%')
+  root.style.setProperty('--secondary', `${mnu.h} ${mnu.s}% ${mnu.l}%`)
+  root.style.setProperty('--secondary-foreground', mnu.l > 55 ? '222.2 47.4% 11.2%' : '0 0% 100%')
+  root.style.setProperty('--accent', `${btn.h} ${Math.max(btn.s - 20, 30)}% ${Math.min(btn.l + 45, 95)}%`)
+  root.style.setProperty('--accent-foreground', `${btn.h} ${btn.s}% ${btn.l}%`)
+  root.style.setProperty('--muted', `${mnu.h} ${Math.max(mnu.s - 10, 0)}% ${Math.min(mnu.l + 2, 98)}%`)
+  root.style.setProperty('--muted-foreground', mnu.l > 70 ? '215.4 16.3% 46.9%' : '0 0% 60%')
+  root.style.setProperty('--ring', `${btn.h} ${btn.s}% ${btn.l}%`)
+  root.style.setProperty('--border', `${mnu.h} ${Math.max(mnu.s - 20, 15)}% ${Math.min(mnu.l + 10, 95)}%`)
+  root.style.setProperty('--sidebar-bg', buttonColor)
+  root.style.setProperty('--sidebar-text', '#FFFFFF')
+  root.style.setProperty('--sidebar-active', `${btn.h} ${Math.min(btn.s + 10, 100)}% ${Math.min(btn.l + 10, 90)}%`)
+  root.style.setProperty('--sidebar-hover', `${btn.h} ${btn.s}% ${Math.min(btn.l + 5, 85)}%`)
+  root.style.setProperty('--card-highlight', menuColor)
+  root.style.setProperty('--card-border', `hsl(${mnu.h} ${Math.max(mnu.s - 15, 0)}% ${Math.max(mnu.l - 10, 80)}%)`)
+}
 
-const loadColors = () => {
-  return {
-    buttonColor: localStorage.getItem('theme-button-color') || '#222831',
-    menuColor: localStorage.getItem('theme-menu-color') || '#e8f4fa'
-  };
-};
+const persistColors = (btn: string, mnu: string) => {
+  localStorage.setItem('theme-button-color', btn)
+  localStorage.setItem('theme-menu-color', mnu)
+}
 
-// Fixed UUID cho company profile (chung cho toàn hệ thống)
-const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
-const BUCKET_NAME = 'logos';
-const LOGO_PATH = 'company_logo';
+const loadPersistedColors = () => ({
+  buttonColor: localStorage.getItem('theme-button-color') || '#222831',
+  menuColor:   localStorage.getItem('theme-menu-color')   || '#e8f4fa',
+})
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+/** Inline section card with consistent header */
+function SectionCard({
+  icon, title, description, children, className = ''
+}: {
+  icon: React.ReactNode; title: string; description?: string
+  children: React.ReactNode; className?: string
+}) {
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <span className="text-primary">{icon}</span>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </div>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function CompanySettings({ profile, handleInputChange }: CompanySettingsProps) {
-  const { t, i18n } = useTranslation();
-  const savedColors = loadColors();
-  const [buttonColor, setButtonColor] = useState(savedColors.buttonColor);
-  const [menuColor, setMenuColor] = useState(savedColors.menuColor);
-  const [isApplied, setIsApplied] = useState(false);
-  
-  // Logo states
-  const [logo, setLogo] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoError, setLogoError] = useState<string>('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSavingLogo, setIsSavingLogo] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── color state ──────────────────────────────────────────────────────────
+  const init = loadPersistedColors()
+  const [buttonColor, setButtonColor] = useState(init.buttonColor)
+  const [menuColor, setMenuColor] = useState(init.menuColor)
+  const [colorApplied, setColorApplied] = useState(false)
+  const [colorSaving, setColorSaving] = useState(false)
 
+  // ── logo state ───────────────────────────────────────────────────────────
+  const [logo, setLogo] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoError, setLogoError] = useState('')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoSaving, setLogoSaving] = useState(false)
+  const [logoSaveSuccess, setLogoSaveSuccess] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // ── on mount: apply saved colors + load logo ─────────────────────────────
   useEffect(() => {
-    loadLogoFromSupabase();
-  }, []);
+    applyThemeColors(buttonColor, menuColor)
+    loadLogo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const loadLogoFromSupabase = async () => {
+  // ── Logo helpers ─────────────────────────────────────────────────────────
+
+  const loadLogo = async () => {
     try {
       const { data, error } = await supabase
         .from('cv_company_profile')
         .select('logo_url')
         .eq('id', COMPANY_PROFILE_ID)
-        .maybeSingle();
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error("Error loading logo:", error);
-        return;
-      }
-      
+        .maybeSingle()
+      if (error && error.code !== 'PGRST116') return
       if (data?.logo_url) {
-        setLogo(data.logo_url);
-        localStorage.setItem('company-logo', data.logo_url);
+        setLogo(data.logo_url)
+        localStorage.setItem('company-logo', data.logo_url)
       } else {
-        setLogo(null);
-        localStorage.removeItem('company-logo');
+        setLogo(null)
+        localStorage.removeItem('company-logo')
       }
-    } catch (error) {
-      console.error("Error loading logo:", error);
+    } catch (err) {
+      console.error('loadLogo error:', err)
     }
-  };
+  }
 
-  const saveLogoToSupabase = async (file: File) => {
-    try {
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(LOGO_PATH, file, { upsert: true });
-      
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: publicData } = supabase.storage
-        .from(BUCKET_NAME)
-        .getPublicUrl(LOGO_PATH);
-      
-      const publicUrl = publicData.publicUrl;
-
-      // Save URL to database
-      const { data: updateData, error: updateError, count } = await supabase
+  const upsertCompanyProfile = async (payload: Record<string, any>) => {
+    // try update first
+    const { data, error } = await supabase
+      .from('cv_company_profile')
+      .update(payload)
+      .eq('id', COMPANY_PROFILE_ID)
+      .select()
+      .maybeSingle()
+    if (error) throw error
+    // if nothing was updated, insert
+    if (!data) {
+      const { error: insertErr } = await supabase
         .from('cv_company_profile')
-        .update({ logo_url: publicUrl })
-        .eq('id', COMPANY_PROFILE_ID)
-        .select()
-        .single();
-      
-      if (updateError) throw updateError;
-
-      if (count === 0 || !updateData) {
-        const companyName = profile?.company_name || 'Recruit AI';
-        const { error: insertError } = await supabase
-          .from('cv_company_profile')
-          .insert({
-            id: COMPANY_PROFILE_ID,
-            company_name: companyName,
-            logo_url: publicUrl
-          });
-        
-        if (insertError) throw insertError;
-      }
-      
-      localStorage.setItem('company-logo', publicUrl);
-      window.dispatchEvent(new Event('logo-updated'));
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'company-logo',
-        newValue: publicUrl,
-        url: window.location.href
-      }));
-      
-      return publicUrl;
-    } catch (error) {
-      console.error("Error saving logo:", error);
-      return null;
+        .insert({ id: COMPANY_PROFILE_ID, company_name: profile?.company_name || 'Recruit AI', ...payload })
+      if (insertErr) throw insertErr
     }
-  };
+  }
 
-  const removeLogoFromSupabase = async () => {
+  const broadcastLogoChange = (url: string | null) => {
+    if (url) localStorage.setItem('company-logo', url)
+    else localStorage.removeItem('company-logo')
+    window.dispatchEvent(new Event('logo-updated'))
+    window.dispatchEvent(new StorageEvent('storage', { key: 'company-logo', newValue: url, url: window.location.href }))
+  }
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']
+    if (!validTypes.includes(file.type)) {
+      setLogoError('Vui lòng chọn file ảnh hợp lệ (PNG, JPG, SVG)')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Kích thước file không được vượt quá 2MB')
+      return
+    }
+
+    setLogoError('')
+    setLogoUploading(true)
+    setLogoFile(file)
+
+    // Local preview first
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      setLogo(reader.result as string)
+      setLogoUploading(false)
+      setLogoSaving(true)
+      try {
+        // Upload to storage
+        const { error: uploadErr } = await supabase.storage
+          .from(BUCKET_NAME).upload(LOGO_PATH, file, { upsert: true })
+        if (uploadErr) throw uploadErr
+
+        const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(LOGO_PATH)
+        await upsertCompanyProfile({ logo_url: publicUrl })
+        setLogo(publicUrl)
+        broadcastLogoChange(publicUrl)
+        setLogoSaveSuccess(true)
+        setTimeout(() => setLogoSaveSuccess(false), 3000)
+      } catch (err: any) {
+        setLogoError('Không thể lưu logo vào hệ thống. Vui lòng thử lại.')
+        console.error('logo save error:', err)
+      } finally {
+        setLogoSaving(false)
+      }
+    }
+    reader.onerror = () => {
+      setLogoError('Có lỗi xảy ra khi đọc file ảnh')
+      setLogoUploading(false)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleLogoRemove = async () => {
+    setLogoSaving(true)
     try {
-      // Remove from storage
-      const { error: storageError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([LOGO_PATH]);
-      
-      if (storageError) console.warn("Error removing logo from storage:", storageError);
-
-      // Update database
-      const { data: updateData, error: updateError, count } = await supabase
-        .from('cv_company_profile')
-        .update({ logo_url: null })
-        .eq('id', COMPANY_PROFILE_ID)
-        .select()
-        .single();
-      
-      if (updateError) throw updateError;
-
-      if (count === 0 || !updateData) {
-        const companyName = profile?.company_name || 'Recruit AI';
-        const { error: insertError } = await supabase
-          .from('cv_company_profile')
-          .insert({
-            id: COMPANY_PROFILE_ID,
-            company_name: companyName,
-            logo_url: null
-          });
-        
-        if (insertError) throw insertError;
-      }
-      
-      localStorage.removeItem('company-logo');
-      window.dispatchEvent(new Event('logo-updated'));
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'company-logo',
-        newValue: null,
-        url: window.location.href
-      }));
-      
-      return true;
-    } catch (error) {
-      console.error("Error removing logo:", error);
-      return false;
+      await supabase.storage.from(BUCKET_NAME).remove([LOGO_PATH])
+      await upsertCompanyProfile({ logo_url: null })
+      setLogo(null)
+      setLogoFile(null)
+      setLogoError('')
+      broadcastLogoChange(null)
+      if (fileRef.current) fileRef.current.value = ''
+    } catch (err: any) {
+      setLogoError('Không thể xóa logo. Vui lòng thử lại.')
+      console.error('logo remove error:', err)
+    } finally {
+      setLogoSaving(false)
     }
-  };
+  }
 
-  useEffect(() => {
-    applyThemeColors(buttonColor, menuColor);
-  }, []);
+  // ── Color helpers ────────────────────────────────────────────────────────
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    localStorage.setItem('language', lng);
-  };
-
-  const handleApplyColors = () => {
-    applyThemeColors(buttonColor, menuColor);
-    saveColors(buttonColor, menuColor);
-    setIsApplied(true);
-    setTimeout(() => setIsApplied(false), 2500);
-  };
+  const handleApplyColors = useCallback(() => {
+    setColorSaving(true)
+    applyThemeColors(buttonColor, menuColor)
+    persistColors(buttonColor, menuColor)
+    setTimeout(() => {
+      setColorSaving(false)
+      setColorApplied(true)
+      setTimeout(() => setColorApplied(false), 2500)
+    }, 300)
+  }, [buttonColor, menuColor])
 
   const handleResetColors = () => {
-    const defaultButtonColor = '#222831';
-    const defaultMenuColor = '#e8f4fa';
-    setButtonColor(defaultButtonColor);
-    setMenuColor(defaultMenuColor); 
-    applyThemeColors(defaultButtonColor, defaultMenuColor);
-    saveColors(defaultButtonColor, defaultMenuColor);
-  };
+    const btn = '#222831', mnu = '#e8f4fa'
+    setButtonColor(btn); setMenuColor(mnu)
+    applyThemeColors(btn, mnu); persistColors(btn, mnu)
+  }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const btnHSL = hexToHSL(buttonColor)
+  const mnuHSL = hexToHSL(menuColor)
 
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
-    if (!validTypes.includes(file.type)) {
-      setLogoError(
-        i18n.language === 'vi' 
-          ? 'Vui lòng chọn file ảnh hợp lệ (PNG, JPG, SVG)' 
-          : 'Please select a valid image file (PNG, JPG, SVG)'
-      );
-      return;
-    }
-
-    const maxSize = 2 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setLogoError(
-        i18n.language === 'vi' 
-          ? 'Kích thước file không được vượt quá 2MB' 
-          : 'File size must not exceed 2MB'
-      );
-      return;
-    }
-
-    setLogoError('');
-    setIsUploading(true);
-    setLogoFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const result = reader.result as string;
-      setLogo(result); // for local preview
-      setIsUploading(false);
-      
-      setIsSavingLogo(true);
-      const publicUrl = await saveLogoToSupabase(file);
-      setIsSavingLogo(false);
-      
-      if (publicUrl) {
-        setLogo(publicUrl);
-      } else {
-        setLogoError(
-          i18n.language === 'vi' 
-            ? 'Không thể lưu logo vào hệ thống. Vui lòng thử lại.' 
-            : 'Failed to save logo. Please try again.'
-        );
-      }
-    };
-    reader.onerror = () => {
-      setLogoError(
-        i18n.language === 'vi' 
-          ? 'Có lỗi xảy ra khi tải ảnh' 
-          : 'Error occurred while uploading image'
-      );
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveLogo = async () => {
-    setIsSavingLogo(true);
-    const success = await removeLogoFromSupabase();
-    setIsSavingLogo(false);
-    
-    if (success) {
-      setLogo(null);
-      setLogoFile(null);
-      setLogoError('');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    } else {
-      setLogoError(
-        i18n.language === 'vi' 
-          ? 'Không thể xóa logo. Vui lòng thử lại.' 
-          : 'Failed to remove logo. Please try again.'
-      );
-    }
-  };
-
-  const handleLogoButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const colorPresets = [
-    { name: 'Default', button: '#222831', menu: '#e8f4fa' },
-    { name: 'Blue', button: '#2563eb', menu: '#dbeafe' },
-    { name: 'Green', button: '#16a34a', menu: '#dcfce7' },
-    { name: 'Purple', button: '#9333ea', menu: '#f3e8ff' },
-    { name: 'Orange', button: '#ea580c', menu: '#ffedd5' },
-    { name: 'Pink', button: '#db2777', menu: '#fce7f3' },
-    { name: 'Indigo', button: '#4f46e5', menu: '#e0e7ff' },
-    { name: 'Teal', button: '#0d9488', menu: '#ccfbf1' },
-    { name: 'Red', button: '#dc2626', menu: '#fee2e2' },
-    { name: 'Slate', button: '#475569', menu: '#f1f5f9' },
-    { name: 'Emerald', button: '#059669', menu: '#d1fae5' },
-    { name: 'Amber', button: '#d97706', menu: '#fef3c7' }
-  ];
+  // ── render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Thông tin công ty */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
-            <CardTitle>{t('settings.company.title')}</CardTitle>
-          </div>
-          <CardDescription>
-            {t('settings.company.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-6">
+
+      {/* ── 1. Thông tin công ty ── */}
+      <SectionCard
+        icon={<Building2 className="w-5 h-5" />}
+        title="Thông tin công ty"
+        description="Cập nhật tên, website và thông tin cơ bản của công ty"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="company_name">
-              {t('settings.company.name')} <span className="text-red-500">*</span>
+              Tên công ty <span className="text-red-500">*</span>
             </Label>
-            <Input 
-              id="company_name" 
-              value={profile.company_name || ''} 
+            <Input
+              id="company_name"
+              value={profile.company_name || ''}
               onChange={handleInputChange}
-              placeholder={t('settings.company.name')}
+              placeholder="Tên công ty của bạn"
               className="font-medium"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="website">
-              <Globe className="w-4 h-4 inline mr-1" />
-              {t('settings.company.website')}
+            <Label htmlFor="website" className="flex items-center gap-1.5">
+              <Globe className="w-4 h-4" />Website
             </Label>
-            <Input 
-              id="website" 
-              type="url" 
-              value={profile.website || ''} 
+            <Input
+              id="website"
+              type="url"
+              value={profile.website || ''}
               onChange={handleInputChange}
               placeholder="https://yourcompany.com"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </SectionCard>
 
-      {/* Ngôn ngữ hệ thống */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Languages className="w-5 h-5 text-primary" />
-            <CardTitle>{t('settings.language.title')}</CardTitle>
-          </div>
-          <CardDescription>{t('settings.language.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="w-full md:w-1/2">
-            <Select 
-              value={i18n.language} 
-              onValueChange={changeLanguage}
-            >
-              <SelectTrigger id="language" className="bg-white">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{i18n.language === 'vi' ? '🇻🇳' : '🇬🇧'}</span>
-                    <span>{i18n.language === 'vi' ? t('settings.language.vietnamese') : t('settings.language.english')}</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
-                <SelectItem value="vi" className="cursor-pointer hover:bg-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🇻🇳</span>
-                    <span>Tiếng Việt</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="en" className="cursor-pointer hover:bg-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🇬🇧</span>
-                    <span>English</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-2">
-              {i18n.language === 'vi' 
-                ? '🇻🇳 Ngôn ngữ hiện tại: Tiếng Việt' 
-                : '🇬🇧 Current language: English'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── 2. Mô tả công ty ── */}
+      <SectionCard
+        icon={<Info className="w-5 h-5" />}
+        title="Mô tả công ty"
+        description="Giới thiệu ngắn gọn về công ty của bạn"
+      >
+        <Textarea
+          id="company_description"
+          value={profile.company_description || ''}
+          onChange={handleInputChange}
+          className="min-h-[120px] resize-y"
+          placeholder="Mô tả về lĩnh vực hoạt động, văn hóa công ty, sứ mệnh..."
+        />
+        <p className="text-xs text-muted-foreground mt-1.5">
+          {(profile.company_description || '').length} ký tự
+        </p>
+      </SectionCard>
 
-      {/* Logo công ty - CHUNG CHO TOÀN HỆ THỐNG */}
-      <Card className="border-2 border-blue-200 bg-blue-50/30">
+      {/* ── 3. Địa chỉ & liên hệ ── */}
+      <SectionCard
+        icon={<MapPin className="w-5 h-5" />}
+        title="Địa chỉ và liên hệ"
+        description="Thông tin liên lạc và địa chỉ văn phòng"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="company_address">Địa chỉ</Label>
+            <Input
+              id="company_address"
+              value={profile.company_address || ''}
+              onChange={handleInputChange}
+              placeholder="Số nhà, đường, phường, quận, thành phố"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contact_email" className="flex items-center gap-1.5">
+              <Mail className="w-4 h-4" />Email liên hệ
+            </Label>
+            <Input
+              id="contact_email"
+              type="email"
+              value={profile.contact_email || ''}
+              onChange={handleInputChange}
+              placeholder="contact@company.com"
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── 4. Logo công ty ── */}
+      <Card className="border-2 border-blue-200 bg-blue-50/20">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-primary" />
-                <CardTitle>{t('settings.logo.title')}</CardTitle>
+                <CardTitle className="text-base">Logo công ty</CardTitle>
               </div>
               <CardDescription className="mt-1">
-                {i18n.language === 'vi' 
-                  ? '🌐 Logo chung cho toàn hệ thống - Tất cả người dùng sẽ thấy logo này' 
-                  : '🌐 System-wide logo - All users will see this logo'}
+                🌐 Logo chung cho toàn hệ thống — tất cả người dùng sẽ thấy logo này
               </CardDescription>
             </div>
             {logo && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRemoveLogo}
-                disabled={isSavingLogo}
-                className="flex items-center gap-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-              >
-                <X className="w-4 h-4" />
-                {i18n.language === 'vi' ? 'Xóa logo' : 'Remove'}
+              <Button variant="outline" size="sm" onClick={handleLogoRemove} disabled={logoSaving}
+                className="flex-shrink-0 hover:bg-red-50 hover:text-red-600 hover:border-red-300">
+                <X className="w-4 h-4 mr-1.5" />Xóa logo
               </Button>
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-            onChange={handleLogoUpload}
-            className="hidden"
-            disabled={isUploading || isSavingLogo}
-          />
-          
+        <CardContent className="space-y-4">
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+            onChange={handleLogoSelect} className="hidden" disabled={logoUploading || logoSaving} />
+
           {logo ? (
             <div className="space-y-4">
-              <div className="flex flex-col md:flex-row items-center gap-6 p-6 rounded-lg border-2 bg-gradient-to-br from-muted/30 to-background">
-                <div className="flex-shrink-0 w-48 h-48 rounded-lg border-2 border-dashed border-primary/30 bg-white p-4 flex items-center justify-center shadow-md">
-                  <img 
-                    src={logo} 
-                    alt="Company Logo" 
-                    className="max-w-full max-h-full object-contain"
-                  />
+              {/* Main preview */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-xl border-2 bg-white shadow-sm">
+                <div className="w-40 h-40 rounded-xl border-2 border-dashed border-primary/30 bg-gray-50 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <img src={logo} alt="Logo công ty" className="max-w-full max-h-full object-contain p-2" />
                 </div>
-                
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 space-y-3 min-w-0">
                   <div>
-                    <h4 className="font-semibold text-lg mb-1">
-                      {i18n.language === 'vi' ? 'Logo hiện tại' : 'Current Logo'}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {logoFile?.name || (i18n.language === 'vi' ? 'Logo đã lưu trong hệ thống' : 'Logo saved in system')}
+                    <h4 className="font-semibold text-gray-900">Logo hiện tại</h4>
+                    <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                      {logoFile?.name || 'Logo đã lưu trong hệ thống'}
                     </p>
                   </div>
-                  
                   {logoFile && (
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <p>
-                        <span className="font-medium">{i18n.language === 'vi' ? 'Kích thước:' : 'Size:'}</span>{' '}
-                        {(logoFile.size / 1024).toFixed(2)} KB
-                      </p>
-                      <p>
-                        <span className="font-medium">{i18n.language === 'vi' ? 'Định dạng:' : 'Format:'}</span>{' '}
-                        {logoFile.type.split('/')[1].toUpperCase()}
-                      </p>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p><span className="font-medium">Kích thước:</span> {(logoFile.size / 1024).toFixed(1)} KB</p>
+                      <p><span className="font-medium">Định dạng:</span> {logoFile.type.split('/')[1].toUpperCase()}</p>
                     </div>
                   )}
-                  
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={handleLogoButtonClick}
-                      disabled={isUploading || isSavingLogo}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      {i18n.language === 'vi' ? 'Thay đổi logo' : 'Change Logo'}
+                  {logoSaveSuccess && (
+                    <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Logo đã được lưu thành công!</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}
+                      disabled={logoUploading || logoSaving}>
+                      <Upload className="w-4 h-4 mr-1.5" />Thay đổi logo
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleRemoveLogo}
-                      disabled={isSavingLogo}
-                      className="flex items-center gap-2 hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <X className="w-4 h-4" />
-                      {i18n.language === 'vi' ? 'Xóa' : 'Remove'}
+                    <Button variant="outline" size="sm" onClick={handleLogoRemove} disabled={logoSaving}
+                      className="hover:bg-red-50 hover:text-red-600 hover:border-red-300">
+                      <X className="w-4 h-4 mr-1.5" />Xóa
                     </Button>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-                <p className="text-sm font-medium">
-                  {i18n.language === 'vi' ? 'Xem trước các kích thước:' : 'Preview sizes:'}
-                </p>
-                <div className="flex flex-wrap items-center gap-6">
-                  <div className="space-y-2 text-center">
-                    <div className="w-16 h-16 border rounded bg-white p-2 flex items-center justify-center">
-                      <img src={logo} alt="Logo small" className="max-w-full max-h-full object-contain" />
+              {/* Size previews */}
+              <div className="p-4 bg-gray-50 rounded-xl border">
+                <p className="text-sm font-medium mb-3 text-gray-700">Xem trước các kích thước:</p>
+                <div className="flex flex-wrap items-end gap-6">
+                  {[
+                    { label: '64×64', size: 'w-16 h-16', padding: 'p-1.5' },
+                    { label: '96×96', size: 'w-24 h-24', padding: 'p-2' },
+                    { label: '128×128', size: 'w-32 h-32', padding: 'p-3' },
+                  ].map(({ label, size, padding }) => (
+                    <div key={label} className="text-center space-y-1.5">
+                      <div className={`${size} border-2 border-gray-200 rounded-lg bg-white ${padding} flex items-center justify-center shadow-sm`}>
+                        <img src={logo} alt={label} className="max-w-full max-h-full object-contain" />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{label}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">64x64</p>
-                  </div>
-                  <div className="space-y-2 text-center">
-                    <div className="w-24 h-24 border rounded bg-white p-3 flex items-center justify-center">
-                      <img src={logo} alt="Logo medium" className="max-w-full max-h-full object-contain" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">96x96</p>
-                  </div>
-                  <div className="space-y-2 text-center">
-                    <div className="w-32 h-32 border rounded bg-white p-4 flex items-center justify-center">
-                      <img src={logo} alt="Logo large" className="max-w-full max-h-full object-contain" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">128x128</p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
           ) : (
-            <div 
-              onClick={handleLogoButtonClick}
-              className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group"
+            // Upload zone
+            <div
+              onClick={() => !(logoUploading || logoSaving) && fileRef.current?.click()}
+              className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 text-center transition-all
+                ${logoUploading || logoSaving
+                  ? 'border-blue-300 bg-blue-50/50 cursor-wait'
+                  : 'border-gray-300 hover:border-primary/50 hover:bg-primary/5 cursor-pointer group'}`}
             >
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                 <Upload className="h-10 w-10 text-primary group-hover:scale-110 transition-transform" />
               </div>
-              <h4 className="font-semibold mb-2">
-                {i18n.language === 'vi' ? 'Tải lên logo công ty' : 'Upload Company Logo'}
-              </h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                {i18n.language === 'vi' 
-                  ? 'Nhấp để chọn hoặc kéo thả file vào đây' 
-                  : 'Click to select or drag and drop file here'}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" className="pointer-events-none">
-                  {t('settings.logo.change')}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-4">
-                {t('settings.logo.format')}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {i18n.language === 'vi' ? 'Kích thước tối đa: 2MB' : 'Maximum size: 2MB'}
-              </p>
+              <h4 className="font-semibold text-gray-900 mb-1">Tải lên logo công ty</h4>
+              <p className="text-sm text-muted-foreground mb-4">Nhấp để chọn hoặc kéo thả file vào đây</p>
+              <Button variant="outline" className="pointer-events-none" size="sm">Chọn file</Button>
+              <p className="text-xs text-muted-foreground mt-3">PNG, JPG, SVG — tối đa 2MB</p>
             </div>
           )}
 
+          {/* Status indicators */}
+          {(logoUploading || logoSaving) && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              {logoUploading ? 'Đang đọc file...' : 'Đang lưu vào hệ thống...'}
+            </div>
+          )}
           {logoError && (
-            <div className="mt-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start gap-2">
-              <X className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-destructive">{logoError}</p>
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />{logoError}
             </div>
           )}
 
-          {(isUploading || isSavingLogo) && (
-            <div className="mt-3 p-3 bg-primary/10 border border-primary/30 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-primary font-medium">
-                  {isUploading 
-                    ? (i18n.language === 'vi' ? 'Đang tải lên...' : 'Uploading...')
-                    : (i18n.language === 'vi' ? 'Đang lưu vào hệ thống...' : 'Saving to system...')
-                  }
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 text-xs space-y-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="font-semibold text-blue-900 flex items-center gap-2">
-              <span>💡</span>
-              {i18n.language === 'vi' ? 'Hướng dẫn:' : 'Guidelines:'}
+          {/* Guidelines */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs space-y-2">
+            <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+              <span>💡</span> Hướng dẫn:
             </p>
-            <ul className="space-y-1 ml-4 list-disc text-blue-800">
-              <li>{i18n.language === 'vi' ? 'Logo nên có nền trong suốt (PNG)' : 'Logo should have transparent background (PNG)'}</li>
-              <li>{i18n.language === 'vi' ? 'Tỉ lệ khuyến nghị: vuông (1:1)' : 'Recommended ratio: square (1:1)'}</li>
-              <li>{i18n.language === 'vi' ? 'Kích thước đề xuất: 512x512px' : 'Recommended size: 512x512px'}</li>
-              <li className="font-semibold text-green-700">
-                {i18n.language === 'vi' 
-                  ? '✅ Logo sẽ đồng bộ cho TẤT CẢ người dùng trong hệ thống' 
-                  : '✅ Logo will sync for ALL users in the system'}
-              </li>
-              <li className="font-semibold text-orange-700">
-                {i18n.language === 'vi' 
-                  ? '⚠️ Mọi thay đổi sẽ ảnh hưởng đến toàn bộ hệ thống' 
-                  : '⚠️ Any changes will affect the entire system'}
-              </li>
+            <ul className="ml-4 list-disc space-y-1 text-blue-800">
+              <li>Logo nên có nền trong suốt (PNG)</li>
+              <li>Tỉ lệ khuyến nghị: vuông (1:1), kích thước 512×512px</li>
+              <li className="font-semibold text-green-700">✅ Logo sẽ đồng bộ cho <strong>TẤT CẢ</strong> người dùng trong hệ thống</li>
+              <li className="font-semibold text-orange-700">⚠️ Mọi thay đổi sẽ ảnh hưởng đến toàn bộ hệ thống</li>
             </ul>
           </div>
         </CardContent>
       </Card>
 
-      {/* Mô tả công ty */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.company.description_label')}</CardTitle>
-          <CardDescription>{t('settings.company.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea 
-            id="company_description" 
-            value={profile.company_description || ''} 
-            onChange={handleInputChange} 
-            className="min-h-[100px]" 
-            placeholder={t('settings.company.description_placeholder')}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Địa chỉ và liên hệ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {i18n.language === 'vi' ? 'Địa chỉ và liên hệ' : 'Address and Contact'}
-          </CardTitle>
-          <CardDescription>
-            {i18n.language === 'vi' 
-              ? 'Thông tin liên hệ và địa chỉ văn phòng' 
-              : 'Contact information and office address'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="company_address">{t('settings.company.address')}</Label>
-            <Input 
-              id="company_address" 
-              value={profile.company_address || ''} 
-              onChange={handleInputChange} 
-              placeholder={i18n.language === 'vi' 
-                ? 'Số nhà, đường, phường, quận, thành phố' 
-                : 'Street, district, city'}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="contact_email">{t('settings.company.email')}</Label>
-            <Input 
-              id="contact_email" 
-              type="email" 
-              value={profile.contact_email || ''} 
-              onChange={handleInputChange}
-              placeholder="contact@company.com"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Màu sắc giao diện */}
+      {/* ── 5. Màu sắc giao diện ── */}
       <Card className="border-2 border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-          <div className="flex items-center justify-between">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent rounded-t-xl">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <Palette className="w-5 h-5 text-primary" />
-                <CardTitle>{t('settings.colors.title')}</CardTitle>
+                <CardTitle className="text-base">Màu sắc giao diện</CardTitle>
               </div>
-              <CardDescription className="mt-2">
-                {t('settings.colors.description')}
+              <CardDescription className="mt-1">
+                Tuỳ chỉnh màu sắc của sidebar, nút bấm và các thành phần trong hệ thống
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleResetColors}
-              className="flex items-center gap-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {i18n.language === 'vi' ? 'Đặt lại' : 'Reset'}
+            <Button variant="outline" size="sm" onClick={handleResetColors}
+              className="flex-shrink-0 hover:bg-red-50 hover:text-red-600 hover:border-red-300">
+              <RefreshCw className="w-4 h-4 mr-1.5" />Đặt lại
             </Button>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-6 pt-6">
-          {/* Color Pickers */}
+
+          {/* Color pickers */}
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary"></div>
-                {t('settings.colors.button')}
-              </Label>
-              <div className="flex items-center gap-3">
-                <div className="relative group">
-                  <Input 
-                    type="color" 
-                    value={buttonColor} 
-                    onChange={(e) => setButtonColor(e.target.value)} 
-                    className="h-14 w-14 p-1 cursor-pointer border-2 border-gray-300 hover:border-primary transition-all"
-                  />
-                  <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Palette className="w-3 h-3 text-primary" />
+            {[
+              {
+                id: 'btn', label: 'Màu chính (nút bấm, sidebar)',
+                desc: 'Áp dụng cho nút bấm, thanh sidebar và các thành phần chính',
+                value: buttonColor, setter: setButtonColor, placeholder: '#222831'
+              },
+              {
+                id: 'mnu', label: 'Màu phụ (nền, card)',
+                desc: 'Áp dụng cho nền menu, thẻ card và các khu vực phụ',
+                value: menuColor, setter: setMenuColor, placeholder: '#e8f4fa'
+              },
+            ].map(({ id, label, desc, value, setter, placeholder }) => (
+              <div key={id} className="space-y-2.5">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+                    style={{ backgroundColor: value }} />
+                  {label}
+                </Label>
+                <div className="flex items-center gap-2">
+                  {/* Color swatch */}
+                  <div className="relative flex-shrink-0">
+                    <input type="color" value={value}
+                      onChange={e => setter(e.target.value)}
+                      className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer p-0.5 hover:border-primary transition-colors"
+                      style={{ padding: '3px' }}
+                    />
                   </div>
-                </div>
-                <Input 
-                  value={buttonColor.toUpperCase()} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^#[0-9A-F]{0,6}$/i.test(val) || val === '') {
-                      setButtonColor(val);
-                    }
-                  }}
-                  placeholder="#2563EB"
-                  className="font-mono text-sm uppercase font-semibold"
-                  maxLength={7}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {i18n.language === 'vi' 
-                  ? '🎯 Màu cho nút bấm và các thành phần chính' 
-                  : '🎯 Color for buttons and primary elements'}
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-secondary"></div>
-                {t('settings.colors.menu')}
-              </Label>
-              <div className="flex items-center gap-3">
-                <div className="relative group">
-                  <Input 
-                    type="color" 
-                    value={menuColor} 
-                    onChange={(e) => setMenuColor(e.target.value)} 
-                    className="h-14 w-14 p-1 cursor-pointer border-2 border-gray-300 hover:border-primary transition-all"
+                  {/* HEX input */}
+                  <Input
+                    value={value.toUpperCase()}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(v) || v === '') setter(v)
+                    }}
+                    placeholder={placeholder}
+                    className="font-mono text-sm uppercase font-semibold"
+                    maxLength={7}
                   />
-                  <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Palette className="w-3 h-3 text-secondary-foreground" />
-                  </div>
                 </div>
-                <Input 
-                  value={menuColor.toUpperCase()} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^#[0-9A-F]{0,6}$/i.test(val) || val === '') {
-                      setMenuColor(val);
-                    }
-                  }}
-                  placeholder="#E0F2FE"
-                  className="font-mono text-sm uppercase font-semibold"
-                  maxLength={7}
-                />
+                <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {i18n.language === 'vi' 
-                  ? '🎨 Màu cho nền menu, card và các khu vực phụ' 
-                  : '🎨 Color for menu, card backgrounds and secondary areas'}
-              </p>
-            </div>
+            ))}
           </div>
 
-          {/* Preset Colors */}
+          {/* Preset palette */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              {i18n.language === 'vi' ? 'Bảng màu có sẵn' : 'Color Presets'}
+              <Palette className="w-4 h-4" />Bộ màu có sẵn
             </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {colorPresets.map((preset) => {
-                const isActive = buttonColor.toLowerCase() === preset.button.toLowerCase() && 
-                                menuColor.toLowerCase() === preset.menu.toLowerCase();
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+              {COLOR_PRESETS.map(preset => {
+                const active =
+                  buttonColor.toLowerCase() === preset.button.toLowerCase() &&
+                  menuColor.toLowerCase() === preset.menu.toLowerCase()
                 return (
                   <button
                     key={preset.name}
-                    onClick={() => {
-                      setButtonColor(preset.button);
-                      setMenuColor(preset.menu);
-                    }}
-                    className={`group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:shadow-lg hover:scale-105 ${
-                      isActive ? 'border-primary bg-primary/5 shadow-md' : 'border-gray-200 hover:border-primary/50'
-                    }`}
+                    type="button"
+                    onClick={() => { setButtonColor(preset.button); setMenuColor(preset.menu) }}
+                    className={`relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all hover:shadow-md hover:-translate-y-0.5
+                      ${active ? 'border-primary bg-primary/5 shadow-md' : 'border-gray-200 hover:border-primary/40'}`}
                   >
-                    <div className="flex gap-1.5">
-                      <div 
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-md"
-                        style={{ backgroundColor: preset.button }}
-                      />
-                      <div 
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-md"
-                        style={{ backgroundColor: preset.menu }}
-                      />
+                    <div className="flex gap-1">
+                      <div className="w-7 h-7 rounded-full border-2 border-white shadow"
+                        style={{ backgroundColor: preset.button }} />
+                      <div className="w-7 h-7 rounded-full border-2 border-white shadow"
+                        style={{ backgroundColor: preset.menu }} />
                     </div>
-                    <span className={`text-xs font-medium ${isActive ? 'text-primary font-semibold' : ''}`}>
+                    <span className={`text-[10px] font-medium leading-tight text-center ${active ? 'text-primary' : 'text-gray-600'}`}>
                       {preset.name}
                     </span>
-                    {isActive && (
-                      <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1 shadow-lg animate-slide-in">
-                        <Check className="w-3 h-3" />
+                    {active && (
+                      <div className="absolute -top-1.5 -right-1.5 bg-primary text-white rounded-full p-0.5 shadow">
+                        <Check className="w-2.5 h-2.5" />
                       </div>
                     )}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
 
-          {/* Preview Section */}
+          {/* Live preview */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold flex items-center gap-2">
-              👁️ {t('settings.colors.preview')}
-              {isApplied && (
-                <span className="text-xs text-green-600 font-normal flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-full animate-slide-in">
-                  <Check className="w-3 h-3" />
-                  {i18n.language === 'vi' ? 'Đã áp dụng!' : 'Applied!'}
+              👁️ Xem trước giao diện
+              {colorApplied && (
+                <span className="text-xs font-normal text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Check className="w-3 h-3" />Đã áp dụng!
                 </span>
               )}
             </Label>
-            
-            <Card className="bg-gradient-to-br from-muted/30 via-muted/50 to-muted/30 border-2 border-dashed">
-              <CardContent className="p-6 space-y-5">
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {i18n.language === 'vi' ? 'Các kiểu nút:' : 'Button variants:'}
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <Button className="bg-primary text-primary-foreground hover:opacity-90">
-                      Primary Button
-                    </Button>
-                    <Button variant="secondary" className="bg-secondary text-secondary-foreground">
-                      Secondary Button
-                    </Button>
-                    <Button variant="outline">
-                      Outline Button
-                    </Button>
-                    <Button variant="ghost">
-                      Ghost Button
-                    </Button>
+
+            <Card className="border-2 border-dashed bg-gradient-to-br from-gray-50 to-white">
+              <CardContent className="p-5 space-y-5">
+                {/* Button variants */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2.5">Các kiểu nút:</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow-md"
+                      style={{ backgroundColor: buttonColor, color: btnHSL.l > 55 ? '#111' : '#fff' }}>
+                      Nút chính
+                    </button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium border-2 shadow-sm"
+                      style={{ backgroundColor: menuColor, borderColor: menuColor, color: mnuHSL.l > 55 ? '#333' : '#fff' }}>
+                      Nút phụ
+                    </button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+                      Viền
+                    </button>
+                    <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">
+                      Ghost
+                    </button>
                   </div>
                 </div>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div 
-                    className="p-4 rounded-lg border-2 transition-all shadow-sm"
-                    style={{ 
-                      backgroundColor: buttonColor,
-                      borderColor: buttonColor
-                    }}
-                  >
-                    <p 
-                      className="text-sm font-medium"
-                      style={{ color: hexToHSL(buttonColor).l > 50 ? '#000' : '#fff' }}
-                    >
-                      ✨ Primary Card
+
+                {/* Color cards */}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl shadow-sm" style={{ backgroundColor: buttonColor }}>
+                    <p className="text-sm font-semibold" style={{ color: btnHSL.l > 55 ? '#111' : '#fff' }}>
+                      ✨ Thành phần chính
+                    </p>
+                    <p className="text-xs mt-1 opacity-80" style={{ color: btnHSL.l > 55 ? '#444' : '#ffffffcc' }}>
+                      Sidebar, header, badges
                     </p>
                   </div>
-                  <div 
-                    className="p-4 rounded-lg border-2 transition-all shadow-sm"
-                    style={{ 
-                      backgroundColor: menuColor,
-                      borderColor: menuColor
-                    }}
-                  >
-                    <p 
-                      className="text-sm font-medium"
-                      style={{ color: hexToHSL(menuColor).l > 50 ? '#000' : '#fff' }}
-                    >
-                      🎨 Secondary Card
+                  <div className="p-4 rounded-xl border shadow-sm" style={{ backgroundColor: menuColor }}>
+                    <p className="text-sm font-semibold" style={{ color: mnuHSL.l > 55 ? '#111' : '#fff' }}>
+                      🎨 Thành phần phụ
+                    </p>
+                    <p className="text-xs mt-1 opacity-80" style={{ color: mnuHSL.l > 55 ? '#444' : '#ffffffcc' }}>
+                      Card, nền, container
                     </p>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-3 pt-2 border-t border-dashed">
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded border" style={{ backgroundColor: buttonColor }}></div>
-                    <span className="font-mono">{buttonColor.toUpperCase()}</span>
-                    <span className="text-muted-foreground">
-                      (HSL: {hexToHSL(buttonColor).h}° {hexToHSL(buttonColor).s}% {hexToHSL(buttonColor).l}%)
-                    </span>
+                {/* Sidebar preview */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Sidebar:</p>
+                  <div className="flex rounded-xl overflow-hidden border shadow-sm w-48">
+                    <div className="w-24 p-2.5 space-y-1" style={{ backgroundColor: buttonColor }}>
+                      {['Dashboard', 'Ứng viên', 'Phỏng vấn'].map((item, i) => (
+                        <div key={item} className={`px-2 py-1 rounded text-[10px] font-medium transition-colors
+                          ${i === 0 ? 'text-white' : 'text-white/70 hover:text-white'}`}
+                          style={i === 0 ? {
+                            backgroundColor: `hsl(${btnHSL.h} ${Math.min(btnHSL.s + 10, 100)}% ${Math.min(btnHSL.l + 12, 90)}%)`
+                          } : {}}>
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex-1 p-2.5" style={{ backgroundColor: menuColor }}>
+                      <div className="text-[10px] font-medium mb-1.5"
+                        style={{ color: mnuHSL.l > 55 ? '#333' : '#fff' }}>Nội dung</div>
+                      <div className="space-y-1">
+                        {[70, 50, 85].map((w, i) => (
+                          <div key={i} className="h-1.5 rounded-full bg-gray-300/60" style={{ width: `${w}%` }} />
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded border" style={{ backgroundColor: menuColor }}></div>
-                    <span className="font-mono">{menuColor.toUpperCase()}</span>
-                    <span className="text-muted-foreground">
-                      (HSL: {hexToHSL(menuColor).h}° {hexToHSL(menuColor).s}% {hexToHSL(menuColor).l}%)
-                    </span>
-                  </div>
+                </div>
+
+                {/* HEX values */}
+                <div className="flex flex-wrap gap-4 pt-2 border-t border-dashed text-xs text-muted-foreground">
+                  {[
+                    { label: 'Chính', color: buttonColor, hsl: btnHSL },
+                    { label: 'Phụ',   color: menuColor,   hsl: mnuHSL },
+                  ].map(({ label, color, hsl }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <div className="w-3.5 h-3.5 rounded border" style={{ backgroundColor: color }} />
+                      <span className="font-semibold">{label}:</span>
+                      <span className="font-mono">{color.toUpperCase()}</span>
+                      <span className="text-[10px] opacity-70">
+                        (HSL: {hsl.h}° {hsl.s}% {hsl.l}%)
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Apply Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2">
+          {/* Apply + tips */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
+            {/* Tips */}
             <div className="text-xs text-muted-foreground space-y-1">
-              <p className="font-medium">
-                💡 {i18n.language === 'vi' ? 'Lưu ý:' : 'Note:'}
-              </p>
-              <ul className="space-y-1 ml-4 list-disc">
-                <li>
-                  {i18n.language === 'vi' 
-                    ? 'Chọn màu hoặc chọn từ bảng màu có sẵn' 
-                    : 'Pick colors or choose from presets'}
-                </li>
-                <li>
-                  {i18n.language === 'vi' 
-                    ? 'Nhấn nút "Áp dụng" để lưu thay đổi' 
-                    : 'Click "Apply" button to save changes'}
-                </li>
+              <p className="font-semibold flex items-center gap-1">💡 Hướng dẫn nhanh:</p>
+              <ul className="ml-4 list-disc space-y-0.5">
+                <li>Chọn màu bằng bảng màu hoặc nhập mã HEX</li>
+                <li>Dùng bộ màu có sẵn để chọn nhanh</li>
+                <li>Nhấn <strong>"Áp dụng"</strong> để lưu thay đổi</li>
               </ul>
             </div>
+
+            {/* Apply button */}
             <button
+              type="button"
               onClick={handleApplyColors}
-              disabled={isApplied}
+              disabled={colorApplied || colorSaving}
               style={{
-                backgroundColor: isApplied ? '#10b981' : buttonColor,
-                color: '#FFFFFF',
-                fontWeight: '600',
-                minWidth: '200px',
-                padding: '0.625rem 1.5rem',
-                borderRadius: '0.5rem',
+                backgroundColor: colorApplied ? '#10b981' : buttonColor,
+                color: '#fff',
+                fontWeight: 600,
+                minWidth: 180,
+                padding: '10px 24px',
+                borderRadius: 10,
                 border: 'none',
-                cursor: isApplied ? 'not-allowed' : 'pointer',
-                opacity: 1,
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-                transition: 'all 0.2s ease',
+                cursor: colorApplied ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                transition: 'all 0.25s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.5rem'
+                gap: 8,
+                flexShrink: 0,
               }}
-              onMouseEnter={(e) => {
-                if (!isApplied) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)';
-                }
+              onMouseEnter={e => {
+                if (!colorApplied) (e.currentTarget.style.transform = 'translateY(-2px)')
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)';
-              }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
             >
-              {isApplied ? (
-                <>
-                  <Check className="w-5 h-5" style={{ color: '#FFFFFF' }} />
-                  <span style={{ color: '#FFFFFF', fontSize: '0.875rem' }}>
-                    {i18n.language === 'vi' ? 'Đã áp dụng!' : 'Applied!'}
-                  </span>
-                </>
+              {colorSaving ? (
+                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Đang lưu...</span></>
+              ) : colorApplied ? (
+                <><Check className="w-5 h-5" /><span>Đã áp dụng!</span></>
               ) : (
-                <>
-                  <Palette className="w-5 h-5" style={{ color: '#FFFFFF' }} />
-                  <span style={{ color: '#FFFFFF', fontSize: '0.875rem' }}>
-                    {i18n.language === 'vi' ? 'Áp dụng màu sắc' : 'Apply Colors'}
-                  </span>
-                </>
+                <><Palette className="w-5 h-5" /><span>Áp dụng màu sắc</span></>
               )}
             </button>
           </div>
 
-          {/* Instructions */}
-          <div className="text-xs space-y-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-            <p className="font-semibold text-blue-900 flex items-center gap-2">
-              <span className="text-base">ℹ️</span>
-              {i18n.language === 'vi' ? 'Cách sử dụng chức năng màu sắc:' : 'How to use color customization:'}
+          {/* What gets themed */}
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl text-xs space-y-3">
+            <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+              ℹ️ Màu sắc sẽ được áp dụng cho:
             </p>
-            <ol className="space-y-1.5 ml-6 list-decimal text-blue-800 leading-relaxed">
-              <li>
-                {i18n.language === 'vi' 
-                  ? 'Chọn màu bằng cách nhấn vào ô màu hoặc nhập mã HEX trực tiếp' 
-                  : 'Pick colors by clicking the color box or entering HEX code directly'}
-              </li>
-              <li>
-                {i18n.language === 'vi' 
-                  ? 'Hoặc chọn nhanh từ 12 bộ màu có sẵn phía trên' 
-                  : 'Or quickly select from 12 preset color schemes above'}
-              </li>
-              <li>
-                {i18n.language === 'vi' 
-                  ? 'Xem trước giao diện trong phần Preview' 
-                  : 'Preview the interface in the Preview section'}
-              </li>
-              <li>
-                {i18n.language === 'vi' 
-                  ? 'Nhấn "Áp dụng màu sắc" để lưu và áp dụng cho toàn bộ hệ thống' 
-                  : 'Click "Apply Colors" to save and apply to the entire system'}
-              </li>
-              <li>
-                {i18n.language === 'vi' 
-                  ? 'Màu sắc sẽ được lưu tự động và áp dụng khi bạn quay lại' 
-                  : 'Colors will be automatically saved and applied when you return'}
-              </li>
-              <li className="text-blue-600 font-medium">
-                {i18n.language === 'vi' 
-                  ? '🔄 Dùng nút "Đặt lại" để khôi phục màu mặc định' 
-                  : '🔄 Use "Reset" button to restore default colors'}
-              </li>
-            </ol>
-            
-            <div className="pt-2 border-t border-blue-200">
-              <p className="font-semibold text-blue-900 mb-2">
-                🎨 {i18n.language === 'vi' ? 'Màu sắc sẽ được áp dụng cho:' : 'Colors will be applied to:'}
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-blue-700">
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Sidebar menu' : 'Sidebar menu'}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-blue-700">
+              {['Sidebar menu', 'Tất cả nút bấm', 'Cards & containers',
+                'Links & icons', 'Biểu đồ & đồ thị', 'Badges & nhãn'].map(item => (
+                <div key={item} className="flex items-center gap-1">
+                  <Check className="w-3 h-3 text-green-500 flex-shrink-0" />
+                  <span>{item}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Tất cả buttons' : 'All buttons'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Cards & containers' : 'Cards & containers'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Links & icons' : 'Links & icons'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Charts & graphs' : 'Charts & graphs'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span>✓</span>
-                  <span>{i18n.language === 'vi' ? 'Badges & labels' : 'Badges & labels'}</span>
-                </div>
-              </div>
+              ))}
             </div>
+            <p className="text-blue-600 font-medium">
+              🔄 Nhấn <strong>"Đặt lại"</strong> để khôi phục màu mặc định bất kỳ lúc nào
+            </p>
           </div>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
+
+export default CompanySettings

@@ -54,12 +54,6 @@ type TrendPeriod = 'day' | 'month' | 'year';
 
 // ─── Pure-computation helpers ─────────────────────────────────────────────────
 
-/**
- * Build a complete, continuous timeline of bucket labels.
- * day  → last 30 days  e.g. "01/03"
- * month → last 12 months e.g. "03/2025"
- * year  → last 5 years  e.g. "2021"
- */
 function buildTimeline(period: TrendPeriod): string[] {
   const now = new Date();
   const WINDOW = period === 'day' ? 30 : period === 'month' ? 12 : 5;
@@ -85,7 +79,6 @@ function buildTimeline(period: TrendPeriod): string[] {
   return labels;
 }
 
-/** Map a ISO date string → bucket label (must match buildTimeline format) */
 function dateToBucket(iso: string, period: TrendPeriod): string {
   const d = new Date(iso);
   if (period === 'day') {
@@ -97,7 +90,6 @@ function dateToBucket(iso: string, period: TrendPeriod): string {
   }
 }
 
-/** Earliest date we care about for the current window */
 function cutoffDate(period: TrendPeriod): Date {
   const WINDOW = period === 'day' ? 30 : period === 'month' ? 12 : 5;
   const d = new Date();
@@ -108,10 +100,6 @@ function cutoffDate(period: TrendPeriod): Date {
   return d;
 }
 
-/**
- * Aggregate candidates into [{label, count}] for Recharts.
- * Filters by jobId ('all' = no filter) and the current period window.
- */
 function computeTrend(
   candidates: RawCandidate[],
   period: TrendPeriod,
@@ -120,7 +108,6 @@ function computeTrend(
   const timeline = buildTimeline(period);
   const cutoff = cutoffDate(period);
 
-  // initialise all buckets to 0
   const buckets: Record<string, number> = {};
   timeline.forEach(l => (buckets[l] = 0));
 
@@ -134,7 +121,6 @@ function computeTrend(
   return timeline.map(label => ({ label, count: buckets[label] }));
 }
 
-/** Aggregate candidates → source distribution */
 function computeSources(
   candidates: RawCandidate[],
   jobId: string
@@ -150,7 +136,6 @@ function computeSources(
     .sort((a, b) => b.count - a.count);
 }
 
-/** Month-on-month percentage change */
 function percentChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);
@@ -171,10 +156,13 @@ const PERIOD_LABELS: Record<TrendPeriod, string> = {
 export function DashboardPage() {
   const { t } = useTranslation();
 
-  // ── master data (fetched once, re-used everywhere) ──────────────────────
   const [allCandidates, setAllCandidates] = useState<RawCandidate[]>([]);
   const [topJobs, setTopJobs] = useState<TopJobData[]>([]);
+
+  // ✅ FIX: tách riêng openJobs (stats card) và allJobsForChart (dropdown/chips)
   const [openJobs, setOpenJobs] = useState<TopJobData[]>([]);
+  const [allJobsForChart, setAllJobsForChart] = useState<TopJobData[]>([]);
+
   const [recentActivities, setRecentActivities] = useState<ActivityData[]>([]);
   const [stats, setStats] = useState<StatsData>({
     totalCV: 0, cvChange: 0,
@@ -183,7 +171,6 @@ export function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // ── chart controls ──────────────────────────────────────────────────────
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('month');
 
@@ -193,7 +180,7 @@ export function DashboardPage() {
     setLoading(true);
     try {
 
-      // ── 1. All candidates (lightweight columns only) ──
+      // ── 1. All candidates ──
       const { data: cvRaw, error: cvErr } = await supabase
         .from('cv_candidates')
         .select('id, created_at, job_id, source')
@@ -203,7 +190,7 @@ export function DashboardPage() {
       const candidates: RawCandidate[] = (cvRaw as RawCandidate[]) ?? [];
       setAllCandidates(candidates);
 
-      // ── 2. CV stats (total + month-on-month) ──
+      // ── 2. CV stats ──
       const now = new Date();
       const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -228,7 +215,7 @@ export function DashboardPage() {
       if (jobsErr) console.error('cv_jobs:', jobsErr);
       const allJobs: any[] = jobsRaw ?? [];
 
-      // candidate count per job (computed from our already-loaded candidates)
+      // candidate count per job
       const perJob: Record<string, number> = {};
       candidates.forEach(c => {
         if (c.job_id) perJob[c.job_id] = (perJob[c.job_id] || 0) + 1;
@@ -241,17 +228,33 @@ export function DashboardPage() {
         candidate_count: perJob[j.id] || 0,
       });
 
-      // open = status 'Đã đăng' (JobsPage uses this value)
+      // open jobs (for stats card)
       const openList = allJobs
         .filter(j => j.status === 'Đã đăng' || j.status === 'open')
         .map(toTopJob);
       setOpenJobs(openList);
 
-      // top 6 by candidate count (across all jobs)
-      const sorted = allJobs.map(toTopJob).sort((a, b) => b.candidate_count - a.candidate_count);
+      // ✅ FIX: allJobsForChart = TẤT CẢ jobs có ít nhất 1 candidate OR đang mở
+      // Sắp xếp: jobs đang mở trước, sau đó theo số candidate giảm dần
+      const allJobsMapped = allJobs.map(toTopJob);
+      const jobsWithCandidatesOrOpen = allJobsMapped
+        .filter(j => j.candidate_count > 0 || j.status === 'Đã đăng' || j.status === 'open')
+        .sort((a, b) => {
+          // Ưu tiên jobs đang mở
+          const aOpen = a.status === 'Đã đăng' || a.status === 'open';
+          const bOpen = b.status === 'Đã đăng' || b.status === 'open';
+          if (aOpen && !bOpen) return -1;
+          if (!aOpen && bOpen) return 1;
+          // Sau đó sort theo candidate count
+          return b.candidate_count - a.candidate_count;
+        });
+      setAllJobsForChart(jobsWithCandidatesOrOpen);
+
+      // top 6 by candidate count
+      const sorted = allJobsMapped.sort((a, b) => b.candidate_count - a.candidate_count);
       setTopJobs(sorted.slice(0, 6));
 
-      // open jobs month-on-month
+      // open jobs month-on-month stats
       const openThisMonth = allJobs.filter(j =>
         (j.status === 'Đã đăng' || j.status === 'open') &&
         new Date(j.created_at) >= thisMonthStart
@@ -276,7 +279,6 @@ export function DashboardPage() {
       if (ivErr) console.error('cv_interviews:', ivErr);
       const ivAll: any[] = ivRaw ?? [];
 
-      // "active" = not finished / not cancelled
       const activeStatuses = ['Đang chờ', 'Đang phỏng vấn', 'Đang đánh giá', 'Đang chờ đánh giá'];
       const activeCount = ivAll.filter(i => activeStatuses.includes(i.status)).length;
 
@@ -310,7 +312,7 @@ export function DashboardPage() {
 
   useEffect(() => { fetchDashboardData(); }, []);
 
-  // ── Derived chart data (pure, reactive, zero extra fetches) ──────────────
+  // ── Derived chart data ──────────────────────────────────────────────────────
 
   const trendData = useMemo(
     () => computeTrend(allCandidates, trendPeriod, selectedJobId),
@@ -374,8 +376,18 @@ export function DashboardPage() {
 
   const hasTrendData = trendData.some(d => d.count > 0);
   const hasSourceData = sourceData.some(s => s.count > 0);
+
+  // ✅ FIX: selectedJobTitle dùng allJobsForChart thay vì openJobs
   const selectedJobTitle =
-    selectedJobId === 'all' ? 'Tất cả vị trí' : openJobs.find(j => j.id === selectedJobId)?.title ?? '';
+    selectedJobId === 'all'
+      ? 'Tất cả vị trí'
+      : allJobsForChart.find(j => j.id === selectedJobId)?.title ?? '';
+
+  // ✅ Tổng candidate của job đang chọn (để hiển thị trong badge)
+  const selectedJobCandidateCount =
+    selectedJobId === 'all'
+      ? allCandidates.length
+      : allJobsForChart.find(j => j.id === selectedJobId)?.candidate_count ?? 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -440,7 +452,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* ── ROW 1: Top vị trí + Hoạt động gần đây (ngang hàng) ── */}
+      {/* ── ROW 1: Top vị trí + Hoạt động gần đây ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
 
         {/* Top vị trí tuyển dụng */}
@@ -541,23 +553,52 @@ export function DashboardPage() {
                 Vị trí đang tuyển
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Tổng: <span className="font-semibold text-blue-600">{openJobs.length} vị trí</span> đang tuyển dụng
+                {/* ✅ FIX: hiện đúng số lượng */}
+                <span className="font-semibold text-blue-600">{openJobs.length} vị trí</span> đang mở •{' '}
+                <span className="font-semibold text-gray-600">{allJobsForChart.length} vị trí</span> có dữ liệu
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Job dropdown */}
+              {/* ✅ FIX: Dropdown dùng allJobsForChart */}
               <Select value={selectedJobId} onValueChange={setSelectedJobId}>
                 <SelectTrigger className="w-[220px] text-sm">
                   <SelectValue placeholder="Chọn vị trí..." />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">
-                  <SelectItem value="all">Tất cả vị trí</SelectItem>
-                  {openJobs.map(job => (
-                    <SelectItem key={job.id} value={job.id}>
-                      {job.title} ({job.candidate_count} CV)
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-white z-50 shadow-lg border border-gray-200 max-h-[300px]">
+                  <SelectItem value="all">
+                    Tất cả vị trí ({allCandidates.length} CV)
+                  </SelectItem>
+                  {/* ✅ Nhóm: đang mở */}
+                  {allJobsForChart.filter(j => j.status === 'Đã đăng' || j.status === 'open').length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        Đang tuyển
+                      </div>
+                      {allJobsForChart
+                        .filter(j => j.status === 'Đã đăng' || j.status === 'open')
+                        .map(job => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.title} ({job.candidate_count} CV)
+                          </SelectItem>
+                        ))}
+                    </>
+                  )}
+                  {/* ✅ Nhóm: đã đóng nhưng có candidate */}
+                  {allJobsForChart.filter(j => j.status !== 'Đã đăng' && j.status !== 'open' && j.candidate_count > 0).length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mt-1">
+                        Đã đóng / Bản nháp
+                      </div>
+                      {allJobsForChart
+                        .filter(j => j.status !== 'Đã đăng' && j.status !== 'open' && j.candidate_count > 0)
+                        .map(job => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.title} ({job.candidate_count} CV)
+                          </SelectItem>
+                        ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
 
@@ -581,20 +622,38 @@ export function DashboardPage() {
           </div>
 
           {selectedJobId !== 'all' && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-500">Đang xem:</span>
               <Badge variant="secondary" className="bg-blue-50 text-blue-700 border border-blue-200">
                 {selectedJobTitle}
               </Badge>
+              {/* ✅ Hiện trạng thái job */}
+              {(() => {
+                const job = allJobsForChart.find(j => j.id === selectedJobId);
+                if (!job) return null;
+                const isOpen = job.status === 'Đã đăng' || job.status === 'open';
+                return (
+                  <Badge className={isOpen
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                  }>
+                    {isOpen ? '🟢 Đang tuyển' : '⚫ ' + job.status}
+                  </Badge>
+                );
+              })()}
+              <span className="text-xs text-gray-400">
+                {selectedJobCandidateCount} CV
+              </span>
             </div>
           )}
         </CardHeader>
 
         <CardContent className="p-3 sm:p-6 pt-0">
 
-          {/* Chip row */}
-          {openJobs.length > 0 && (
+          {/* ✅ FIX: Chip row dùng allJobsForChart */}
+          {allJobsForChart.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
+              {/* Chip "Tất cả" */}
               <button
                 onClick={() => setSelectedJobId('all')}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
@@ -608,22 +667,42 @@ export function DashboardPage() {
                   {allCandidates.length}
                 </span>
               </button>
-              {openJobs.map(job => (
-                <button
-                  key={job.id}
-                  onClick={() => setSelectedJobId(prev => prev === job.id ? 'all' : job.id)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    selectedJobId === job.id
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-                  }`}
-                >
-                  {job.title}
-                  <span className={`ml-1.5 font-semibold ${selectedJobId === job.id ? 'text-blue-100' : 'text-gray-400'}`}>
-                    {job.candidate_count}
-                  </span>
-                </button>
-              ))}
+
+              {/* ✅ FIX: Chips từ allJobsForChart thay vì openJobs */}
+              {allJobsForChart.map(job => {
+                const isOpen = job.status === 'Đã đăng' || job.status === 'open';
+                const isSelected = selectedJobId === job.id;
+                return (
+                  <button
+                    key={job.id}
+                    onClick={() => setSelectedJobId(prev => prev === job.id ? 'all' : job.id)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : isOpen
+                          ? 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                          : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                    title={isOpen ? 'Đang tuyển' : job.status}
+                  >
+                    {/* ✅ Chấm màu để phân biệt open/closed */}
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-green-400' : 'bg-gray-400'} ${isSelected ? 'bg-white opacity-70' : ''}`} />
+                    {job.title}
+                    <span className={`ml-1.5 font-semibold ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                      {job.candidate_count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ✅ Empty state nếu không có jobs nào */}
+          {allJobsForChart.length === 0 && !loading && (
+            <div className="flex flex-col items-center justify-center py-8 mb-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              <Briefcase className="w-10 h-10 text-gray-300 mb-2" />
+              <p className="text-sm text-gray-500">Chưa có vị trí nào</p>
+              <p className="text-xs text-gray-400 mt-1">Tạo JD và thêm ứng viên để xem thống kê</p>
             </div>
           )}
 
@@ -640,7 +719,11 @@ export function DashboardPage() {
                 {!hasTrendData ? (
                   <div className="flex flex-col items-center justify-center h-full text-gray-400">
                     <Database className="w-12 h-12 mb-2" />
-                    <p className="text-sm">Chưa có dữ liệu trong khoảng thời gian này</p>
+                    <p className="text-sm text-center">
+                      {selectedJobId !== 'all'
+                        ? 'Vị trí này chưa có CV trong khoảng thời gian này'
+                        : 'Chưa có dữ liệu trong khoảng thời gian này'}
+                    </p>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
