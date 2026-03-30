@@ -133,7 +133,7 @@ def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https:/
 
 import base64
 
-def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-flash-preview", temperature: float = 0.7, max_tokens: int = 4000, file_content: bytes = None, mime_type: str = None) -> dict:
+def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-flash-preview", temperature: float = 0.7, max_tokens: int = 8192, file_content: bytes = None, mime_type: str = None) -> dict:
     contents = []
     
     # Prepend system_text to the first user message
@@ -264,7 +264,7 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
     gemini_key = config.get("gemini_api_key")
     if is_gemini and gemini_key:
         print("🤖 Route -> Gemini API (v1alpha Gemini 3.0 Document API)")
-        gemini_model = "gemini-2.5-flash-preview-04-17"
+        gemini_model = "gemini-3-flash-preview"
         return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
         
     is_openai = config.get("is_openai_enabled")
@@ -295,7 +295,7 @@ def extract_json_from_response(content: str) -> dict:
         
     try:
         return json.loads(content)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as main_e:
         if '```json' in content:
             extracted = content.split('```json')[1].split('```')[0].strip()
         elif '```' in content:
@@ -305,16 +305,19 @@ def extract_json_from_response(content: str) -> dict:
             
         try:
             return json.loads(extracted)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as fallback_e:
             match = re.search(r'\{.*\}', content, re.DOTALL)
             if match:
                 try:
                     return json.loads(match.group(0))
-                except Exception as e:
+                except Exception:
                     pass
             
-            print(f"❌ Failed JSON snippet: {content[:300]}")
-            raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: Content not valid JSON")
+            error_msg = str(main_e) if extracted == content else str(fallback_e)
+            print(f"❌ Failed JSON snippet: {content[:1000]}")
+            # Trả về nguyên văn 200 ký tự đầu tiên để hiển thị lên frontend
+            snippet = content[:300].replace('\n', ' ')
+            raise HTTPException(status_code=500, detail=f"Lỗi cú pháp ({error_msg}). Chuỗi: {snippet}...")
 
 # ==================== ENDPOINTS ====================
 
