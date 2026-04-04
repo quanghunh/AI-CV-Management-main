@@ -72,10 +72,15 @@ interface CsvRow {
   full_name: string; email: string; phone_number?: string
   address?: string; university?: string; experience?: string
   education?: string; job_title?: string
+  cv_file_name?: string          // optional column in CSV: name of CV file
   _rowIndex: number
   _valid: boolean
   _errors: string[]
-  _jobId?: string   // resolved after matching with jobs
+  _jobId?: string    // resolved after matching with jobs
+  _cvFile?: File     // matched CV file object (set after CV folder selected)
+  _cvParseStatus?: 'pending' | 'parsing' | 'done' | 'error'
+  _cvParsed?: any    // ParsedCV result
+  _cvUrl?: string    // Supabase public URL after upload
 }
 
 type ImportStatus = 'idle' | 'previewing' | 'importing' | 'done'
@@ -110,6 +115,8 @@ const COL_MAP: Record<string, string> = {
   'học vấn': 'education', 'education': 'education', 'hoc van': 'education',
   'vị trí': 'job_title', 'vi tri': 'job_title', 'position': 'job_title',
   'job': 'job_title', 'job title': 'job_title', 'chức vụ': 'job_title',
+  'cv': 'cv_file_name', 'cv file': 'cv_file_name', 'file cv': 'cv_file_name',
+  'tên file cv': 'cv_file_name', 'ten file cv': 'cv_file_name',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -239,6 +246,14 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [importProgress, setImportProgress] = useState(0)
+  const [importDetail, setImportDetail] = useState('')   // current row label while importing
+
+  // CV folder upload
+  const cvFolderRef = useRef<HTMLInputElement>(null)
+  const [cvFileMap, setCvFileMap] = useState<Map<string, File>>(new Map())
+  // enableCvUpload: user opted in to attach CV files
+  const [enableCvUpload, setEnableCvUpload] = useState(false)
+  const [parseAllCv, setParseAllCv] = useState(false)     // auto-parse CV with AI
 
   const validRows = csvRows.filter(r => r._valid)
   const invalidRows = csvRows.filter(r => !r._valid)
@@ -246,8 +261,10 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   const reset = () => {
     setStep(1); setSelectedSource(''); setDefaultJobId(''); setSkipDuplicates(true)
     setFileName(''); setCsvRows([]); setHeaderMap({}); setRawHeaders([])
-    setParseError(''); setResult(null); setImportProgress(0)
+    setParseError(''); setResult(null); setImportProgress(0); setImportDetail('')
+    setCvFileMap(new Map()); setEnableCvUpload(false); setParseAllCv(false)
     if (fileRef.current) fileRef.current.value = ''
+    if (cvFolderRef.current) cvFolderRef.current.value = ''
   }
 
   const handleClose = () => { reset(); onOpenChange(false) }
@@ -275,9 +292,63 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     reader.readAsText(file, 'UTF-8')
   }
 
+  // ── CV folder selected ────────────────────────────────────────────────────
+  const handleCvFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const map = new Map<string, File>()
+    files.forEach(f => {
+      if (/\.(pdf|docx|doc|txt)$/i.test(f.name)) {
+        // index by both original name and lowercase for fuzzy matching
+        map.set(f.name.toLowerCase(), f)
+        map.set(f.name, f)
+      }
+    })
+    setCvFileMap(map)
+    // Try to auto-match existing rows by email or name
+    setCsvRows(prev => prev.map(row => {
+      const matched = matchCvFile(row, map)
+      return matched ? { ...row, _cvFile: matched } : row
+    }))
+  }
+
+  /** Try to find a CV file matching this row.
+   *  Priority: 1) exact cv_file_name column value  2) email in filename  3) full_name in filename */
+  const matchCvFile = (row: CsvRow, map: Map<string, File>): File | undefined => {
+    // 1. explicit column value
+    if (row.cv_file_name) {
+      const f = map.get(row.cv_file_name) || map.get(row.cv_file_name.toLowerCase())
+      if (f) return f
+    }
+    // 2. email anywhere in filename
+    const emailBase = row.email.replace(/[@.]/g, '').toLowerCase()
+    for (const [key, file] of map) {
+      if (key.toLowerCase().includes(row.email.toLowerCase()) ||
+          key.toLowerCase().replace(/[^a-z0-9]/g,'').includes(emailBase)) {
+        return file
+      }
+    }
+    // 3. name (last word = surname in Vietnamese) anywhere in filename
+    const lastName = row.full_name.trim().split(/\s+/).pop()?.toLowerCase() || ''
+    const firstName = row.full_name.trim().split(/\s+/)[0]?.toLowerCase() || ''
+    for (const [key, file] of map) {
+      const kl = key.toLowerCase()
+      if (lastName.length > 1 && kl.includes(lastName) && kl.includes(firstName)) {
+        return file
+      }
+    }
+    return undefined
+  }
+
   const handleNextToPreview = () => {
     if (!selectedSource) { alert('Vui lòng chọn nguồn ứng viên'); return }
     if (!csvRows.length) { alert('Vui lòng chọn file CSV'); return }
+    // Re-match CV files in case folder was loaded after CSV
+    if (cvFileMap.size > 0) {
+      setCsvRows(prev => prev.map(row => ({
+        ...row,
+        _cvFile: row._cvFile || matchCvFile(row, cvFileMap)
+      })))
+    }
     setStep(2)
   }
 
@@ -286,6 +357,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     setImporting(true)
     setStep(3)
     setImportProgress(0)
+    setImportDetail('')
 
     const res: ImportResult = { success: 0, skipped: 0, failed: 0, details: [] }
     const rows = validRows
@@ -300,6 +372,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       setImportProgress(Math.round(((i + 1) / rows.length) * 100))
+      setImportDetail(`Đang xử lý: ${row.full_name}`)
 
       // Skip duplicates
       if (skipDuplicates && existingEmails.has(row.email.toLowerCase())) {
@@ -309,20 +382,62 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       }
 
       try {
-        const jobId = row._jobId || defaultJobId || null
+        // ── Step A: Upload CV file if present ───────────────────────────────
+        let cvUrl: string | null = null
+        let cvFileName: string | null = null
+        let cvParsedData: any = null
+        const cvFile = row._cvFile
+
+        if (cvFile && enableCvUpload) {
+          setImportDetail(`Đang tải CV: ${cvFile.name}`)
+          try {
+            const storageName = `${Date.now()}_${cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+            const { error: upErr } = await supabase.storage
+              .from('cv-files')
+              .upload(storageName, cvFile)
+            if (upErr) throw upErr
+
+            cvUrl = supabase.storage.from('cv-files').getPublicUrl(storageName).data.publicUrl
+            cvFileName = cvFile.name
+
+            // ── Step B: Parse CV if opted in ──────────────────────────────
+            if (parseAllCv) {
+              setImportDetail(`Đang phân tích CV: ${cvFile.name}`)
+              try {
+                const { parseCV } = await import('@/utils/cvParser')
+                const parsed = await parseCV(cvFile)
+                cvParsedData = parsed
+                // Enrich row data from parsed CV (only if CSV fields are empty)
+              } catch (parseErr) {
+                console.warn('CV parse failed:', parseErr)
+                // Non-fatal: continue without parsed data
+              }
+            }
+          } catch (uploadErr: any) {
+            console.warn('CV upload failed for', cvFile.name, uploadErr)
+            // Non-fatal: continue without CV
+          }
+        }
+
+        // ── Step C: Insert candidate ────────────────────────────────────────
+        setImportDetail(`Đang lưu: ${row.full_name}`)
+        const jobId = row._jobId || (defaultJobId && defaultJobId !== 'none' ? defaultJobId : null)
         const { data, error } = await supabase
           .from('cv_candidates')
           .insert({
             full_name: row.full_name,
             email: row.email,
             phone_number: row.phone_number || null,
-            address: row.address || null,
-            university: row.university || null,
-            experience: row.experience || null,
-            education: row.education || null,
+            address: row.address || (cvParsedData?.address || null),
+            university: row.university || (cvParsedData?.university || null),
+            experience: row.experience || (cvParsedData?.experience || null),
+            education: row.education || (cvParsedData?.education || null),
             job_id: jobId,
             source: selectedSource,
             status: 'Mới',
+            cv_url: cvUrl,
+            cv_file_name: cvFileName,
+            cv_parsed_data: cvParsedData || null,
           })
           .select('id')
           .single()
@@ -336,7 +451,11 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
         res.success++
         existingEmails.add(row.email.toLowerCase())
-        res.details.push({ row: row._rowIndex, name: row.full_name, status: 'success' })
+        const hasCv = !!cvUrl
+        res.details.push({
+          row: row._rowIndex, name: row.full_name, status: 'success',
+          reason: hasCv ? (cvParsedData ? 'CV đã tải + phân tích' : 'CV đã tải lên') : undefined
+        })
       } catch (err: any) {
         res.failed++
         res.details.push({
@@ -346,6 +465,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       }
     }
 
+    setImportDetail('')
     setResult(res)
     setImporting(false)
     if (res.success > 0) onImportDone()
@@ -353,9 +473,13 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
   // ── Template download ──────────────────────────────────────────────────────
   const downloadTemplate = () => {
-    const header = 'Họ tên,Email,Số điện thoại,Địa chỉ,Trường học,Kinh nghiệm,Học vấn,Vị trí'
-    const sample = 'Nguyễn Văn A,nguyenvana@email.com,0901234567,TP.HCM,ĐH Bách Khoa,3 năm Frontend,Cử nhân CNTT,Frontend Developer'
-    const blob = new Blob([header + '\n' + sample], { type: 'text/csv;charset=utf-8;' })
+    const header = 'Họ tên,Email,Số điện thoại,Địa chỉ,Trường học,Kinh nghiệm,Học vấn,Vị trí,CV'
+    const sample = 'Nguyễn Văn A,nguyenvana@email.com,0901234567,TP.HCM,ĐH Bách Khoa,3 năm Frontend,Cử nhân CNTT,Frontend Developer,nguyen_van_a_cv.pdf'
+    const notes = [
+      '# Hướng dẫn cột "CV": điền tên file CV (VD: nguyen_van_a.pdf)',
+      '# Hệ thống cũng tự ghép theo email hoặc tên nếu cột CV để trống',
+    ].join('\n')
+    const blob = new Blob([notes + '\n' + header + '\n' + sample], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = 'template_import_ung_vien.csv'; a.click()
@@ -419,12 +543,17 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                       File CSV cần có các cột (không phân biệt hoa thường):
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {['Họ tên *', 'Email *', 'Số điện thoại', 'Địa chỉ', 'Trường học', 'Kinh nghiệm', 'Học vấn', 'Vị trí'].map(col => (
-                        <code key={col} className={`text-[10px] px-2 py-0.5 rounded ${col.includes('*') ? 'bg-blue-200 text-blue-900 font-semibold' : 'bg-white text-blue-700 border border-blue-200'}`}>
+                      {['Họ tên *', 'Email *', 'Số điện thoại', 'Địa chỉ', 'Trường học', 'Kinh nghiệm', 'Học vấn', 'Vị trí', 'CV'].map(col => (
+                        <code key={col} className={`text-[10px] px-2 py-0.5 rounded ${col.includes('*') ? 'bg-blue-200 text-blue-900 font-semibold' : col === 'CV' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-white text-blue-700 border border-blue-200'}`}>
                           {col}
                         </code>
                       ))}
                     </div>
+                    <p className="text-[11px] text-purple-700 mt-1.5 flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Cột <strong>CV</strong>: tên file CV (VD: <code className="bg-purple-50 px-1 rounded">nguyen_van_a.pdf</code>).
+                      Dùng kết hợp với thư mục CV bên dưới.
+                    </p>
                     <button onClick={downloadTemplate}
                       className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
                       <Download className="h-3.5 w-3.5" />
@@ -504,6 +633,103 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                 </div>
               </div>
 
+              {/* ── CV folder upload ──────────────────────────────────────── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <Checkbox
+                    id="enable-cv"
+                    checked={enableCvUpload}
+                    onCheckedChange={setEnableCvUpload}
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="enable-cv" className="text-sm font-medium text-purple-900 cursor-pointer flex items-center gap-1.5">
+                      <FileText className="h-4 w-4 text-purple-600" />
+                      Đính kèm file CV (PDF / DOCX)
+                    </label>
+                    <p className="text-xs text-purple-600 mt-0.5">
+                      Chọn thư mục chứa CV để tự động ghép với ứng viên theo email hoặc tên.
+                    </p>
+                  </div>
+                </div>
+
+                {enableCvUpload && (
+                  <div className="pl-3 space-y-3 border-l-2 border-purple-200">
+                    {/* Folder picker */}
+                    <div>
+                      <input
+                        ref={cvFolderRef}
+                        type="file"
+                        accept=".pdf,.docx,.doc,.txt"
+                        multiple
+                        className="hidden"
+                        onChange={handleCvFolderChange}
+                      />
+                      <div
+                        onClick={() => cvFolderRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
+                          cvFileMap.size > 0
+                            ? 'border-purple-400 bg-purple-50'
+                            : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50/30'
+                        }`}
+                      >
+                        {cvFileMap.size > 0 ? (
+                          <div className="space-y-1">
+                            <CheckCircle2 className="h-8 w-8 mx-auto text-purple-500" />
+                            <p className="font-medium text-purple-700 text-sm">
+                              Đã tải {cvFileMap.size / 2} file CV
+                            </p>
+                            {/* Show match stats if rows are loaded */}
+                            {csvRows.length > 0 && (() => {
+                              const matched = csvRows.filter(r => r._cvFile).length
+                              return (
+                                <p className="text-xs text-gray-600">
+                                  Ghép được <span className="text-green-600 font-semibold">{matched}</span> / {csvRows.filter(r=>r._valid).length} ứng viên
+                                </p>
+                              )
+                            })()}
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); setCvFileMap(new Map()); if (cvFolderRef.current) cvFolderRef.current.value = ''; setCsvRows(prev => prev.map(r => ({ ...r, _cvFile: undefined }))) }}
+                              className="text-xs text-gray-400 hover:text-red-500 underline"
+                            >
+                              Xóa & chọn lại
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <Upload className="h-8 w-8 mx-auto text-purple-300" />
+                            <p className="text-sm text-gray-600 font-medium">Chọn nhiều file CV</p>
+                            <p className="text-xs text-gray-400">PDF, DOCX, DOC, TXT</p>
+                          </div>
+                        )}
+                      </div>
+                      {/* Matching rules info */}
+                      <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 space-y-0.5">
+                        <p className="font-medium text-gray-600">Quy tắc ghép tự động:</p>
+                        <p>① Cột <code className="bg-gray-200 px-1 rounded">CV</code> trong CSV (tên file chính xác)</p>
+                        <p>② Email ứng viên có trong tên file</p>
+                        <p>③ Họ + tên ứng viên cùng có trong tên file</p>
+                        <p className="text-orange-500">⚠ Có thể ghép thủ công trong bước Xem trước</p>
+                      </div>
+                    </div>
+
+                    {/* Parse CV option */}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <Checkbox id="parse-cv" checked={parseAllCv} onCheckedChange={setParseAllCv} />
+                      <div>
+                        <label htmlFor="parse-cv" className="text-sm font-medium text-gray-800 cursor-pointer flex items-center gap-1.5">
+                          <Brain className="h-4 w-4 text-orange-500" />
+                          Tự động phân tích CV bằng AI
+                        </label>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Trích xuất thêm thông tin từ CV để bổ sung vào hồ sơ ứng viên (chậm hơn).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* File upload */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-800">
@@ -576,11 +802,12 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           {step === 2 && (
             <div className="space-y-4">
               {/* Summary */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid gap-3 ${enableCvUpload ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {[
                   { label: 'Tổng dòng', value: csvRows.length, color: 'text-gray-900', bg: 'bg-gray-50' },
                   { label: 'Hợp lệ', value: validRows.length, color: 'text-green-700', bg: 'bg-green-50' },
                   { label: 'Có lỗi', value: invalidRows.length, color: 'text-red-600', bg: 'bg-red-50' },
+                  ...(enableCvUpload ? [{ label: 'Có CV', value: csvRows.filter(r => r._cvFile).length, color: 'text-purple-700', bg: 'bg-purple-50' }] : []),
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-xl p-4 text-center border`}>
                     <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -590,7 +817,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
               </div>
 
               {/* Source + job recap */}
-              <div className="flex items-center gap-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
                 <div className="flex items-center gap-1.5">
                   <Tag className="h-4 w-4 text-blue-600" />
                   <span className="text-gray-600">Nguồn:</span>
@@ -601,6 +828,14 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                     <FileText className="h-4 w-4 text-blue-600" />
                     <span className="text-gray-600">Vị trí mặc định:</span>
                     <span className="font-medium">{jobs.find(j => j.id === defaultJobId)?.title}</span>
+                  </div>
+                )}
+                {enableCvUpload && (
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-purple-600" />
+                    <span className="text-gray-600">CV:</span>
+                    <span className="text-purple-700 font-medium">{csvRows.filter(r => r._cvFile).length} ghép được</span>
+                    {parseAllCv && <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px]">AI parse</Badge>}
                   </div>
                 )}
               </div>
@@ -616,6 +851,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                         <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Email</th>
                         <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">SĐT</th>
                         <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Vị trí</th>
+                        {enableCvUpload && <th className="px-3 py-2 text-left text-xs font-semibold text-purple-600 w-36">File CV</th>}
                         <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 w-28">Trạng thái</th>
                       </tr>
                     </thead>
@@ -637,6 +873,36 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                               : <span className="text-gray-300">—</span>
                             }
                           </td>
+                          {enableCvUpload && (
+                            <td className="px-3 py-2 w-36">
+                              {row._cvFile ? (
+                                <div className="flex items-center gap-1.5">
+                                  <FileText className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
+                                  <span className="text-xs text-purple-700 truncate max-w-[100px]" title={row._cvFile.name}>
+                                    {row._cvFile.name}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <label className="text-[10px] text-gray-400 cursor-pointer hover:text-purple-600 flex items-center gap-0.5">
+                                    <Upload className="h-3 w-3" />
+                                    <span>Chọn</span>
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.docx,.doc,.txt"
+                                      className="hidden"
+                                      onChange={e => {
+                                        const f = e.target.files?.[0]
+                                        if (f) setCsvRows(prev => prev.map(r =>
+                                          r._rowIndex === row._rowIndex ? { ...r, _cvFile: f } : r
+                                        ))
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              )}
+                            </td>
+                          )}
                           <td className="px-3 py-2">
                             {row._valid ? (
                               <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">
@@ -688,7 +954,18 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                     </span>
                   </div>
                   <p className="text-gray-700 font-medium">Đang import ứng viên...</p>
-                  <p className="text-sm text-gray-500">Vui lòng không đóng cửa sổ này</p>
+                  {importDetail && (
+                    <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full inline-block max-w-xs truncate">
+                      {importDetail}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-400">Vui lòng không đóng cửa sổ này</p>
+                  {enableCvUpload && (
+                    <p className="text-xs text-purple-600 flex items-center gap-1 justify-center">
+                      <FileText className="h-3.5 w-3.5" />
+                      Đang tải CV lên Supabase Storage{parseAllCv ? ' và phân tích bằng AI' : ''}
+                    </p>
+                  )}
                 </div>
               ) : result ? (
                 <>
@@ -706,6 +983,27 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                       </div>
                     ))}
                   </div>
+
+                  {/* CV upload stats */}
+                  {enableCvUpload && (() => {
+                    const withCv  = result.details.filter(d => d.status === 'success' && d.reason?.includes('CV')).length
+                    const parsed  = result.details.filter(d => d.status === 'success' && d.reason?.includes('phân tích')).length
+                    return withCv > 0 ? (
+                      <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl text-sm">
+                        <FileText className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-purple-900">
+                            CV đã tải lên: <strong>{withCv}</strong> file
+                          </p>
+                          {parseAllCv && (
+                            <p className="text-xs text-purple-600 mt-0.5">
+                              Phân tích AI thành công: {parsed}/{withCv} file
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
 
                   {/* Detail log */}
                   {result.details.length > 0 && (
