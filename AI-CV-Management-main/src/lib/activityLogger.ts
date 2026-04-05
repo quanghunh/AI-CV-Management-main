@@ -1,283 +1,465 @@
-// lib/activityLogger.ts
-import { supabase } from '@/lib/supabaseClient';
-
 /**
- * Activity Logger Utility
- * Centralized logging for all user activities in the CV management system
+ * activityLogger.ts
+ * 
+ * Ghi nhận hoạt động của người dùng vào bảng activity_logs.
+ * - Tự động lấy tên và ID của user đang đăng nhập từ localStorage/session
+ * - Hỗ trợ metadata tùy chỉnh
+ * - Logs được tự động xóa sau 30 ngày (qua DB trigger)
  */
 
-export type EntityType = 'cv' | 'job' | 'interview' | 'email' | 'evaluation' | 'general';
+import { supabase } from '@/lib/supabaseClient';
 
-interface LogActivityParams {
+// ─── Interfaces ────────────────────────────────────────────────────────────────
+
+export interface ActivityLogEntry {
+  user_name: string;
+  user_id?: string;
   action: string;
   details?: string;
-  entity_type?: EntityType;
+  entity_type?: string;
   entity_id?: string;
   metadata?: Record<string, any>;
 }
 
+// ─── Lấy thông tin user hiện tại ─────────────────────────────────────────────
+
 /**
- * Main logging function - calls Supabase RPC
+ * Lấy thông tin user đang đăng nhập từ Supabase Auth session.
+ * Fallback về localStorage nếu không có session.
  */
-export const logActivity = async ({
-  action,
-  details = '',
-  entity_type = 'general',
-  entity_id,
-  metadata = {}
-}: LogActivityParams): Promise<string | null> => {
+async function getCurrentUserInfo(): Promise<{ name: string; id?: string }> {
   try {
-    const { data, error } = await supabase.rpc('log_activity', {
-      p_action: action,
-      p_details: details,
-      p_entity_type: entity_type,
-      p_entity_id: entity_id,
-      p_metadata: metadata
+    // Thử lấy từ Supabase Auth session trước
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Lấy profile từ cv_profiles
+      const { data: profile } = await supabase
+        .from('cv_profiles')
+        .select('id, full_name, email')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (profile) {
+        return {
+          name: profile.full_name || profile.email || user.email || 'Unknown',
+          id: profile.id,
+        };
+      }
+      // Fallback: dùng email từ Auth
+      return { name: user.email || 'Unknown', id: user.id };
+    }
+  } catch {
+    // Ignore lỗi auth
+  }
+
+  // Fallback: lấy từ localStorage (nếu app tự lưu)
+  try {
+    const stored = localStorage.getItem('currentUser');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        name: parsed.name || parsed.full_name || parsed.email || 'System',
+        id: parsed.id,
+      };
+    }
+  } catch {
+    // Ignore parse error
+  }
+
+  return { name: 'System' };
+}
+
+// ─── Core log function ────────────────────────────────────────────────────────
+
+/**
+ * Ghi một activity log vào database.
+ * Tự động lấy user hiện tại nếu không truyền vào.
+ * Không throw error — luôn fail silently để không ảnh hưởng UX.
+ */
+async function log(entry: ActivityLogEntry): Promise<void> {
+  try {
+    // Nếu không có user_name, tự động detect
+    let userName = entry.user_name;
+    let userId = entry.user_id;
+
+    if (!userName || userName === 'System') {
+      const currentUser = await getCurrentUserInfo();
+      userName = entry.user_name && entry.user_name !== 'System'
+        ? entry.user_name
+        : currentUser.name;
+      userId = entry.user_id || currentUser.id;
+    }
+
+    const { error } = await supabase.from('activity_logs').insert({
+      user_name:   userName,
+      user_id:     userId || null,
+      action:      entry.action,
+      details:     entry.details || null,
+      entity_type: entry.entity_type || null,
+      entity_id:   entry.entity_id || null,
+      metadata:    entry.metadata || {},
     });
 
     if (error) {
-      console.error('Failed to log activity:', error);
-      return null;
+      console.warn('[ActivityLogger] Insert error:', error.message);
     }
-
-    return data;
-  } catch (error) {
-    console.error('Error logging activity:', error);
-    return null;
+  } catch (err) {
+    // Fail silently — logging không được làm gián đoạn UX
+    console.warn('[ActivityLogger] Failed to log activity:', err);
   }
-};
+}
 
-/**
- * Get recent activities for dashboard
- */
-export const getRecentActivities = async (limit = 10, offset = 0) => {
-  try {
-    const { data, error } = await supabase.rpc('get_recent_activities', {
-      p_limit: limit,
-      p_offset: offset
-    });
+// ─── ActivityLogger public API ────────────────────────────────────────────────
 
-    if (error) {
-      console.error('Failed to get activities:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error getting activities:', error);
-    return [];
-  }
-};
-
-/**
- * Predefined logging functions for common activities
- */
 export const ActivityLogger = {
-  // ==================== CV ACTIVITIES ====================
-  
-  /**
-   * Log when a candidate submits a CV
-   */
-  logCVSubmitted: async (
+
+  // ──────────────────────────────────────────────
+  // CV / Ứng viên
+  // ──────────────────────────────────────────────
+
+  /** Ứng viên nộp CV */
+  async logCVSubmitted(
     candidateName: string,
     candidateId: string,
     jobTitle?: string
-  ) => {
-    return logActivity({
-      action: 'Nộp CV mới',
-      details: jobTitle 
-        ? `Ứng viên ${candidateName} đã nộp CV cho vị trí ${jobTitle}`
-        : `Ứng viên ${candidateName} đã nộp CV`,
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Nộp CV',
+      details:     jobTitle
+        ? `${candidateName} ứng tuyển vị trí: ${jobTitle}`
+        : `${candidateName} nộp CV`,
       entity_type: 'cv',
-      entity_id: candidateId
+      entity_id:   candidateId,
+      metadata:    { candidate_name: candidateName, job_title: jobTitle },
     });
   },
 
-  /**
-   * Log when a CV is viewed
-   */
-  logCVViewed: async (candidateName: string, candidateId: string) => {
-    return logActivity({
-      action: 'Xem CV',
-      details: `Xem CV của ứng viên ${candidateName}`,
-      entity_type: 'cv',
-      entity_id: candidateId
-    });
-  },
-
-  /**
-   * Log when a CV is deleted
-   */
-  logCVDeleted: async (candidateName: string) => {
-    return logActivity({
-      action: 'Xóa CV',
-      details: `Xóa CV của ứng viên ${candidateName}`,
-      entity_type: 'cv'
-    });
-  },
-
-  /**
-   * Log when a CV is analyzed
-   */
-  logCVAnalyzed: async (
+  /** Xem thông tin CV */
+  async logCVViewed(
     candidateName: string,
-    candidateId: string,
-    score?: number
-  ) => {
-    return logActivity({
-      action: 'Phân tích CV',
-      details: score
-        ? `Phân tích CV của ${candidateName} - Điểm: ${score}/100`
-        : `Phân tích CV của ${candidateName}`,
+    candidateId: string
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Xem CV',
+      details:     `Xem hồ sơ: ${candidateName}`,
       entity_type: 'cv',
-      entity_id: candidateId,
-      metadata: { score }
+      entity_id:   candidateId,
+      metadata:    { candidate_name: candidateName },
     });
   },
 
-  // ==================== JOB ACTIVITIES ====================
-  
-  /**
-   * Log when a new job position is created
-   */
-  logJobCreated: async (jobTitle: string, jobId: string) => {
-    return logActivity({
-      action: 'Tạo vị trí tuyển dụng mới',
-      details: `Vị trí: ${jobTitle}`,
+  /** Xóa CV */
+  async logCVDeleted(candidateName: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Xóa ứng viên',
+      details:     `Đã xóa hồ sơ: ${candidateName}`,
+      entity_type: 'cv',
+      metadata:    { candidate_name: candidateName },
+    });
+  },
+
+  // ──────────────────────────────────────────────
+  // Công việc (JD)
+  // ──────────────────────────────────────────────
+
+  /** Tạo JD mới */
+  async logJobCreated(jobTitle: string, jobId: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Tạo công việc',
+      details:     `Tạo JD mới: ${jobTitle}`,
       entity_type: 'job',
-      entity_id: jobId
+      entity_id:   jobId,
+      metadata:    { job_title: jobTitle },
     });
   },
 
-  /**
-   * Log when a job is updated
-   */
-  logJobUpdated: async (jobTitle: string, jobId: string) => {
-    return logActivity({
-      action: 'Cập nhật vị trí tuyển dụng',
-      details: `Cập nhật vị trí: ${jobTitle}`,
+  /** Cập nhật JD */
+  async logJobUpdated(jobTitle: string, jobId: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Cập nhật công việc',
+      details:     `Cập nhật JD: ${jobTitle}`,
       entity_type: 'job',
-      entity_id: jobId
+      entity_id:   jobId,
+      metadata:    { job_title: jobTitle },
     });
   },
 
-  /**
-   * Log when a job is deleted
-   */
-  logJobDeleted: async (jobTitle: string) => {
-    return logActivity({
-      action: 'Xóa vị trí tuyển dụng',
-      details: `Xóa vị trí: ${jobTitle}`,
-      entity_type: 'job'
+  /** Xóa JD */
+  async logJobDeleted(jobTitle: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Xóa công việc',
+      details:     `Đã xóa JD: ${jobTitle}`,
+      entity_type: 'job',
+      metadata:    { job_title: jobTitle },
     });
   },
 
-  // ==================== INTERVIEW ACTIVITIES ====================
-  
-  /**
-   * Log when an interview is scheduled
-   */
-  logInterviewScheduled: async (
+  // ──────────────────────────────────────────────
+  // Phỏng vấn
+  // ──────────────────────────────────────────────
+
+  /** Tạo lịch phỏng vấn */
+  async logInterviewCreated(
     candidateName: string,
     interviewId: string,
     interviewDate: string
-  ) => {
-    return logActivity({
-      action: 'Tạo lịch phỏng vấn',
-      details: `Phỏng vấn ứng viên ${candidateName} vào ${interviewDate}`,
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Tạo phỏng vấn',
+      details:     `Lịch phỏng vấn: ${candidateName} - ${new Date(interviewDate).toLocaleString('vi-VN')}`,
       entity_type: 'interview',
-      entity_id: interviewId
+      entity_id:   interviewId,
+      metadata:    { candidate_name: candidateName, interview_date: interviewDate },
     });
   },
 
-  /**
-   * Log when an interview is cancelled
-   */
-  logInterviewCancelled: async (
+  /** Đánh giá phỏng vấn */
+  async logInterviewReviewed(
     candidateName: string,
-    interviewId: string
-  ) => {
-    return logActivity({
-      action: 'Hủy lịch phỏng vấn',
-      details: `Hủy lịch phỏng vấn với ${candidateName}`,
-      entity_type: 'interview',
-      entity_id: interviewId
-    });
-  },
-
-  /**
-   * Log when an interview is completed
-   */
-  logInterviewCompleted: async (
-    candidateName: string,
-    interviewId: string
-  ) => {
-    return logActivity({
-      action: 'Hoàn thành phỏng vấn',
-      details: `Hoàn thành buổi phỏng vấn với ${candidateName}`,
-      entity_type: 'interview',
-      entity_id: interviewId
-    });
-  },
-
-  // ==================== EVALUATION ACTIVITIES ====================
-  
-  /**
-   * Log when a candidate is evaluated
-   */
-  logCandidateEvaluated: async (
-    candidateName: string,
-    candidateId: string,
+    interviewId: string,
+    outcome: string,
     rating: number
-  ) => {
-    return logActivity({
-      action: 'Đánh giá ứng viên',
-      details: `Đánh giá ${candidateName} - ${rating}/5 sao`,
-      entity_type: 'evaluation',
-      entity_id: candidateId,
-      metadata: { rating }
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Đánh giá phỏng vấn',
+      details:     `Đánh giá ${candidateName}: ${outcome} (${rating}⭐)`,
+      entity_type: 'interview',
+      entity_id:   interviewId,
+      metadata:    { candidate_name: candidateName, outcome, rating },
     });
   },
 
-  // ==================== EMAIL ACTIVITIES ====================
-  
-  /**
-   * Log when an email is sent
-   */
-  logEmailSent: async (
+  // ──────────────────────────────────────────────
+  // Người dùng (Users)
+  // ──────────────────────────────────────────────
+
+  /** Tạo người dùng mới */
+  async logUserCreated(
+    newUserName: string,
+    newUserEmail: string,
+    newUserId: string
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Tạo người dùng',
+      details:     `Tạo tài khoản: ${newUserName} (${newUserEmail})`,
+      entity_type: 'user',
+      entity_id:   newUserId,
+      metadata:    { new_user_name: newUserName, new_user_email: newUserEmail },
+    });
+  },
+
+  /** Cập nhật người dùng */
+  async logUserUpdated(
+    targetUserName: string,
+    targetUserId: string
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Cập nhật người dùng',
+      details:     `Cập nhật tài khoản: ${targetUserName}`,
+      entity_type: 'user',
+      entity_id:   targetUserId,
+      metadata:    { target_user_name: targetUserName },
+    });
+  },
+
+  /** Xóa người dùng */
+  async logUserDeleted(
+    targetUserName: string,
+    targetUserEmail: string
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Xóa người dùng',
+      details:     `Xóa tài khoản: ${targetUserName} (${targetUserEmail})`,
+      entity_type: 'user',
+      metadata:    { target_user_name: targetUserName, target_user_email: targetUserEmail },
+    });
+  },
+
+  /** Đăng nhập */
+  async logLogin(userName: string, userId?: string): Promise<void> {
+    return log({
+      user_name:   userName,
+      user_id:     userId,
+      action:      'Đăng nhập',
+      details:     `${userName} đăng nhập vào hệ thống`,
+      entity_type: 'auth',
+      metadata:    { timestamp: new Date().toISOString() },
+    });
+  },
+
+  // ──────────────────────────────────────────────
+  // Email
+  // ──────────────────────────────────────────────
+
+  /** Gửi email */
+  async logEmailSent(
     recipientName: string,
-    subject: string,
-    entityId?: string
-  ) => {
-    return logActivity({
-      action: 'Gửi email',
-      details: `Gửi email "${subject}" đến ${recipientName}`,
+    recipientEmail: string,
+    subject: string
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Gửi email',
+      details:     `Gửi email đến ${recipientName} (${recipientEmail}): ${subject}`,
       entity_type: 'email',
-      entity_id: entityId
+      metadata:    { recipient_name: recipientName, recipient_email: recipientEmail, subject },
     });
   },
 
-  // ==================== CUSTOM ACTIVITY ====================
-  
-  /**
-   * Log a custom activity
-   */
-  logCustomActivity: async (
+  // ──────────────────────────────────────────────
+  // Vai trò & Phân quyền
+  // ──────────────────────────────────────────────
+
+  /** Thêm vai trò mới */
+  async logRoleCreated(roleName: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Tạo vai trò',
+      details:     `Tạo vai trò mới: ${roleName}`,
+      entity_type: 'role',
+      metadata:    { role_name: roleName },
+    });
+  },
+
+  /** Cập nhật phân quyền */
+  async logPermissionsUpdated(roleName: string): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
+      action:      'Cập nhật phân quyền',
+      details:     `Cập nhật quyền cho vai trò: ${roleName}`,
+      entity_type: 'permission',
+      metadata:    { role_name: roleName },
+    });
+  },
+
+  // ──────────────────────────────────────────────
+  // General / Custom
+  // ──────────────────────────────────────────────
+
+  /** Ghi log tùy chỉnh */
+  async logCustomActivity(
     action: string,
-    details: string,
-    entityType: EntityType = 'general',
+    details?: string,
+    entityType?: string,
     entityId?: string,
     metadata?: Record<string, any>
-  ) => {
-    return logActivity({
+  ): Promise<void> {
+    const user = await getCurrentUserInfo();
+    return log({
+      user_name:   user.name,
+      user_id:     user.id,
       action,
       details,
       entity_type: entityType,
-      entity_id: entityId,
-      metadata
+      entity_id:   entityId,
+      metadata,
     });
-  }
+  },
 };
 
-// Export default
+// ─── Query helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Lấy logs gần đây (trong 30 ngày, tối đa maxRows records).
+ * Dùng trong DashboardPage để hiển thị.
+ */
+export async function fetchRecentActivities(
+  maxRows = 20,
+  filters?: {
+    userId?: string;
+    action?: string;
+    entityType?: string;
+  }
+): Promise<{
+  id: string;
+  user_name: string;
+  user_id?: string;
+  action: string;
+  details: string | null;
+  entity_type: string | null;
+  created_at: string;
+  metadata?: Record<string, any>;
+}[]> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  let query = supabase
+    .from('activity_logs')
+    .select('id, user_name, user_id, action, details, entity_type, created_at, metadata')
+    .gte('created_at', thirtyDaysAgo.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(maxRows);
+
+  if (filters?.userId) query = query.eq('user_id', filters.userId);
+  if (filters?.action) query = query.eq('action', filters.action);
+  if (filters?.entityType) query = query.eq('entity_type', filters.entityType);
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('[ActivityLogger] fetchRecentActivities error:', error.message);
+    return [];
+  }
+  return (data || []) as any[];
+}
+
+/**
+ * Xóa thủ công các logs cũ hơn 30 ngày.
+ * Gọi từ admin panel nếu cần.
+ */
+export async function cleanupOldLogs(): Promise<number> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .delete()
+    .lt('created_at', thirtyDaysAgo.toISOString())
+    .select('*');
+
+  if (error) {
+    console.warn('[ActivityLogger] cleanupOldLogs error:', error.message);
+    return 0;
+  }
+  return data ? data.length : 0;
+}
+
 export default ActivityLogger;
