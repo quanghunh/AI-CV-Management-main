@@ -830,6 +830,266 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
   )
 }
 
+// ==================== UNANALYZED CANDIDATES VIEW COMPONENT ====================
+interface UnanalyzedCandidatesViewProps {
+  candidates: any[]
+  jobs: any[]
+  onAnalyzeOne: (c: any) => void
+  onAnalyzeAll: () => void
+  analyzing: boolean
+  onViewDetail: (c: any) => void
+  onCreateInterview: (c: any) => void
+}
+
+function UnanalyzedCandidatesView({
+  candidates, jobs, onAnalyzeOne, onAnalyzeAll, analyzing, onViewDetail, onCreateInterview,
+}: UnanalyzedCandidatesViewProps) {
+  const [jobFilter, setJobFilter] = React.useState('all')
+  const [statusFilter, setStatusFilter] = React.useState('all')
+  const [sortKey, setSortKey] = React.useState<'name' | 'job' | 'date'>('date')
+  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc')
+  const [expandedId, setExpandedId] = React.useState<string | null>(null)
+
+  // Lọc ứng viên chưa được phân tích (tất cả ứng viên không có analysis_result)
+  const unanalyzed = React.useMemo(
+    () => candidates.filter(c => !c.analysis_result),
+    [candidates]
+  )
+
+  const filtered = React.useMemo(() => {
+    let list = [...unanalyzed]
+    if (jobFilter !== 'all') list = list.filter(c => c.job_id === jobFilter)
+    if (statusFilter !== 'all') list = list.filter(c => c.status === statusFilter)
+
+    list.sort((a, b) => {
+      let av: any, bv: any
+      switch (sortKey) {
+        case 'name':
+          av = a.full_name
+          bv = b.full_name
+          break
+        case 'job':
+          av = a.cv_jobs?.title || ''
+          bv = b.cv_jobs?.title || ''
+          break
+        case 'date':
+          av = new Date(a.created_at).getTime()
+          bv = new Date(b.created_at).getTime()
+          break
+      }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return list
+  }, [unanalyzed, jobFilter, statusFilter, sortKey, sortDir])
+
+  const handleSort = (key: 'name' | 'job' | 'date') => {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ col }: { col: 'name' | 'job' | 'date' }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3.5 w-3.5 text-gray-300 ml-1 inline" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="h-3.5 w-3.5 text-blue-600 ml-1 inline" />
+      : <ChevronDown className="h-3.5 w-3.5 text-blue-600 ml-1 inline" />
+  }
+
+  const uniqueStatuses = ['Mới', 'Sàng lọc', 'Phỏng vấn', 'Chấp nhận', 'Từ chối']
+
+  return (
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <div className="flex flex-wrap gap-3 items-end p-4 bg-gray-50 border border-gray-200 rounded-xl">
+        <div className="flex-1 min-w-[160px]">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Vị trí</label>
+          <select
+            className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+            value={jobFilter}
+            onChange={e => setJobFilter(e.target.value)}
+          >
+            <option value="all">Tất cả vị trí</option>
+            {jobs.map(j => (
+              <option key={j.id} value={j.id}>
+                {j.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1 min-w-[130px]">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
+          <select
+            className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-blue-500"
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            {uniqueStatuses.map(st => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button onClick={onAnalyzeAll} disabled={analyzing || filtered.length === 0} size="sm" className="flex-shrink-0 gap-1.5">
+          <Sparkles className="h-4 w-4" />
+          {analyzing ? 'Đang phân tích...' : `Phân tích ${filtered.length}`}
+        </Button>
+      </div>
+
+      {/* Summary badges */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full text-amber-700 font-medium">
+          📋 {filtered.length} ứng viên chưa đánh giá
+        </span>
+        <span className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-blue-700 font-medium">
+          📄 {unanalyzed.length} tổng số chưa phân tích
+        </span>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-5 py-3 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                  Họ tên <SortIcon col="name" />
+                </th>
+                <th className="px-5 py-3 text-left font-medium text-gray-600">Email</th>
+                <th className="px-5 py-3 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('job')}>
+                  Vị trí <SortIcon col="job" />
+                </th>
+                <th className="px-5 py-3 text-left font-medium text-gray-600">Nguồn</th>
+                <th className="px-5 py-3 text-left font-medium text-gray-600">Trạng thái</th>
+                <th className="px-5 py-3 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date')}>
+                  Ngày tạo <SortIcon col="date" />
+                </th>
+                <th className="px-5 py-3 text-center font-medium text-gray-600">Hành động</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(c => {
+                const st = getStatusLabel(c.status)
+                const isExpanded = expandedId === c.id
+                return (
+                  <React.Fragment key={c.id}>
+                    <tr className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-white">
+                              {c.full_name
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="font-medium text-gray-900">{c.full_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-700">{c.email}</td>
+                      <td className="px-5 py-3.5 text-gray-700">{c.cv_jobs?.title || '—'}</td>
+                      <td className="px-5 py-3.5">
+                        <Badge variant="outline" className="text-xs bg-gray-50">
+                          {c.source || 'Không xác định'}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Badge className={`text-xs border ${st.className}`}>{st.label}</Badge>
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-gray-500">
+                        {new Date(c.created_at).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onAnalyzeOne(c)}
+                            disabled={analyzing}
+                            className="gap-1"
+                          >
+                            <Brain className="h-3.5 w-3.5" />
+                            Phân tích
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                            className="gap-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-blue-50">
+                        <td colSpan={7} className="px-5 py-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-xs font-medium text-gray-600 mb-1">Số điện thoại</p>
+                              <p className="text-gray-900">{c.phone_number || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600 mb-1">Địa chỉ</p>
+                              <p className="text-gray-900">{c.address || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600 mb-1">Trường đại học</p>
+                              <p className="text-gray-900">{c.university || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600 mb-1">Kinh nghiệm</p>
+                              <p className="text-gray-900 truncate">{c.experience?.substring(0, 50) || '—'}...</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600 mb-1">Học vấn</p>
+                              <p className="text-gray-900 truncate">{c.education?.substring(0, 50) || '—'}...</p>
+                            </div>
+                            <div className="flex items-end gap-2">
+                              <Button size="sm" onClick={() => onViewDetail(c)} variant="outline" className="gap-1">
+                                <Eye className="h-3.5 w-3.5" />
+                                Xem đầy đủ
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => onCreateInterview(c)}
+                                className="gap-1 bg-blue-600 hover:bg-blue-700"
+                              >
+                                <Calendar className="h-3.5 w-3.5" />
+                                Phỏng vấn
+                              </Button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+          <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Tất cả ứng viên đã được phân tích</h3>
+          <p className="text-sm text-gray-600">Không còn ứng viên nào chưa được đánh giá</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ==================== MAIN COMPONENT ====================
 export default function PotentialCandidatesPage() {
   const { toast } = useToast()
@@ -844,7 +1104,7 @@ export default function PotentialCandidatesPage() {
   const [matchFilter,   setMatchFilter]   = React.useState<string>("all")
   const [showDetail,    setShowDetail]    = React.useState(false)
   const [selectedCandidate, setSelectedCandidate] = React.useState<any>(null)
-  const [mainTab, setMainTab] = React.useState<'cards' | 'ranking' | 'byjob'>('cards')
+  const [mainTab, setMainTab] = React.useState<'cards' | 'ranking' | 'byjob' | 'unanalyzed'>('cards')
 
   // ── Đồng bộ JobsPage: rubric map (job_id → rubric) ──
   const [rubricMap, setRubricMap] = React.useState<Map<string, any>>(new Map())
@@ -870,7 +1130,7 @@ export default function PotentialCandidatesPage() {
         setRubricMap(map)
       }
 
-      // ── Đồng bộ CandidatesPage: thêm mandatory_requirements_met, mandatory_requirements_notes, source ──
+      // ── Đồng bộ CandidatesPage: lấy tất cả ứng viên (kể cả chưa phân tích) ──
       const { data: candidatesData, error: candidatesError } = await supabase
         .from("cv_candidates")
         .select(`
@@ -878,7 +1138,6 @@ export default function PotentialCandidatesPage() {
           cv_jobs(id,title,level,department,description,requirements,benefits,mandatory_requirements,job_type,work_location,location),
           cv_candidate_skills(cv_skills(id,name,category))
         `)
-        .not("cv_parsed_data", "is", null)
         .order("created_at", { ascending: false })
       if (candidatesError) throw candidatesError
 
@@ -909,7 +1168,7 @@ export default function PotentialCandidatesPage() {
   const handleAnalyzeAll = async () => {
     try {
       setAnalyzing(true)
-      const toAnalyze = candidates.filter(c => !c.analysis_result && c.cv_parsed_data)
+      const toAnalyze = candidates.filter(c => !c.analysis_result)
       if (!toAnalyze.length) { toast({ title: "Thông báo", description: "Tất cả CV đã được phân tích", duration: 3000 }); return }
       let success = 0
       for (const candidate of toAnalyze) {
@@ -996,6 +1255,7 @@ export default function PotentialCandidatesPage() {
   const stats = React.useMemo(() => {
     const total = filteredCandidates.length
     const analyzed = filteredCandidates.filter(c => c.analysis_result).length
+    const unanalyzed = filteredCandidates.filter(c => !c.analysis_result).length
     const excellent = filteredCandidates.filter(c => c.overall_score >= 85).length
     const perfectMatch = filteredCandidates.filter(c => c.analysis_result?.best_match?.job_id === c.cv_jobs?.id).length
     const avgScore = analyzed > 0 ? Math.round(filteredCandidates.filter(c => c.analysis_result).reduce((s, c) => s + c.overall_score, 0) / analyzed) : 0
@@ -1003,7 +1263,7 @@ export default function PotentialCandidatesPage() {
     const mandatoryMet = filteredCandidates.filter(c => c.mandatory_requirements_met === true).length
     // Đồng bộ JobsPage
     const withRubric = new Set(candidates.map(c => c.job_id).filter(id => id && rubricMap.has(id))).size
-    return { total, analyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, mandatoryMet, withRubric }
+    return { total, analyzed, unanalyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, mandatoryMet, withRubric }
   }, [filteredCandidates, candidates, rubricMap])
 
   if (loading) return (
@@ -1051,11 +1311,12 @@ export default function PotentialCandidatesPage() {
         </div>
       </div>
 
-      {/* Stats — đồng bộ thêm mandatoryMet và withRubric */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
+      {/* Stats — đồng bộ thêm mandatoryMet, withRubric, và unanalyzed */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3 sm:gap-4">
         {[
           { label: 'Tổng số CV',         value: stats.total,              color: 'text-blue-600',   border: 'border-blue-100' },
           { label: 'Đã phân tích',       value: stats.analyzed,           color: 'text-green-600',  border: 'border-green-100' },
+          { label: 'Chưa phân tích',     value: stats.unanalyzed,         color: 'text-amber-600',  border: 'border-amber-100' },
           { label: 'Điểm TB',            value: stats.avgScore,           color: 'text-yellow-600', border: 'border-yellow-100' },
           { label: 'Xuất sắc (≥85)',     value: stats.excellent,          color: 'text-purple-600', border: 'border-purple-100' },
           { label: 'Đáp ứng YC bắt buộc', value: stats.mandatoryMet,    color: 'text-indigo-600', border: 'border-indigo-100' },
@@ -1077,11 +1338,12 @@ export default function PotentialCandidatesPage() {
 
       {/* Main tabs */}
       <div className="border-b border-gray-200">
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {[
             { id: 'cards'   as const, label: 'Thẻ ứng viên',  icon: <LayoutGrid className="h-4 w-4" /> },
             { id: 'ranking' as const, label: 'Xếp hạng',      icon: <Trophy className="h-4 w-4" /> },
             { id: 'byjob'   as const, label: 'Theo vị trí',   icon: <Layers className="h-4 w-4" /> },
+            { id: 'unanalyzed' as const, label: 'Chưa đánh giá', icon: <Brain className="h-4 w-4" /> },
           ].map(tab => (
             <button key={tab.id} onClick={() => setMainTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px
@@ -1097,6 +1359,11 @@ export default function PotentialCandidatesPage() {
               {tab.id === 'byjob' && (
                 <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
                   {new Set(candidates.map(c => c.job_id).filter(Boolean)).size} vị trí
+                </span>
+              )}
+              {tab.id === 'unanalyzed' && (
+                <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                  {candidates.filter(c => !c.analysis_result).length}
                 </span>
               )}
             </button>
@@ -1264,6 +1531,19 @@ export default function PotentialCandidatesPage() {
 
       {/* ── By-Job tab ── */}
       {mainTab === 'byjob' && <ByJobView {...sharedProps} />}
+
+      {/* ── Unanalyzed tab ── */}
+      {mainTab === 'unanalyzed' && (
+        <UnanalyzedCandidatesView
+          candidates={candidates}
+          jobs={jobs}
+          onAnalyzeOne={handleAnalyzeOne}
+          onAnalyzeAll={handleAnalyzeAll}
+          analyzing={analyzing}
+          onViewDetail={handleViewDetail}
+          onCreateInterview={handleCreateInterview}
+        />
+      )}
 
       {/* ── Detail Dialog (giữ nguyên + bổ sung mandatory & rubric info) ── */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
