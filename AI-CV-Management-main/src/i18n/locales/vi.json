@@ -38,6 +38,30 @@
     "addSourceColumn": "Thêm cột \"source\" vào cv_candidates",
     "noJobsData": "Chưa có dữ liệu vị trí tuyển dụng",
     "noActivities": "Chưa có hoạt động nào",
+    "activity": {
+      "subTitle": "Xem, lọc và tìm kiếm hoạt động gần đây trong hệ thống.",
+      "searchPlaceholder": "Tìm kiếm theo tên, hành động hoặc loại...",
+      "noMatch": "Không tìm thấy hoạt động phù hợp.",
+      "tryDifferentSearch": "Thử từ khóa khác hoặc bỏ lọc để xem nhiều hơn.",
+      "loadMore": "Xem thêm hoạt động"
+    },
+    "activityInsights": {
+      "activities": "hoạt động",
+      "users": "người dùng",
+      "totalLabel": "Tổng hoạt động",
+      "topEntityLabel": "Thực thể nổi bật",
+      "topActionLabel": "Hành động phổ biến"
+    },
+    "activityFilters": {
+      "all": "Tất cả",
+      "cv": "CV",
+      "job": "JD",
+      "interview": "PV",
+      "user": "Người dùng",
+      "email": "Email",
+      "role": "Vai trò",
+      "auth": "Auth"
+    },
     "loading": "Đang tải..."
   },
   "settings": {

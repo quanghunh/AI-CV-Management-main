@@ -38,44 +38,31 @@
     "addSourceColumn": "Add \"source\" column to cv_candidates",
     "noJobsData": "No job positions data",
     "noActivities": "No activities yet",
+    "activity": {
+      "subTitle": "Browse, filter and search recent system activity.",
+      "searchPlaceholder": "Search by name, action or type...",
+      "noMatch": "No matching activity found.",
+      "tryDifferentSearch": "Try another keyword or clear filters to see more.",
+      "loadMore": "Load more activities"
+    },
+    "activityInsights": {
+      "activities": "activities",
+      "users": "users",
+      "totalLabel": "Total activity",
+      "topEntityLabel": "Top entity",
+      "topActionLabel": "Top action"
+    },
+    "activityFilters": {
+      "all": "All",
+      "cv": "CV",
+      "job": "JD",
+      "interview": "Interview",
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "auth": "Auth"
+    },
     "loading": "Loading..."
-  },
-  "settings": {
-    "title": "Settings",
-    "company": {
-      "title": "Company Information",
-      "description": "Update basic information about your company",
-      "name": "Company Name",
-      "website": "Website",
-      "address": "Office Address",
-      "email": "Contact Email",
-      "description_label": "Company Description",
-      "description_placeholder": "Enter company description, work culture, core values..."
-    },
-    "language": {
-      "title": "System Language",
-      "description": "Select display language for the entire system",
-      "vietnamese": "Vietnamese",
-      "english": "English"
-    },
-    "logo": {
-      "title": "Company Logo",
-      "description": "Upload logo to display on the system",
-      "change": "Change Logo",
-      "format": "File format: JPG, PNG, GIF, SVG. Max size: 2MB"
-    },
-    "colors": {
-      "title": "Interface Colors",
-      "description": "Colors will be applied to the entire interface",
-      "button": "Button Color",
-      "menu": "Menu Color",
-      "preview": "Color Preview",
-      "primaryButton": "Primary Button Color",
-      "menuBackground": "Menu Background Color"
-    },
-    "save": "Save Changes",
-    "saving": "Saving...",
-    "saved": "Saved successfully!"
   },
   "auth": {
     "login": "Login",
@@ -335,7 +322,10 @@
       "preview": "Color Preview",
       "primaryButton": "Primary Button Color",
       "menuBackground": "Menu Background Color"
-    }
+    },
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "saved": "Saved successfully!"
   },
   "ai": {
     "title": "AI Settings",
