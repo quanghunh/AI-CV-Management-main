@@ -40,7 +40,13 @@ interface CVAnalysisResult {
   overall_score: number; best_match: JobMatchResult | null; all_matches: JobMatchResult[]
 }
 
-async function analyzeWithGPT4o(cvText: string, cvData: any, jobs: any[], primaryJobId?: string): Promise<CVAnalysisResult> {
+async function analyzeWithGPT4o(
+  cvText: string,
+  cvData: any,
+  jobs: any[],
+  primaryJobId?: string,
+  rubricMap?: Map<string, any>   // job_id → rubric data from cv_job_scoring_rubrics
+): Promise<CVAnalysisResult> {
   const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
   const response = await fetch(`${API_URL}/api/match-cv-jobs`, {
     method: 'POST',
@@ -61,6 +67,8 @@ async function analyzeWithGPT4o(cvText: string, cvData: any, jobs: any[], primar
         job_type: j.job_type, work_location: j.work_location, location: j.location,
         description: j.description, requirements: j.requirements, benefits: j.benefits,
         mandatory_requirements: j.mandatory_requirements || null,
+        // Include custom scoring rubric if available for this job
+        scoring_rubric: rubricMap?.get(j.id) || null,
       })),
       primary_job_id: primaryJobId,
     }),
@@ -1098,6 +1106,7 @@ export default function PotentialCandidatesPage() {
   const [loading,       setLoading]       = React.useState(true)
   const [analyzing,     setAnalyzing]     = React.useState(false)
   const [reanalyzingId, setReanalyzingId] = React.useState<string | null>(null)
+  const [analyzingId,   setAnalyzingId]   = React.useState<string | null>(null)  // per-candidate analyze
   const [candidates,    setCandidates]    = React.useState<any[]>([])
   const [jobs,          setJobs]          = React.useState<any[]>([])
   const [selectedJob,   setSelectedJob]   = React.useState<string>("all")
@@ -1177,7 +1186,8 @@ export default function PotentialCandidatesPage() {
             candidate.cv_parsed_data?.fullText || '',
             { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
             jobs,
-            candidate.job_id
+            candidate.job_id,
+            rubricMap   // ← pass rubricMap for per-job custom scoring
           )
           // ── Đồng bộ CandidatesPage: status flow Mới → Sàng lọc ──
           const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
@@ -1195,39 +1205,42 @@ export default function PotentialCandidatesPage() {
   }
 
   const handleAnalyzeOne = async (candidate: any) => {
-    if (!candidate.cv_parsed_data) return
-    setAnalyzing(true)
+    // NOTE: csv-imported candidates may have cv_parsed_data = null — still proceed
+    // using structured fields (name, university, education, experience)
+    setAnalyzingId(candidate.id)   // only flag THIS candidate
     try {
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
         jobs,
-        candidate.job_id
+        candidate.job_id,
+        rubricMap   // ← pass rubricMap for per-job custom scoring
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
       await supabase.from("cv_candidates").update({
-        cv_parsed_data: { ...candidate.cv_parsed_data, analysis_result: result },
+        cv_parsed_data: { ...(candidate.cv_parsed_data || {}), analysis_result: result },
         status: newStatus,
       }).eq("id", candidate.id)
       toast({ title: "Thành công", description: "Phân tích CV hoàn tất", duration: 3000 })
       await fetchData()
     } catch (e: any) { toast({ title: "Lỗi", description: e.message, duration: 3000 }) }
-    finally { setAnalyzing(false) }
+    finally { setAnalyzingId(null) }
   }
 
   const handleReanalyze = async (candidate: any) => {
-    if (!candidate.cv_parsed_data) return
+    // NOTE: csv-imported candidates may have cv_parsed_data = null — still proceed
     setReanalyzingId(candidate.id)
     try {
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
         jobs,
-        candidate.job_id
+        candidate.job_id,
+        rubricMap   // ← pass rubricMap for per-job custom scoring
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
       await supabase.from("cv_candidates").update({
-        cv_parsed_data: { ...candidate.cv_parsed_data, analysis_result: result },
+        cv_parsed_data: { ...(candidate.cv_parsed_data || {}), analysis_result: result },
         status: newStatus,
       }).eq("id", candidate.id)
       toast({ title: "Phân tích lại thành công", description: `${candidate.full_name} - Điểm mới: ${result.overall_score}`, duration: 3000 })
@@ -1282,6 +1295,7 @@ export default function PotentialCandidatesPage() {
     onCreateInterview: handleCreateInterview,
     onReanalyze: handleReanalyze,
     reanalyzingId, analyzing,
+    analyzingId,              // per-candidate analyze state
     onAnalyzeOne: handleAnalyzeOne,
   }
 
@@ -1489,9 +1503,14 @@ export default function PotentialCandidatesPage() {
 
                     <div className="flex flex-col gap-2">
                       {!candidate.analysis_result ? (
-                        <Button size="sm" variant="ghost" onClick={() => handleAnalyzeOne(candidate)} disabled={analyzing}
+                        <Button size="sm" variant="ghost"
+                          onClick={() => handleAnalyzeOne(candidate)}
+                          disabled={analyzingId === candidate.id}
                           className="w-full h-10 sm:h-9 text-xs sm:text-sm text-gray-900 hover:bg-gray-100">
-                          <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />Phân tích
+                          {analyzingId === candidate.id
+                            ? <><RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 animate-spin" />Đang phân tích...</>
+                            : <><Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />Phân tích</>
+                          }
                         </Button>
                       ) : (
                         <>

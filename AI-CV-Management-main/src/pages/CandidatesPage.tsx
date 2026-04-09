@@ -1226,7 +1226,21 @@ export function CandidatesPage() {
         cvUrl = supabase.storage.from('cv-files').getPublicUrl(fName).data.publicUrl
         cvFileName = selectedFile.name; parsedCV = parsedData
       }
-      const { data, error } = await supabase.from('cv_candidates').insert({
+      
+      // PostgreSQL (Supabase) không chấp nhận ký tự \u0000 (Null Byte) sinh ra từ việc đọc PDF.
+      // Cần quét đệ quy và loại bỏ \u0000 khỏi toàn bộ dữ liệu trước khi Insert.
+      const sanitizeDeep = (obj: any): any => {
+        if (typeof obj === 'string') return obj.replace(/\u0000/g, '');
+        if (Array.isArray(obj)) return obj.map(sanitizeDeep);
+        if (obj !== null && typeof obj === 'object') {
+          const newObj: any = {};
+          for (const key in obj) newObj[key] = sanitizeDeep(obj[key]);
+          return newObj;
+        }
+        return obj;
+      };
+
+      const payload = sanitizeDeep({
         full_name: formData.full_name, email: formData.email,
         phone_number: formData.phone_number || null, job_id: formData.job_id,
         address: formData.address || null, experience: formData.experience || null,
@@ -1235,14 +1249,21 @@ export function CandidatesPage() {
         cv_url: cvUrl, cv_file_name: cvFileName, cv_parsed_data: parsedCV,
         mandatory_requirements_met: mandatoryRequirementsMet,
         mandatory_requirements_notes: mandatoryRequirementsNotes || null,
-      }).select().single()
+      });
+
+      const { data, error } = await supabase.from('cv_candidates').insert(payload).select().single()
       if (error) throw error
       await saveCandidateSkills(data.id, formData.skills)
       try { await ActivityLogger.logCVSubmitted(formData.full_name, data.id, jobs.find(j => j.id === formData.job_id)?.title) } catch (_) {}
       const { data: fullData } = await supabase.from('cv_candidates')
         .select(`*, cv_jobs(title,level), cv_candidate_skills(cv_skills(id,name,category))`).eq('id', data.id).single()
       if (fullData) { setCandidates(prev => [fullData as Candidate, ...prev]); setIsDialogOpen(false); resetForm(); alert('✓ Thêm ứng viên thành công!') }
-    } catch (err: any) { alert('Lỗi: ' + (err.message || 'Không thể thêm ứng viên')) }
+    } catch (err: any) { 
+      console.error("Supabase insert error:", err);
+      const errMsg = err?.message || err?.details || err?.hint || 'Không thể thêm ứng viên';
+      const fullErr = JSON.stringify(err);
+      alert('Lỗi lưu CSDL: ' + errMsg + '\n\nChi tiết: ' + fullErr);
+    }
     finally { setIsSaving(false) }
   }
 
