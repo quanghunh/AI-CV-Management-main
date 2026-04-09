@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -140,6 +141,43 @@ function percentChange(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 100);
 }
 
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function activityMatchesFilter(activity: ActivityData, query: string, entityType: string) {
+  const normalizedQuery = normalizeText(query);
+  if (entityType !== 'all' && activity.entity_type !== entityType) return false;
+  if (!normalizedQuery) return true;
+  const haystack = [activity.user_name, activity.action, activity.details, activity.entity_type]
+    .filter(Boolean)
+    .join(' ').toLowerCase();
+  return haystack.includes(normalizedQuery);
+}
+
+function groupActivitiesByDay(activities: ActivityData[]) {
+  const groups: Record<string, { date: string; items: ActivityData[]; timestamp: number }> = {};
+  activities.forEach(activity => {
+    const date = new Date(activity.created_at);
+    const dateKey = date.toISOString().slice(0, 10);
+    if (!groups[dateKey]) {
+      groups[dateKey] = { date: dateKey, items: [], timestamp: date.getTime() };
+    }
+    groups[dateKey].items.push(activity);
+  });
+  return Object.values(groups)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .map(group => ({ date: group.date, items: group.items }));
+}
+
+function formatActivityGroupLabel(date: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterdayDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (date === today) return 'Hôm nay';
+  if (date === yesterdayDate) return 'Hôm qua';
+  return new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 // ─── Activity helpers ─────────────────────────────────────────────────────────
 
 /** Màu dot cho từng action */
@@ -211,8 +249,12 @@ export function DashboardPage() {
     interviewingCV: 0, interviewingChange: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('month');
+  const [activityQuery, setActivityQuery] = useState('');
+  const [activityEntityType, setActivityEntityType] = useState<'all' | string>('all');
+  const [activityLimit, setActivityLimit] = useState(20);
 
   // ── fetch ────────────────────────────────────────────────────────────────
 
@@ -306,9 +348,8 @@ export function DashboardPage() {
         interviewingChange: percentChange(ivThisMonth, ivLastMonth),
       }));
 
-      // ✅ 4. Dùng fetchRecentActivities() từ activityLogger — trong 30 ngày
-      const acts = await fetchRecentActivities(20);
-      setRecentActivities(acts as ActivityData[]);
+      // 4. Load recent activities from activityLogger — trong 30 ngày
+      await fetchActivities({ limit: activityLimit, entityType: activityEntityType });
 
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -317,7 +358,26 @@ export function DashboardPage() {
     }
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  const fetchActivities = async ({ limit, entityType }: { limit: number; entityType: string }) => {
+    setLoadingActivities(true);
+    try {
+      const filters = entityType !== 'all' ? { entityType } : undefined;
+      const acts = await fetchRecentActivities(limit, filters);
+      setRecentActivities(acts as ActivityData[]);
+    } catch (err) {
+      console.error('Activity fetch error:', err);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    fetchActivities({ limit: activityLimit, entityType: activityEntityType });
+  }, [activityLimit, activityEntityType]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -337,6 +397,51 @@ export function DashboardPage() {
   const selectedJobCandidateCount = selectedJobId === 'all'
     ? allCandidates.length
     : allJobsForChart.find(j => j.id === selectedJobId)?.candidate_count ?? 0;
+  const filteredActivities = useMemo(
+    () => recentActivities.filter(activity => activityMatchesFilter(activity, activityQuery, activityEntityType)),
+    [recentActivities, activityQuery, activityEntityType]
+  );
+
+  const activityGroups = useMemo(
+    () => groupActivitiesByDay(filteredActivities),
+    [filteredActivities]
+  );
+
+  const activitySummary = useMemo(() => {
+    const users = new Set<string>();
+    const entityCount: Record<string, number> = {};
+    const actionCount: Record<string, number> = {};
+
+    filteredActivities.forEach(activity => {
+      if (activity.user_name) users.add(activity.user_name);
+      const entity = activity.entity_type || 'Khác';
+      entityCount[entity] = (entityCount[entity] || 0) + 1;
+      actionCount[activity.action] = (actionCount[activity.action] || 0) + 1;
+    });
+
+    const topEntity = Object.entries(entityCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    const topAction = Object.entries(actionCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    return {
+      total: filteredActivities.length,
+      users: users.size,
+      topEntity,
+      topAction,
+    };
+  }, [filteredActivities]);
+
+  const canLoadMore = recentActivities.length === activityLimit;
+
+  const activityEntityOptions = [
+    { value: 'all', label: t('dashboard.activityFilters.all') },
+    { value: 'cv', label: t('dashboard.activityFilters.cv') },
+    { value: 'job', label: t('dashboard.activityFilters.job') },
+    { value: 'interview', label: t('dashboard.activityFilters.interview') },
+    { value: 'user', label: t('dashboard.activityFilters.user') },
+    { value: 'email', label: t('dashboard.activityFilters.email') },
+    { value: 'role', label: t('dashboard.activityFilters.role') },
+    { value: 'auth', label: t('dashboard.activityFilters.auth') },
+  ];
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -462,75 +567,118 @@ export function DashboardPage() {
 
         {/* ✅ Hoạt động gần đây — cải tiến */}
         <Card className="bg-white shadow-sm">
-          <CardHeader className="p-3 sm:p-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base sm:text-lg">{t('dashboard.charts.recentActivities')}</CardTitle>
+          <CardHeader className="p-3 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base sm:text-lg">{t('dashboard.charts.recentActivities')}</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">{t('dashboard.activity.subTitle')}</p>
+              </div>
               <div className="flex items-center gap-1.5 text-xs text-gray-400">
                 <Clock className="w-3.5 h-3.5" />
                 <span>30 ngày gần nhất</span>
               </div>
             </div>
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <Input
+                value={activityQuery}
+                onChange={event => setActivityQuery(event.target.value)}
+                placeholder={t('dashboard.activity.searchPlaceholder')}
+                className="w-full"
+              />
+              <div className="text-xs text-gray-600 flex flex-col items-start sm:items-end gap-1">
+                <span>{activitySummary.total} {t('dashboard.activityInsights.activities')}</span>
+                <span>{activitySummary.users} {t('dashboard.activityInsights.users')}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {activityEntityOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setActivityEntityType(option.value)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${activityEntityType === option.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-700'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
-            {recentActivities.length > 0 ? (
-              <ul className="space-y-3">
-                {recentActivities.map((activity) => {
-                  const entityBadge = getEntityBadge(activity.entity_type);
-                  const dotColor = getActivityDotColor(activity.action);
-                  return (
-                    <li key={activity.id} className="flex items-start gap-3 group">
-                      {/* Avatar / dot */}
-                      <div className="flex-shrink-0 mt-0.5">
-                        <Avatar className="h-7 w-7">
-                          <AvatarFallback className={`text-[10px] font-bold text-white ${dotColor}`}>
-                            {activity.user_name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        {/* Header: user name + badge */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900 truncate">
-                            {activity.user_name}
-                          </span>
-                          {entityBadge && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${entityBadge.className}`}>
-                              {entityBadge.label}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Action */}
-                        <p className="text-xs font-medium text-gray-700 mt-0.5">{activity.action}</p>
-
-                        {/* Details */}
-                        {activity.details && (
-                          <p className="text-xs text-gray-500 mt-0.5 truncate" title={activity.details}>
-                            {activity.details}
-                          </p>
-                        )}
-
-                        {/* Timestamp */}
-                        <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          <span title={new Date(activity.created_at).toLocaleString('vi-VN')}>
-                            {formatRelativeTime(activity.created_at)}
-                          </span>
-                          <span className="hidden group-hover:inline text-gray-300 ml-1">
-                            • {new Date(activity.created_at).toLocaleString('vi-VN')}
-                          </span>
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+            <div className="grid gap-3 sm:grid-cols-2 mb-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{t('dashboard.activityInsights.totalLabel')}</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{activitySummary.total}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{t('dashboard.activityInsights.topEntityLabel')}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{activitySummary.topEntity}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('dashboard.activityInsights.topActionLabel')}: {activitySummary.topAction}</p>
+              </div>
+            </div>
+            {loadingActivities ? (
+              <div className="flex flex-col items-center justify-center h-[240px] text-gray-400">
                 <Database className="w-12 h-12 mb-2" />
-                <p className="text-sm">{t('dashboard.noActivities')}</p>
-                <p className="text-xs mt-1 text-gray-300">Chưa có hoạt động nào trong 30 ngày qua</p>
+                <p className="text-sm">{t('dashboard.loading')}</p>
+              </div>
+            ) : activityGroups.length > 0 ? (
+              <div className="max-h-[420px] overflow-y-auto pr-2 space-y-4">
+                {activityGroups.map(group => (
+                  <div key={group.date} className="space-y-3">
+                    <div className="sticky top-0 z-10 bg-white/90 px-2 py-2 backdrop-blur-sm border-b border-slate-200">
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{formatActivityGroupLabel(group.date)}</p>
+                    </div>
+                    <ul className="space-y-3">
+                      {group.items.map(activity => {
+                        const entityBadge = getEntityBadge(activity.entity_type);
+                        const dotColor = getActivityDotColor(activity.action);
+                        return (
+                          <li key={activity.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-sm">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className={`text-[11px] font-bold text-white ${dotColor}`}>
+                                  {activity.user_name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900 truncate">{activity.user_name}</span>
+                                {entityBadge && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${entityBadge.className}`}>
+                                    {entityBadge.label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-700 mt-1">{activity.action}</p>
+                              {activity.details && (
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2" title={activity.details}>{activity.details}</p>
+                              )}
+                              <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span title={new Date(activity.created_at).toLocaleString('vi-VN')}>
+                                  {formatRelativeTime(activity.created_at)}
+                                </span>
+                              </p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[260px] text-gray-400">
+                <Database className="w-12 h-12 mb-2" />
+                <p className="text-sm">{activityQuery ? t('dashboard.activity.noMatch') : t('dashboard.noActivities')}</p>
+                {activityQuery && <p className="text-xs mt-1 text-gray-300">{t('dashboard.activity.tryDifferentSearch')}</p>}
+              </div>
+            )}
+            {canLoadMore && !activityQuery && (
+              <div className="pt-4 text-center">
+                <Button variant="outline" size="sm" onClick={() => setActivityLimit(prev => prev + 20)}>
+                  {t('dashboard.activity.loadMore')}
+                </Button>
               </div>
             )}
           </CardContent>

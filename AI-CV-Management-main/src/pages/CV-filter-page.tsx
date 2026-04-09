@@ -35,6 +35,7 @@ const Progress = ({ value, className = "" }: { value: number; className?: string
 interface JobMatchResult {
   job_id: string; job_title: string; match_score: number
   strengths: string[]; weaknesses: string[]; recommendation: string
+  detailed_scores?: Record<string, { score: number; weight: number; contribution: number; reasoning: string }>
 }
 interface CVAnalysisResult {
   overall_score: number; best_match: JobMatchResult | null; all_matches: JobMatchResult[]
@@ -1177,18 +1178,55 @@ export default function PotentialCandidatesPage() {
   const handleAnalyzeAll = async () => {
     try {
       setAnalyzing(true)
-      const toAnalyze = candidates.filter(c => !c.analysis_result)
-      if (!toAnalyze.length) { toast({ title: "Thông báo", description: "Tất cả CV đã được phân tích", duration: 3000 }); return }
+      
+      // ── NEW: Chỉ phân tích cho job được chọn ──
+      if (selectedJob === 'all') {
+        toast({ title: "Thông báo", description: "Vui lòng chọn một vị trí công việc cụ thể để phân tích hàng loạt", duration: 3000 })
+        return
+      }
+      
+      const selectedJobData = jobs.find(j => j.id === selectedJob)
+      if (!selectedJobData) {
+        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc", duration: 3000 })
+        return
+      }
+      
+      // ── Kiểm tra bảng tiêu chí đánh giá ──
+      if (!rubricMap.has(selectedJob)) {
+        toast({ title: "Không thể chấm điểm", description: `Vị trí "${selectedJobData.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        return
+      }
+      
+      // Chỉ lấy CV của job được chọn và chưa được phân tích
+      const toAnalyze = candidates.filter(c => 
+        c.job_id === selectedJob && 
+        !c.analysis_result
+      )
+      
+      if (!toAnalyze.length) { 
+        toast({ title: "Thông báo", description: `Tất cả CV của vị trí "${selectedJobData.title}" đã được phân tích`, duration: 3000 })
+        return 
+      }
+      
       let success = 0
       for (const candidate of toAnalyze) {
         try {
+          // ── NEW: Chỉ analyze với job được chọn ──
           const result = await analyzeWithGPT4o(
             candidate.cv_parsed_data?.fullText || '',
-            { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
-            jobs,
-            candidate.job_id,
-            rubricMap   // ← pass rubricMap for per-job custom scoring
+            { 
+              full_name: candidate.full_name, 
+              email: candidate.email, 
+              phone_number: candidate.phone_number, 
+              address: candidate.address, 
+              university: candidate.university, 
+              education: candidate.education, 
+              experience: candidate.experience 
+            },
+            [selectedJobData], // Chỉ pass job được chọn
+            candidate.job_id
           )
+          
           // ── Đồng bộ CandidatesPage: status flow Mới → Sàng lọc ──
           const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
           await supabase.from("cv_candidates").update({
@@ -1196,12 +1234,24 @@ export default function PotentialCandidatesPage() {
             status: newStatus,
           }).eq("id", candidate.id)
           success++
-        } catch (e) { console.error(e) }
+        } catch (e) { 
+          console.error(`Error analyzing candidate ${candidate.id}:`, e) 
+        }
       }
-      toast({ title: "Hoàn thành", description: `Phân tích ${success}/${toAnalyze.length} CV thành công`, duration: 3000 })
+      
+      toast({ 
+        title: "Hoàn thành", 
+        description: `Phân tích ${success}/${toAnalyze.length} CV cho vị trí "${selectedJobData.title}" thành công`, 
+        duration: 3000 
+      })
       await fetchData()
-    } catch (e) { toast({ title: "Lỗi", description: "Có lỗi xảy ra khi phân tích", duration: 3000 }) }
-    finally { setAnalyzing(false) }
+    } catch (e) { 
+      console.error(e)
+      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi phân tích", duration: 3000 }) 
+    }
+    finally { 
+      setAnalyzing(false) 
+    }
   }
 
   const handleAnalyzeOne = async (candidate: any) => {
@@ -1209,12 +1259,24 @@ export default function PotentialCandidatesPage() {
     // using structured fields (name, university, education, experience)
     setAnalyzingId(candidate.id)   // only flag THIS candidate
     try {
+      // ── NEW: Chỉ analyze với job của candidate ──
+      const candidateJob = jobs.find(j => j.id === candidate.job_id)
+      if (!candidateJob) {
+        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
+        return
+      }
+      
+      // ── Kiểm tra bảng tiêu chí đánh giá ──
+      if (!rubricMap.has(candidate.job_id)) {
+        toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        return
+      }
+      
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
-        jobs,
-        candidate.job_id,
-        rubricMap   // ← pass rubricMap for per-job custom scoring
+        [candidateJob], // Chỉ pass job của candidate
+        candidate.job_id
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
       await supabase.from("cv_candidates").update({
@@ -1231,12 +1293,24 @@ export default function PotentialCandidatesPage() {
     // NOTE: csv-imported candidates may have cv_parsed_data = null — still proceed
     setReanalyzingId(candidate.id)
     try {
+      // ── NEW: Chỉ analyze với job của candidate ──
+      const candidateJob = jobs.find(j => j.id === candidate.job_id)
+      if (!candidateJob) {
+        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
+        return
+      }
+      
+      // ── Kiểm tra bảng tiêu chí đánh giá ──
+      if (!rubricMap.has(candidate.job_id)) {
+        toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        return
+      }
+      
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
-        jobs,
-        candidate.job_id,
-        rubricMap   // ← pass rubricMap for per-job custom scoring
+        [candidateJob], // Chỉ pass job của candidate
+        candidate.job_id
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
       await supabase.from("cv_candidates").update({
@@ -1318,9 +1392,13 @@ export default function PotentialCandidatesPage() {
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${analyzing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
-          <Button onClick={handleAnalyzeAll} disabled={analyzing} size="sm">
+          <Button onClick={handleAnalyzeAll} disabled={analyzing || selectedJob === 'all'} size="sm">
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            <span className="hidden sm:inline">{analyzing ? "Đang phân tích..." : "Phân tích tất cả"}</span>
+            <span className="hidden sm:inline">
+              {analyzing ? "Đang phân tích..." : 
+               selectedJob === 'all' ? "Chọn vị trí để phân tích hàng loạt" : 
+               `Phân tích ${stats.unanalyzed} CV chưa đánh giá`}
+            </span>
           </Button>
         </div>
       </div>

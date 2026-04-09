@@ -1,7 +1,7 @@
 // src/components/settings/CompanySettings.tsx
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,6 +64,7 @@ const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
 }
 
 const applyThemeColors = (buttonColor: string, menuColor: string) => {
+  if (typeof document === 'undefined') return
   const root = document.documentElement
   const btn = hexToHSL(buttonColor)
   const mnu = hexToHSL(menuColor)
@@ -91,10 +92,20 @@ const persistColors = (btn: string, mnu: string) => {
   localStorage.setItem('theme-menu-color', mnu)
 }
 
-const loadPersistedColors = () => ({
-  buttonColor: localStorage.getItem('theme-button-color') || '#222831',
-  menuColor:   localStorage.getItem('theme-menu-color')   || '#e8f4fa',
-})
+const loadPersistedColors = () => {
+  if (typeof window === 'undefined') {
+    return { buttonColor: '#222831', menuColor: '#e8f4fa' }
+  }
+
+  const rawButton = localStorage.getItem('theme-button-color') || '#222831'
+  const rawMenu = localStorage.getItem('theme-menu-color') || '#e8f4fa'
+  const validHex = (value: string) => /^#[0-9A-Fa-f]{6}$/.test(value)
+
+  return {
+    buttonColor: validHex(rawButton) ? rawButton : '#222831',
+    menuColor: validHex(rawMenu) ? rawMenu : '#e8f4fa',
+  }
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -145,6 +156,22 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'company-logo') return
+      setLogo(event.newValue)
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  useEffect(() => {
+    if (colorApplied) {
+      setColorApplied(false)
+    }
+  }, [buttonColor, menuColor])
+
   // ── Logo helpers ─────────────────────────────────────────────────────────
 
   const loadLogo = async () => {
@@ -186,10 +213,18 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
   }
 
   const broadcastLogoChange = (url: string | null) => {
+    const previousValue = localStorage.getItem('company-logo')
     if (url) localStorage.setItem('company-logo', url)
     else localStorage.removeItem('company-logo')
+
     window.dispatchEvent(new Event('logo-updated'))
-    window.dispatchEvent(new StorageEvent('storage', { key: 'company-logo', newValue: url, url: window.location.href }))
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'company-logo',
+      oldValue: previousValue,
+      newValue: url,
+      url: window.location.href,
+      storageArea: localStorage,
+    }))
   }
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,10 +257,13 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
           .from(BUCKET_NAME).upload(LOGO_PATH, file, { upsert: true })
         if (uploadErr) throw uploadErr
 
-        const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(LOGO_PATH)
-        await upsertCompanyProfile({ logo_url: publicUrl })
-        setLogo(publicUrl)
-        broadcastLogoChange(publicUrl)
+        const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(LOGO_PATH)
+        if (!data?.publicUrl) {
+          throw new Error('Không lấy được URL công khai của logo')
+        }
+        await upsertCompanyProfile({ logo_url: data.publicUrl })
+        setLogo(data.publicUrl)
+        broadcastLogoChange(data.publicUrl)
         setLogoSaveSuccess(true)
         setTimeout(() => setLogoSaveSuccess(false), 3000)
       } catch (err: any) {
