@@ -103,6 +103,32 @@ def get_ai_config() -> dict:
         print(f"Error fetching AI config: {e}")
     return {}
 
+def get_scoring_rubrics(job_ids: List[str]) -> dict:
+    """Fetch scoring rubrics for given job IDs"""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return {}
+    
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}"
+        }
+        # Fetch rubrics for all job_ids
+        job_ids_str = ','.join(f'"{jid}"' for jid in job_ids)
+        query = f"job_id=in.({job_ids_str})"
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_job_scoring_rubrics?select=*&{query}", headers=headers, timeout=10)
+        
+        if res.status_code == 200:
+            rubrics = res.json()
+            # Convert to dict with job_id as key
+            rubric_map = {}
+            for rubric in rubrics:
+                rubric_map[rubric['job_id']] = rubric
+            return rubric_map
+    except Exception as e:
+        print(f"Error fetching scoring rubrics: {e}")
+    return {}
+
 def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https://api.openai.com/v1", model: str = "gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     if not endpoint:
         endpoint = "https://api.openai.com/v1"
@@ -715,6 +741,11 @@ async def match_cv_jobs(request: MatchCVJobsRequest):
         if request.primary_job_id:
             print(f"⭐ Primary job: {request.primary_job_id}")
         
+        # ==================== FETCH SCORING RUBRICS ====================
+        job_ids = [job.id for job in request.jobs]
+        rubrics_map = get_scoring_rubrics(job_ids)
+        print(f"📊 Rubrics loaded: {len(rubrics_map)}/{len(job_ids)} jobs have custom rubrics")
+        
         # ==================== BUILD CV CONTEXT ====================
         cv_context = f"""
 📋 ỨNG VIÊN PROFILE
@@ -744,6 +775,38 @@ Bằng cấp: {request.cv_data.education or 'Không có thông tin'}
         for idx, job in enumerate(request.jobs, 1):
             is_primary = "⭐ PRIMARY (Ứng viên đã apply)" if job.id == request.primary_job_id else ""
             
+            # Get rubric for this job
+            rubric = rubrics_map.get(job.id)
+            rubric_text = ""
+            if rubric:
+                rubric_text = f"""
+
+📊 BẢNG ĐIỂM CHẤM ĐÁNH GIÁ (SCORING RUBRIC):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Điểm đạt yêu cầu tối thiểu: {rubric.get('passing_score', 70)}/100
+Ghi chú: {rubric.get('notes', 'Không có ghi chú')}
+
+Tiêu chí chấm điểm:
+"""
+                for crit in rubric.get('criteria', []):
+                    level_label = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}[crit.get('level', 'important')]
+                    rubric_text += f"""
+• {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
+  Mô tả: {crit['description']}
+  Hướng dẫn chấm điểm:
+    - Xuất sắc: {crit['scoring_guide']['excellent']}
+    - Tốt: {crit['scoring_guide']['good']}
+    - Trung bình: {crit['scoring_guide']['average']}
+    - Kém: {crit['scoring_guide']['poor']}
+"""
+            else:
+                rubric_text = """
+
+📊 BẢNG ĐIỂM CHẤM ĐÁNH GIÁ (SCORING RUBRIC):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CHƯA CÓ BẢNG ĐIỂM TÙY CHỈNH - SỬ DỤNG TIÊU CHÍ MẶC ĐỊNH
+"""
+            
             jobs_text += f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 JOB #{idx}: {job.title} {is_primary}
@@ -771,6 +834,7 @@ Hình thức: {job.work_location or 'Không xác định'}
 💰 QUYỀN LỢI:
 {job.benefits or 'Không có thông tin'}
 
+{rubric_text}
 """
         
         # ==================== SYSTEM PROMPT (FIXED VERSION) ====================
@@ -834,17 +898,21 @@ KẾT LUẬN:
 
 🔵 BƯỚC 2A: CHẤM ĐIỂM (NẾU PASS MANDATORY/đáp ứng trường bắt buộc hoặc KHÔNG CÓ MANDATORY)
 
-Base: 100 điểm
+NẾU job CÓ BẢNG ĐIỂM TÙY CHỈNH (SCORING RUBRIC):
+- Sử dụng TIÊU CHÍ từ bảng điểm đã được thiết lập
+- Chấm điểm THEO TỪNG TIÊU CHÍ trong rubric
+- Tính điểm = (điểm từng tiêu chí * trọng số) / 100
+- TỔNG ĐIỂM = Tổng của tất cả tiêu chí
 
-Phân bổ điểm (Tổng = 100):
-- Kinh nghiệm phù hợp: 0-30 điểm
-- Kỹ năng kỹ thuật: 0-25 điểm
-- Học vấn phù hợp: 0-15 điểm
-- Level/Seniority match: 0-15 điểm
-- Địa điểm phù hợp: 0-10 điểm
-- Kỹ năng mềm: 0-5 điểm
-
-TỔNG: X/100
+NẾU job KHÔNG CÓ BẢNG ĐIỂM TÙY CHỈNH:
+- Sử dụng tiêu chí MẶC ĐỊNH:
+  - Kinh nghiệm phù hợp: 0-30 điểm
+  - Kỹ năng kỹ thuật: 0-25 điểm  
+  - Học vấn phù hợp: 0-15 điểm
+  - Level/Seniority match: 0-15 điểm
+  - Địa điểm phù hợp: 0-10 điểm
+  - Kỹ năng mềm: 0-5 điểm
+- TỔNG: X/100
 
 Strengths: ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"]
 Weaknesses: ["Điểm yếu 1", "Điểm yếu 2"], Các điểm yếu thông thường (KHÔNG liên quan mandatory)
@@ -858,14 +926,18 @@ Recommendation: "Đánh giá chi tiết 80-120 từ"
  Base điểm giảm: 100 → 50
  Điểm tối đa có thể: 50 (Base mới)
 
-SAU ĐÓ Chấm trên BASE 50 (mỗi component giảm 50%):
+NẾU job CÓ BẢNG ĐIỂM TÙY CHỈNH:
+- Chấm trên BASE 50 (mỗi tiêu chí giảm 50% trọng số)
+- Tính điểm = (điểm từng tiêu chí * trọng số * 0.5) / 100
 
-- Kinh nghiệm phù hợp: 0-15 điểm (giảm 50%)
-- Kỹ năng kỹ thuật: 0-12 điểm (giảm 50%)
-- Học vấn: 0-8 điểm (giảm 50%)
-- Level phù hợp: 0-8 điểm (giảm 50%)
-- Địa điểm: 0-5 điểm (giảm 50%)
-- Kỹ năng mềm: 0-2 điểm (giảm 50%)
+NẾU job KHÔNG CÓ BẢNG ĐIỂM TÙY CHỈNH:
+- Chấm trên BASE 50 (mỗi component giảm 50%):
+  - Kinh nghiệm phù hợp: 0-15 điểm (giảm 50%)
+  - Kỹ năng kỹ thuật: 0-12 điểm (giảm 50%)
+  - Học vấn: 0-8 điểm (giảm 50%)
+  - Level phù hợp: 0-8 điểm (giảm 50%)
+  - Địa điểm: 0-5 điểm (giảm 50%)
+  - Kỹ năng mềm: 0-2 điểm (giảm 50%)
 
 TỔNG: Y/50 (tối đa 50)
 
@@ -890,6 +962,15 @@ Trả về JSON với format:
     "job_id": "<job_id>",
     "job_title": "<job_title>",
     "match_score": <0-100 hoặc 0-50 nếu fail mandatory>,
+    "detailed_scores": {
+      "<criterion_name>": {
+        "score": <điểm số>,
+        "weight": <trọng số>,
+        "contribution": <điểm đóng góp>,
+        "reasoning": "<giải thích ngắn>"
+      },
+      ...
+    },
     "strengths": ["...", "...", "..."],
     "weaknesses": ["...", "..."],
     "recommendation": "..."
@@ -899,6 +980,15 @@ Trả về JSON với format:
       "job_id": "<job_id>",
       "job_title": "<job_title>",
       "match_score": <0-100 hoặc 0-50>,
+      "detailed_scores": {
+        "<criterion_name>": {
+          "score": <điểm số>,
+          "weight": <trọng số>,
+          "contribution": <điểm đóng góp>,
+          "reasoning": "<giải thích ngắn>"
+        },
+        ...
+      },
       "strengths": ["...", "...", "..."],
       "weaknesses": ["...", "..."],
       "recommendation": "..."
@@ -936,39 +1026,46 @@ CÁC CÔNG VIỆC CẦN MATCHING:
 Hãy phân tích và chấm điểm cho TẤT CẢ {len(request.jobs)} jobs trên theo đúng quy trình:
 
 1. Với MỖI JOB: Kiểm tra mandatory TRƯỚC
-2. Nếu PASS hoặc không có mandatory → Base 100
+2. Nếu PASS hoặc không có mandatory → Sử dụng base 100
 3. Nếu FAIL mandatory → Penalty -50 → Base 50
-4. Chấm điểm trên base tương ứng
-5. Sắp xếp all_matches theo điểm giảm dần
-6. best_match = job có điểm cao nhất
+4. CHẤM ĐIỂM THEO BẢNG ĐIỂM (RUBRIC):
+   - Nếu job CÓ BẢNG ĐIỂM TÙY CHỈNH: Sử dụng tiêu chí và trọng số từ rubric
+   - Nếu job KHÔNG CÓ BẢNG ĐIỂM: Sử dụng tiêu chí mặc định
+5. Tính điểm chi tiết cho từng tiêu chí
+6. Sắp xếp all_matches theo điểm giảm dần
+7. best_match = job có điểm cao nhất
 
-LƯU Ý:
-- ĐỌC KỸ: Bằng cấp, Trường, Kinh nghiệm, Full text
-- KHÔNG SUY LUẬN: "Có Đại học" ≠ "Có Cử nhân"
-- STRICT MATCH: Phải tìm thấy CHÍNH XÁC từ khóa
-- Nếu mandatory là một kỹ năng bắt buộc phải có thì phải tìm được script trùng khớp trong CV
-- Nếu mandatory là số năm kinh nghiệm thì phải tìm được số năm đúng hoặc lớn hơn trong CV hoặc công các năm dựa theo các công việc đã làm trong mục kinh nghiệm
-- Fail mandatory → PHẢI có "❌ Không đáp ứng..." trong weaknesses
+LƯU Ý QUAN TRỌNG:
+- ĐỌC KỸ bảng điểm của từng job trong phần "BẢNG ĐIỂM CHẤM ĐÁNH GIÁ"
+- Sử dụng mô tả và hướng dẫn chấm điểm từ rubric
+- Tính contribution = (score * weight) / 100
+- Tổng match_score = tổng contribution của tất cả tiêu chí
+- Với job fail mandatory: giảm 50% trọng số cho mỗi tiêu chí
 - Job PRIMARY → Đánh giá kỹ hơn
 
-CHO MỖI CÔNG VIỆC, ÁP DỤNG QUY TRÌNH:
+CHI TIẾT VỀ CHẤM ĐIỂM THEO RUBRIC:
 
-VÍ DỤ MINH HỌA:
+CHI TIẾT VỀ CHẤM ĐIỂM THEO RUBRIC:
 
-Ví dụ 1: Job yêu cầu "Tốt nghiệp Đại học" + Ứng viên có "university: HUST"
-→ Bắt buộc: ĐÁP ỨNG ✅
-→ Base điểm: 100
-→ Tính: 28 (exp) + 23 (skills) + 15 (edu) + 12 (level) + 8 (loc) + 3 (soft) = 89
-→ Kết quả: 89/100
-→ Điểm yếu: ["Thiếu kinh nghiệm quản lý nhóm"]
+Ví dụ với job CÓ RUBRIC tùy chỉnh:
+- Tiêu chí 1: "Kỹ năng kỹ thuật" (35%) - Đánh giá 85/100 → contribution = 85 * 35 / 100 = 29.75
+- Tiêu chí 2: "Kinh nghiệm" (25%) - Đánh giá 70/100 → contribution = 70 * 25 / 100 = 17.5
+- Tiêu chí 3: "Học vấn" (20%) - Đánh giá 90/100 → contribution = 90 * 20 / 100 = 18
+- TỔNG: 29.75 + 17.5 + 18 = 65.25/100
 
-Ví dụ 2: Job yêu cầu "Tốt nghiệp Đại học" + Ứng viên university: null, education: null
-→ Bắt buộc: KHÔNG ĐÁP ỨNG ❌
-→ Penalty: -50 NGAY LẬP TỨC
-→ Base điểm mới: 50 tối đa
-→ Tính trên base 50: 12 (exp) + 10 (skills) + 0 (edu) + 6 (level) + 4 (loc) + 2 (soft) = 34
-→ Kết quả: 34/50
-→ Điểm yếu: ["Ứng viên không đáp ứng yêu cầu bắt buộc: Tốt nghiệp Đại học", "Thiếu kinh nghiệm cloud"]
+Ví dụ với job KHÔNG CÓ RUBRIC (dùng mặc định):
+- Kinh nghiệm: 28/30 → contribution = 28
+- Kỹ năng: 23/25 → contribution = 23
+- Học vấn: 15/15 → contribution = 15
+- Level: 12/15 → contribution = 12
+- Địa điểm: 8/10 → contribution = 8
+- Kỹ năng mềm: 3/5 → contribution = 3
+- TỔNG: 28+23+15+12+8+3 = 89/100
+
+Với job FAIL MANDATORY:
+- Giảm 50% trọng số cho mỗi tiêu chí
+- Ví dụ tiêu chí 35% → thành 17.5%, điểm 85/100 → contribution = 85 * 17.5 / 100 = 14.875
+- TỔNG tối đa = 50
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ĐẶC BIỆT CHÚ Ý VỀ BEST_MATCH:
