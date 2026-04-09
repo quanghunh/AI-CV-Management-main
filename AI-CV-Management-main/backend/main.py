@@ -315,35 +315,110 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
 
 import re
 
+
+def find_json_object(text: str) -> str | None:
+    start = text.find('{')
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for idx, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\':
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:idx + 1]
+    return None
+
+
+def sanitize_json_strings(content: str) -> str:
+    in_string = False
+    escape = False
+    sanitized_chars = []
+    for ch in content:
+        if escape:
+            sanitized_chars.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            sanitized_chars.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            sanitized_chars.append(ch)
+            in_string = not in_string
+            continue
+        if in_string and ch in '\r\n':
+            sanitized_chars.append('\\n')
+            continue
+        sanitized_chars.append(ch)
+    return ''.join(sanitized_chars)
+
+
 def extract_json_from_response(content: str) -> dict:
     if not content or not content.strip():
         raise HTTPException(status_code=500, detail="AI response is completely empty. Please check API limits or try again.")
-        
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError as main_e:
-        if '```json' in content:
-            extracted = content.split('```json')[1].split('```')[0].strip()
-        elif '```' in content:
-            extracted = content.split('```')[1].split('```')[0].strip()
-        else:
-            extracted = content
-            
+
+    def try_parse(text: str) -> dict | None:
         try:
-            return json.loads(extracted)
-        except json.JSONDecodeError as fallback_e:
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group(0))
-                except Exception:
-                    pass
-            
-            error_msg = str(main_e) if extracted == content else str(fallback_e)
-            print(f"❌ Failed JSON snippet: {content[:1000]}")
-            # Trả về nguyên văn 200 ký tự đầu tiên để hiển thị lên frontend
-            snippet = content[:300].replace('\n', ' ')
-            raise HTTPException(status_code=500, detail=f"Lỗi cú pháp ({error_msg}). Chuỗi: {snippet}...")
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return None
+
+    # 1) Try direct parse first
+    parsed = try_parse(content)
+    if parsed is not None:
+        return parsed
+
+    # 2) Try to extract JSON block from markdown fences or whole response
+    if '```json' in content:
+        extracted = content.split('```json')[1].split('```')[0].strip()
+    elif '```' in content:
+        extracted = content.split('```')[1].split('```')[0].strip()
+    else:
+        extracted = content
+
+    parsed = try_parse(extracted)
+    if parsed is not None:
+        return parsed
+
+    # 3) Try to pull the first balanced JSON object from response text
+    balanced = find_json_object(content)
+    if balanced:
+        parsed = try_parse(balanced)
+        if parsed is not None:
+            return parsed
+
+        sanitized = sanitize_json_strings(balanced)
+        parsed = try_parse(sanitized)
+        if parsed is not None:
+            return parsed
+
+    # 4) As a last resort, try to sanitize the original extracted content
+    sanitized = sanitize_json_strings(extracted)
+    parsed = try_parse(sanitized)
+    if parsed is not None:
+        return parsed
+
+    # 5) Report the parsing failure with a concise snippet
+    error_msg = f"Unable to decode AI JSON response."
+    print(f"❌ Failed JSON snippet: {content[:1000]}")
+    snippet = content[:300].replace('\n', ' ')
+    raise HTTPException(status_code=500, detail=f"Lỗi cú pháp. Chuỗi: {snippet}...")
 
 # ==================== ENDPOINTS ====================
 
