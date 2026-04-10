@@ -53,7 +53,6 @@ interface Candidate {
   phone_number?: string; status: string; source: string; address?: string
   university?: string; experience?: string; education?: string
   cv_url?: string; cv_file_name?: string; cv_parsed_data?: any
-  mandatory_requirements_met?: boolean; mandatory_requirements_notes?: string
   cv_jobs: { title: string; level: string } | null
   cv_candidate_skills?: { cv_skills: { id: string; name: string; category?: string } }[]
 }
@@ -61,7 +60,7 @@ interface Candidate {
 interface Job {
   id: string; title: string; level: string; department: string
   description: string; requirements: string; benefits: string
-  mandatory_requirements?: string; job_type: string; work_location: string; location: string
+  job_type: string; work_location: string; location: string
 }
 
 interface SourceItem { value: string; label: string }
@@ -1124,9 +1123,6 @@ export function CandidatesPage() {
   const [isLoadingAnalyze, setIsLoadingAnalyze] = useState(false)
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [mandatoryRequirementsMet, setMandatoryRequirementsMet] = useState(false)
-  const [mandatoryRequirementsNotes, setMandatoryRequirementsNotes] = useState('')
-  const [showRequirementsWarning, setShowRequirementsWarning] = useState(false)
 
   const [formData, setFormData] = useState({
     full_name: '', email: '', phone_number: '', job_id: '', address: '',
@@ -1138,7 +1134,7 @@ export function CandidatesPage() {
 
   useEffect(() => {
     supabase.from('cv_jobs')
-      .select('id, title, level, department, description, requirements, benefits, mandatory_requirements, job_type, work_location, location')
+      .select('id, title, level, department, description, requirements, benefits, job_type, work_location, location')
       .order('title')
       .then(({ data }) => { if (data) setJobs(data) })
   }, [])
@@ -1147,9 +1143,8 @@ export function CandidatesPage() {
     if (formData.job_id) {
       const job = jobs.find(j => j.id === formData.job_id)
       setSelectedJob(job || null)
-      if (job?.mandatory_requirements) setCurrentTab('requirements')
     } else {
-      setSelectedJob(null); setMandatoryRequirementsMet(false); setMandatoryRequirementsNotes('')
+      setSelectedJob(null)
     }
   }, [formData.job_id, jobs])
 
@@ -1182,7 +1177,7 @@ export function CandidatesPage() {
   const resetForm = () => {
     setFormData({ full_name:'', email:'', phone_number:'', job_id:'', address:'', experience:'', education:'', university:'', status:'Mới', source:'', skills:[] })
     setCurrentTab('basic'); setSelectedFile(null); setParsedData(null)
-    setSelectedJob(null); setMandatoryRequirementsMet(false); setMandatoryRequirementsNotes(''); setShowRequirementsWarning(false)
+    setSelectedJob(null)
   }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1213,9 +1208,6 @@ export function CandidatesPage() {
     if (!formData.full_name || !formData.email || !formData.job_id) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Vị trí ứng tuyển)'); return
     }
-    if (selectedJob?.mandatory_requirements && !mandatoryRequirementsMet) {
-      setShowRequirementsWarning(true); setCurrentTab('requirements'); return
-    }
     setIsSaving(true)
     try {
       let cvUrl = null, cvFileName = null, parsedCV = null
@@ -1233,8 +1225,6 @@ export function CandidatesPage() {
         education: formData.education || null, university: formData.university || null,
         status: 'Mới', source: formData.source || null,
         cv_url: cvUrl, cv_file_name: cvFileName, cv_parsed_data: parsedCV,
-        mandatory_requirements_met: mandatoryRequirementsMet,
-        mandatory_requirements_notes: mandatoryRequirementsNotes || null,
       }).select().single()
       if (error) throw error
       await saveCandidateSkills(data.id, formData.skills)
@@ -1306,7 +1296,7 @@ export function CandidatesPage() {
     setIsLoadingAnalyze(true)
     try {
       const { data } = await supabase.from('cv_candidates')
-        .select('id,full_name,cv_url,cv_parsed_data,status,mandatory_requirements_met,mandatory_requirements_notes,cv_candidate_skills(cv_skills(id,name,category))')
+        .select('id,full_name,cv_url,cv_parsed_data,status,cv_candidate_skills(cv_skills(id,name,category))')
         .eq('id', candidate.id).single()
       if (data) {
         if (!data.cv_parsed_data && !data.cv_url) { alert('Ứng viên chưa có CV để phân tích'); return }
@@ -1422,17 +1412,7 @@ export function CandidatesPage() {
                 {tab === 'basic' ? 'Thông tin cơ bản' : 'CV & Tài liệu'}
               </button>
             ))}
-            {selectedJob?.mandatory_requirements && (
-              <button
-                className={`flex-1 min-w-0 px-1 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium transition-colors rounded-lg relative ${
-                  currentTab === 'requirements' ? 'bg-amber-50 text-amber-700 border-2 border-amber-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                onClick={() => setCurrentTab('requirements')}>
-                Yêu cầu bắt buộc
-                {!mandatoryRequirementsMet && <AlertTriangle className="w-3 h-3 absolute -top-1 -right-1 text-red-500" />}
-              </button>
-            )}
           </div>
-
           <div className="mt-4 space-y-3 sm:space-y-4">
             {currentTab === 'basic' && (
               <>
@@ -1449,18 +1429,10 @@ export function CandidatesPage() {
                     <Select value={formData.job_id} onValueChange={v => handleInputChange('job_id', v)}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Chọn vị trí" /></SelectTrigger>
                       <SelectContent className="bg-white z-[60] shadow-lg border border-gray-200 max-h-[300px]">
-                        {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.title} - {j.level}{j.mandatory_requirements && ' ⚠️'}</SelectItem>)}
+                        {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.title} - {j.level}</SelectItem>)}
                       </SelectContent>
                     </Select></div>
                 </div>
-                {selectedJob?.mandatory_requirements && (
-                  <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-amber-700">Vị trí này có yêu cầu bắt buộc. Kiểm tra tab "Yêu cầu bắt buộc".</p>
-                    </div>
-                  </div>
-                )}
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Địa chỉ</label>
                   <Input placeholder="Nhập địa chỉ" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} /></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Trường học</label>
@@ -1519,44 +1491,6 @@ export function CandidatesPage() {
                     {parsedData.phone && <p>• SĐT: {parsedData.phone}</p>}
                     {parsedData.university && <p>• Trường: {parsedData.university}</p>}
                     {(parsedData.skills?.length ?? 0) > 0 && <p>• Skills: {parsedData.skills?.join(', ')}</p>}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentTab === 'requirements' && selectedJob && (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-amber-900 mb-2">Yêu cầu bắt buộc: {selectedJob.title}</h4>
-                      <div className="bg-white rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap border border-amber-200">
-                        {selectedJob.mandatory_requirements}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
-                  <div className="flex items-start gap-3 mb-4">
-                    <Checkbox id="requirements-met" checked={mandatoryRequirementsMet}
-                      onCheckedChange={v => { setMandatoryRequirementsMet(v); setShowRequirementsWarning(false) }} className="mt-1" />
-                    <label htmlFor="requirements-met" className="text-sm cursor-pointer">
-                      <span className="font-medium">Xác nhận ứng viên đáp ứng đầy đủ các yêu cầu bắt buộc</span>
-                    </label>
-                  </div>
-                  {showRequirementsWarning && !mandatoryRequirementsMet && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-3 text-sm text-red-700 flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 mt-0.5" /><strong>Không thể thêm!</strong>&nbsp;Vui lòng xác nhận yêu cầu bắt buộc.
-                    </div>
-                  )}
-                  <Textarea placeholder="Ghi chú về cách ứng viên đáp ứng yêu cầu..." className="resize-none"
-                    value={mandatoryRequirementsNotes} onChange={e => setMandatoryRequirementsNotes(e.target.value)} />
-                </div>
-                {mandatoryRequirementsMet && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <p className="text-sm font-medium text-green-800">✓ Đã xác nhận đáp ứng yêu cầu</p>
                   </div>
                 )}
               </div>
@@ -1716,32 +1650,6 @@ export function CandidatesPage() {
                 </div>
               </div>
 
-              {analyzeCVCandidate.mandatory_requirements_met !== undefined && (
-                <div className={`p-4 border-2 rounded-lg ${
-                  analyzeCVCandidate.mandatory_requirements_met ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    {analyzeCVCandidate.mandatory_requirements_met ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
-                    )}
-                    <div>
-                      <h4 className={`font-semibold mb-1 ${
-                        analyzeCVCandidate.mandatory_requirements_met ? 'text-green-900' : 'text-amber-900'
-                      }`}>
-                        {analyzeCVCandidate.mandatory_requirements_met
-                          ? 'Ứng viên đáp ứng yêu cầu bắt buộc'
-                          : 'Chưa xác nhận yêu cầu bắt buộc'}
-                      </h4>
-                      {analyzeCVCandidate.mandatory_requirements_notes && (
-                        <p className="text-sm text-gray-700 mt-1">{analyzeCVCandidate.mandatory_requirements_notes}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {(analyzeCVCandidate?.cv_candidate_skills?.length ?? 0) > 0 && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <h4 className="font-semibold text-green-900 mb-2">Kỹ năng đã lưu trong hệ thống</h4>
@@ -1761,7 +1669,6 @@ export function CandidatesPage() {
                   <p>• Độ hoàn thiện thông tin: {analyzeCVCandidate.cv_parsed_data.email && analyzeCVCandidate.cv_parsed_data.phone ? 'Tốt' : 'Cần bổ sung'}</p>
                   <p>• Số kỹ năng phát hiện: {analyzeCVCandidate.cv_parsed_data.skills?.length || 0}</p>
                   <p>• Số kỹ năng đã lưu: {analyzeCVCandidate?.cv_candidate_skills?.length || 0}</p>
-                  <p>• Yêu cầu bắt buộc: {analyzeCVCandidate.mandatory_requirements_met ? '✓ Đã đáp ứng' : '⚠️ Chưa xác nhận'}</p>
                   <p>• Trạng thái hiện tại: {analyzeCVCandidate.status}</p>
                 </div>
               </div>
@@ -1825,11 +1732,10 @@ export function CandidatesPage() {
       </Dialog>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
         {[
           { label:'Tổng ứng viên', value:candidates.length, icon:<TrendingUp className="inline h-4 w-4 mr-1 text-green-500"/>, note:'+20.1% tháng trước' },
           { label:'Ứng viên mới', value:candidates.filter(c=>c.status==='Mới').length, icon:<Users className="inline h-4 w-4 mr-1 text-blue-500"/>, note:'Trong tuần này' },
-          { label:'Đáp ứng yêu cầu', value:candidates.filter(c=>c.mandatory_requirements_met).length, icon:<UserCheck className="inline h-4 w-4 mr-1 text-green-500"/>, note:'Ứng viên phù hợp' },
         ].map(s => (
           <Card key={s.label} className="shadow-sm border-2 border-gray-100">
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">{s.label}</CardTitle></CardHeader>
@@ -1896,7 +1802,6 @@ export function CandidatesPage() {
                         <div className="min-w-0">
                           <div className="font-medium text-sm flex items-center gap-1.5">
                             <span className="truncate">{c.full_name}</span>
-                            {c.mandatory_requirements_met && <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
                           </div>
                           <div className="text-xs text-gray-500 truncate">{c.email}</div>
                         </div>
@@ -1959,7 +1864,6 @@ export function CandidatesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="font-semibold text-base truncate">{c.full_name}</h3>
-                      {c.mandatory_requirements_met && <CheckCircle2 className="h-4 w-4 text-green-600" />}
                     </div>
                     <p className="text-sm text-gray-500 truncate">{c.email}</p>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">

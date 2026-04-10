@@ -61,7 +61,6 @@ async function analyzeWithGPT4o(cvText: string, cvData: any, jobs: any[], primar
         id: j.id, title: j.title, department: j.department, level: j.level,
         job_type: j.job_type, work_location: j.work_location, location: j.location,
         description: j.description, requirements: j.requirements, benefits: j.benefits,
-        mandatory_requirements: j.mandatory_requirements || null,
       })),
       primary_job_id: primaryJobId,
     }),
@@ -125,20 +124,6 @@ function RankMedal({ rank }: { rank: number }) {
     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 border border-gray-200 flex-shrink-0">
       <span className="text-xs font-bold text-gray-500">{rank}</span>
     </div>
-  )
-}
-
-// ── Badge yêu cầu bắt buộc (đồng bộ với CandidatesPage) ──
-function MandatoryBadge({ met, notes }: { met?: boolean; notes?: string }) {
-  if (met === undefined || met === null) return null
-  return met ? (
-    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
-      <CheckCircle2 className="h-3 w-3" />Đáp ứng YC bắt buộc
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
-      <AlertTriangle className="h-3 w-3" />Chưa xác nhận YC
-    </Badge>
   )
 }
 
@@ -230,7 +215,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
 
   const exportRanking = () => {
     const rows = [
-      ['Hạng', 'Họ tên', 'Email', 'Vị trí', 'Nguồn', 'Điểm', 'Trạng thái', 'Đáp ứng YC bắt buộc', 'Phù hợp nhất'].join(','),
+      ['Hạng', 'Họ tên', 'Email', 'Vị trí', 'Nguồn', 'Điểm', 'Trạng thái', 'Phù hợp nhất'].join(','),
       ...filtered.map(c => [
         rankMap.get(c.id) ?? '—',
         `"${c.full_name}"`,
@@ -239,7 +224,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
         c.source || '',
         c.overall_score,
         c.status,
-        c.mandatory_requirements_met ? 'Có' : 'Không',
         `"${c.analysis_result?.best_match?.job_title || ''}"`,
       ].join(','))
     ].join('\n')
@@ -305,9 +289,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
           {filtered.filter(c => c.analysis_result).length} đã phân tích
         </span>
         {/* Đồng bộ CandidatesPage: đáp ứng yêu cầu bắt buộc */}
-        <span className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 font-medium">
-          {filtered.filter(c => c.mandatory_requirements_met).length} đáp ứng YC bắt buộc
-        </span>
+
       </div>
 
       {/* Table */}
@@ -372,10 +354,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 truncate max-w-[150px]">{c.full_name}</p>
                             <p className="text-xs text-gray-400 truncate max-w-[150px]">{c.email}</p>
-                            {/* Đồng bộ CandidatesPage: mandatory_requirements_met */}
-                            {c.mandatory_requirements_met !== undefined && (
-                              <MandatoryBadge met={c.mandatory_requirements_met} notes={c.mandatory_requirements_notes} />
-                            )}
+
                           </div>
                         </div>
                       </td>
@@ -508,15 +487,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                               </p>
                             </div>
                           )}
-                          {/* Đồng bộ CandidatesPage: ghi chú yêu cầu bắt buộc */}
-                          {c.mandatory_requirements_notes && (
-                            <div className="mt-2 p-2.5 bg-amber-50 border border-amber-100 rounded-lg">
-                              <p className="text-xs text-amber-700 flex items-start gap-1.5">
-                                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                                <span><strong>Ghi chú YC bắt buộc:</strong> {c.mandatory_requirements_notes}</span>
-                              </p>
-                            </div>
-                          )}
+
                         </td>
                       </tr>
                     )}
@@ -552,7 +523,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
   const [scoreThreshold, setScoreThreshold] = React.useState(0)
   const [showOnlyAnalyzed, setShowOnlyAnalyzed] = React.useState(false)
   const [statusFilter, setStatusFilter] = React.useState('all')
-  const [showOnlyMandatoryMet, setShowOnlyMandatoryMet] = React.useState(false)  // đồng bộ CandidatesPage
 
   const toggleJob = (jobId: string) => {
     setExpandedJobs(prev => {
@@ -586,13 +556,12 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
     if (scoreThreshold > 0) res = res.filter(c => c.overall_score >= scoreThreshold)
     if (statusFilter !== 'all') res = res.filter(c => c.status === statusFilter)
     // Đồng bộ CandidatesPage: lọc theo yêu cầu bắt buộc
-    if (showOnlyMandatoryMet) res = res.filter(c => c.mandatory_requirements_met === true)
     return res
   }
 
   const exportByJob = () => {
     const rows = [
-      ['Vị trí', 'Có bảng tiêu chí', 'Điểm đạt tối thiểu', 'Hạng trong vị trí', 'Họ tên', 'Email', 'Nguồn', 'Điểm', 'Trạng thái', 'Đáp ứng YC bắt buộc', 'Apply đúng vị trí'].join(','),
+      ['Vị trí', 'Có bảng tiêu chí', 'Điểm đạt tối thiểu', 'Hạng trong vị trí', 'Họ tên', 'Email', 'Nguồn', 'Điểm', 'Trạng thái', 'Apply đúng vị trí'].join(','),
       ...byJob.flatMap(({ job, candidates: cands }) => {
         const rubric = rubricMap.get(job.id)
         return filterCandidates(cands).map((c, i) => [
@@ -605,7 +574,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
           c.source || '',
           c.overall_score,
           c.status,
-          c.mandatory_requirements_met ? 'Có' : 'Không',
           c.analysis_result?.best_match?.job_id === c.job_id ? 'Có' : 'Không',
         ].join(','))
       })
@@ -643,12 +611,7 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
             onChange={e => setShowOnlyAnalyzed(e.target.checked)} className="accent-blue-600" />
           <label htmlFor="only-analyzed" className="text-xs text-gray-600 cursor-pointer whitespace-nowrap">Chỉ đã phân tích</label>
         </div>
-        {/* Đồng bộ CandidatesPage: lọc đáp ứng yêu cầu bắt buộc */}
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="only-mandatory" checked={showOnlyMandatoryMet}
-            onChange={e => setShowOnlyMandatoryMet(e.target.checked)} className="accent-indigo-600" />
-          <label htmlFor="only-mandatory" className="text-xs text-gray-600 cursor-pointer whitespace-nowrap">Đáp ứng YC bắt buộc</label>
-        </div>
+
         <Button variant="outline" size="sm" onClick={exportByJob} className="flex-shrink-0 gap-1.5">
           <Download className="h-4 w-4" />Xuất CSV
         </Button>
@@ -664,7 +627,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
             ? Math.round(cands.filter(c => c.analysis_result).reduce((s, c) => s + c.overall_score, 0) / analyzed)
             : 0
           const perfectMatches = cands.filter(c => c.analysis_result?.best_match?.job_id === c.job_id).length
-          const mandatoryMetCount = cands.filter(c => c.mandatory_requirements_met).length
           const jobRubric = rubricMap.get(job.id)  // đồng bộ JobsPage
 
           return (
@@ -700,12 +662,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                     <span>{analyzed} đã phân tích</span>
                     {analyzed > 0 && <span>TB: <strong>{avgScore}</strong> điểm</span>}
                     {perfectMatches > 0 && <span className={isOpen ? 'text-green-200' : 'text-green-600'}>✓ {perfectMatches} phù hợp</span>}
-                    {/* Đồng bộ CandidatesPage: đáp ứng yêu cầu bắt buộc */}
-                    {mandatoryMetCount > 0 && (
-                      <span className={isOpen ? 'text-indigo-200' : 'text-indigo-600'}>
-                        ✓ {mandatoryMetCount} đáp ứng YC
-                      </span>
-                    )}
                   </div>
                 </div>
                 {/* Mini score bars for top 3 */}
@@ -761,10 +717,7 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                                 → {c.analysis_result.best_match.job_title}
                               </Badge>
                             )}
-                            {/* Đồng bộ CandidatesPage: mandatory badge */}
-                            {c.mandatory_requirements_met !== undefined && (
-                              <MandatoryBadge met={c.mandatory_requirements_met} />
-                            )}
+
                           </div>
                           <p className="text-xs text-gray-400 truncate">
                             {c.email}
@@ -1136,7 +1089,7 @@ export default function PotentialCandidatesPage() {
         .from("cv_candidates")
         .select(`
           *,
-          cv_jobs(id,title,level,department,description,requirements,benefits,mandatory_requirements,job_type,work_location,location),
+          cv_jobs(id,title,level,department,description,requirements,benefits,job_type,work_location,location),
           cv_candidate_skills(cv_skills(id,name,category))
         `)
         .order("created_at", { ascending: false })
@@ -1154,9 +1107,6 @@ export default function PotentialCandidatesPage() {
           ...c,
           analysis_result: analysisResult,
           overall_score: appliedJobScore,
-          // Đảm bảo các field CandidatesPage có mặt đều được map đúng
-          mandatory_requirements_met: c.mandatory_requirements_met ?? undefined,
-          mandatory_requirements_notes: c.mandatory_requirements_notes ?? undefined,
           source: c.source ?? null,
         }
       })
@@ -1324,7 +1274,6 @@ export default function PotentialCandidatesPage() {
       if (matchFilter === "mismatch") return c.analysis_result && c.analysis_result.best_match?.job_id !== c.cv_jobs?.id
       if (matchFilter === "not-analyzed") return !c.analysis_result
       // Đồng bộ CandidatesPage: lọc đáp ứng yêu cầu bắt buộc
-      if (matchFilter === "mandatory-met") return c.mandatory_requirements_met === true
       return true
     })
   }, [candidates, selectedJob, matchFilter])
@@ -1337,10 +1286,9 @@ export default function PotentialCandidatesPage() {
     const perfectMatch = filteredCandidates.filter(c => c.analysis_result?.best_match?.job_id === c.cv_jobs?.id).length
     const avgScore = analyzed > 0 ? Math.round(filteredCandidates.filter(c => c.analysis_result).reduce((s, c) => s + c.overall_score, 0) / analyzed) : 0
     // Đồng bộ CandidatesPage
-    const mandatoryMet = filteredCandidates.filter(c => c.mandatory_requirements_met === true).length
     // Đồng bộ JobsPage
     const withRubric = new Set(candidates.map(c => c.job_id).filter(id => id && rubricMap.has(id))).size
-    return { total, analyzed, unanalyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, mandatoryMet, withRubric }
+    return { total, analyzed, unanalyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, withRubric }
   }, [filteredCandidates, candidates, rubricMap])
 
   if (loading) return (
@@ -1400,7 +1348,7 @@ export default function PotentialCandidatesPage() {
           { label: 'Chưa phân tích',     value: stats.unanalyzed,         color: 'text-amber-600',  border: 'border-amber-100' },
           { label: 'Điểm TB',            value: stats.avgScore,           color: 'text-yellow-600', border: 'border-yellow-100' },
           { label: 'Xuất sắc (≥85)',     value: stats.excellent,          color: 'text-purple-600', border: 'border-purple-100' },
-          { label: 'Đáp ứng YC bắt buộc', value: stats.mandatoryMet,    color: 'text-indigo-600', border: 'border-indigo-100' },
+
           { label: 'Apply đúng vị trí',  value: `${stats.perfectMatchRate}%`, color: 'text-rose-600', border: 'border-rose-100', sub: `(${stats.perfectMatch}/${stats.analyzed})` },
         ].map(s => (
           <Card key={s.label} className={`border-2 ${s.border}`}>
@@ -1478,8 +1426,7 @@ export default function PotentialCandidatesPage() {
                     <option value="perfect">✅ Apply đúng vị trí phù hợp nhất</option>
                     <option value="mismatch">⚠️ Nên chuyển vị trí khác</option>
                     <option value="not-analyzed">⏳ Chưa phân tích</option>
-                    {/* Đồng bộ CandidatesPage */}
-                    <option value="mandatory-met">✓ Đáp ứng yêu cầu bắt buộc</option>
+
                   </select>
                 </div>
               </div>
@@ -1500,11 +1447,6 @@ export default function PotentialCandidatesPage() {
                         <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
                           {candidate.cv_jobs && <Badge variant="outline" className="text-[10px] sm:text-xs">{candidate.cv_jobs.title}</Badge>}
                           {candidate.status === 'Sàng lọc' && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] sm:text-xs">Sàng lọc</Badge>}
-                          {/* Đồng bộ CandidatesPage */}
-                          {candidate.mandatory_requirements_met !== undefined && (
-                            <MandatoryBadge met={candidate.mandatory_requirements_met} />
-                          )}
-                          {/* Đồng bộ JobsPage: badge bảng tiêu chí */}
                           {jobRubric && <RubricBadge hasRubric={true} passingScore={jobRubric.passing_score} />}
                           {candidate.source && (
                             <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">{candidate.source}</span>
@@ -1663,37 +1605,6 @@ export default function PotentialCandidatesPage() {
                 </div>
                 <Progress value={selectedCandidate.overall_score || 0} className="h-2 sm:h-3" />
               </div>
-
-              {/* Đồng bộ CandidatesPage: mandatory requirements block */}
-              {(selectedCandidate.mandatory_requirements_met !== undefined || selectedCandidate.cv_jobs?.mandatory_requirements) && (
-                <div className={`rounded-xl p-3 sm:p-4 border-2 ${
-                  selectedCandidate.mandatory_requirements_met
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-amber-50 border-amber-200'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    {selectedCandidate.mandatory_requirements_met
-                      ? <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      : <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    }
-                    <div className="flex-1">
-                      <p className={`text-sm font-semibold ${selectedCandidate.mandatory_requirements_met ? 'text-green-800' : 'text-amber-800'}`}>
-                        {selectedCandidate.mandatory_requirements_met
-                          ? 'Ứng viên đáp ứng yêu cầu bắt buộc'
-                          : 'Chưa xác nhận yêu cầu bắt buộc'}
-                      </p>
-                      {selectedCandidate.cv_jobs?.mandatory_requirements && (
-                        <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{selectedCandidate.cv_jobs.mandatory_requirements}</p>
-                      )}
-                      {selectedCandidate.mandatory_requirements_notes && (
-                        <p className="text-xs text-gray-700 mt-2 p-2 bg-white/60 rounded-lg border border-current/20">
-                          <strong>Ghi chú:</strong> {selectedCandidate.mandatory_requirements_notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {selectedCandidate.analysis_result?.best_match && (
                 <div className={`rounded-xl p-3 sm:p-4 lg:p-5 border-2 ${

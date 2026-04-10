@@ -875,11 +875,89 @@ Tiêu chí chấm điểm:
     - Kém: {crit['scoring_guide']['poor']}
 """
             else:
-                rubric_text = """
+                # Use default rubric criteria
+                rubric_text = f"""
 
 📊 BẢNG ĐIỂM CHẤM ĐÁNH GIÁ (SCORING RUBRIC):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ CHƯA CÓ BẢNG ĐIỂM TÙY CHỈNH - SỬ DỤNG TIÊU CHÍ MẶC ĐỊNH
+Điểm đạt yêu cầu tối thiểu: 70/100
+Ghi chú: Sử dụng tiêu chí mặc định cho vị trí {job.title}
+
+Tiêu chí chấm điểm:
+"""
+                default_criteria = [
+                    {
+                        "name": "Kỹ năng kỹ thuật",
+                        "level": "required",
+                        "weight": 35,
+                        "description": "Đánh giá các kỹ năng chuyên môn, công nghệ, công cụ liên quan đến vị trí",
+                        "scoring_guide": {
+                            "excellent": "Có đầy đủ hoặc vượt yêu cầu kỹ thuật, có dự án thực tế minh chứng",
+                            "good": "Đáp ứng đa số yêu cầu kỹ thuật, có một số kinh nghiệm thực tế",
+                            "average": "Đáp ứng một phần yêu cầu, cần đào tạo thêm",
+                            "poor": "Thiếu nhiều kỹ năng cần thiết"
+                        }
+                    },
+                    {
+                        "name": "Kinh nghiệm làm việc",
+                        "level": "required", 
+                        "weight": 25,
+                        "description": "Số năm kinh nghiệm, độ phù hợp ngành nghề, sự tiến bộ trong sự nghiệp",
+                        "scoring_guide": {
+                            "excellent": "Kinh nghiệm phong phú, vượt yêu cầu, đúng lĩnh vực",
+                            "good": "Đủ kinh nghiệm, phần lớn liên quan đến vị trí",
+                            "average": "Kinh nghiệm ít hơn yêu cầu hoặc khác ngành",
+                            "poor": "Thiếu kinh nghiệm đáng kể"
+                        }
+                    },
+                    {
+                        "name": "Học vấn & Bằng cấp",
+                        "level": "important",
+                        "weight": 20,
+                        "description": "Trình độ học vấn, chuyên ngành, trường đại học, các chứng chỉ liên quan",
+                        "scoring_guide": {
+                            "excellent": "Bằng cấp đúng chuyên ngành từ trường uy tín, có chứng chỉ nổi bật",
+                            "good": "Bằng cấp phù hợp, chuyên ngành liên quan",
+                            "average": "Bằng cấp không hoàn toàn phù hợp hoặc trường ít tên tuổi",
+                            "poor": "Không đáp ứng yêu cầu học vấn tối thiểu"
+                        }
+                    },
+                    {
+                        "name": "Kỹ năng mềm",
+                        "level": "important",
+                        "weight": 12,
+                        "description": "Giao tiếp, làm việc nhóm, quản lý thời gian, tư duy giải quyết vấn đề",
+                        "scoring_guide": {
+                            "excellent": "CV thể hiện rõ kỹ năng lãnh đạo, teamwork, giao tiếp xuất sắc",
+                            "good": "Có dẫn chứng về kỹ năng mềm tốt",
+                            "average": "Ít thông tin về kỹ năng mềm",
+                            "poor": "Không có thông tin hoặc dấu hiệu kỹ năng mềm kém"
+                        }
+                    },
+                    {
+                        "name": "Điểm cộng & Thành tích",
+                        "level": "nice_to_have",
+                        "weight": 8,
+                        "description": "Giải thưởng, dự án nổi bật, đóng góp cộng đồng, chứng chỉ thêm",
+                        "scoring_guide": {
+                            "excellent": "Có nhiều thành tích nổi bật, giải thưởng hoặc đóng góp đáng kể",
+                            "good": "Có một vài điểm cộng đáng chú ý",
+                            "average": "Ít điểm cộng",
+                            "poor": "Không có điểm cộng"
+                        }
+                    }
+                ]
+                
+                for crit in default_criteria:
+                    level_label = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}[crit.get('level', 'important')]
+                    rubric_text += f"""
+• {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
+  Mô tả: {crit['description']}
+  Hướng dẫn chấm điểm:
+    - Xuất sắc: {crit['scoring_guide']['excellent']}
+    - Tốt: {crit['scoring_guide']['good']}
+    - Trung bình: {crit['scoring_guide']['average']}
+    - Kém: {crit['scoring_guide']['poor']}
 """
             
             jobs_text += f"""
@@ -902,128 +980,57 @@ Hình thức: {job.work_location or 'Không xác định'}
 ✅ YÊU CẦU:
 {job.requirements or 'Không có yêu cầu cụ thể'}
 
-⚠️⚠️⚠️ YÊU CẦU BẮT BUỘC (MANDATORY):
-{job.mandatory_requirements or 'KHÔNG CÓ yêu cầu bắt buộc'}
-⚠️⚠️⚠️
-
 💰 QUYỀN LỢI:
 {job.benefits or 'Không có thông tin'}
 
 {rubric_text}
 """
         
-        # ==================== SYSTEM PROMPT (FIXED VERSION) ====================
+        # ==================== SYSTEM PROMPT (RUBRIC-BASED VERSION) ====================
         system_prompt = """Bạn là chuyên gia HR và AI Matching với 15 năm kinh nghiệm tuyển dụng IT.
 
-Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp với TỪNG job trong danh sách.
+Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp với TỪNG job trong danh sách dựa trên BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC).
 
 ═══════════════════════════════════════════════════════════════
 📋 QUY TRÌNH CHẤM ĐIỂM CHUẨN (CHO MỖI JOB)
 ═══════════════════════════════════════════════════════════════
 
-🔴 BƯỚC 1: KIỂM TRA YÊU CẦU BẮT BUỘC MANDATORY (STRICT MATCHING - KHÔNG SUY LUẬN)
+🔵 BƯỚC 1: SỬ DỤNG BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC)
 
-Nếu job có "YÊU CẦU BẮT BUỘC/"MANDATORY REQUIREMENTS"" (mandatory_requirements):
+MỖI JOB có bảng tiêu chí riêng với:
+- Các tiêu chí chấm điểm (criteria)
+- Trọng số (weight) cho từng tiêu chí
+- Mô tả và hướng dẫn chấm điểm chi tiết
+- Điểm đạt yêu cầu tối thiểu (passing_score)
 
-1️ Đọc KỸ từng yêu cầu bắt buộc VÀ PHÂN TÍCH từ khóa bắt buộc:
-   VD: "Tốt nghiệp Cử Nhân Đại Học"
-   → Keywords cần tìm: ["cử nhân", "đại học"]
-   
-   VD: "3+ năm kinh nghiệm Python"
-   → Keywords cần tìm: ["python", "3 năm" hoặc "3+"]
-
-2️ TÌM BẰNG CHỨNG trong CV (THEO THỨ TỰ ƯU TIÊN):
-   
-   🎯 Priority 1: Field "Bằng cấp" (education)
-   - Đây là field QUAN TRỌNG NHẤT cho yêu cầu học vấn
-   - VD: "Cử nhân Công nghệ Thông tin"
-   - VD: "Kỹ sư Điện tử"
-   
-   🎯 Priority 2: Field "Trường" (university)
-   - Chỉ chứa TÊN TRƯỜNG, thường KHÔNG chứa bằng cấp
-   - VD: "Đại học Bách Khoa Hà Nội"
-   - VD: "Học viện Công nghệ Bưu chính Viễn thông"
-   
-   🎯 Priority 3: Field "Kinh nghiệm" (experience)
-   - Dùng cho yêu cầu về số năm kinh nghiệm và skills
-   
-   🎯 Priority 4: Full CV Text (backup - tìm trong đoạn HỌC VẤN/EDUCATION)
-   - Dùng khi các field trên null hoặc thiếu thông tin
-
-3️ QUY TẮC MATCHING:
-   
-   ✅ PASS mandatory nếu:
-   - Tìm thấy TẤT CẢ keywords trong CV
-   - Có BẰNG CHỨNG CỤ THỂ (text chính xác)
-   
-   ❌ FAIL mandatory nếu:
-   - THIẾU BẤT KỲ keyword nào
-   
-   ⚠️ KHÔNG được suy luận:
-     ❌ "Có Đại học" ≠ "Có Cử nhân"
-     ❌ "Có trường top" ≠ "Có bằng"
-     ❌ "Có 1 năm exp" ≠ "Có 3 năm exp"
-     ❌ "Có Node.js" ≠ "Có Python"
-     
-KẾT LUẬN:
-- NẾU ứng viên ĐÁP ỨNG → Tiếp tục chấm trên BASE 100
-- NẾU ứng viên KHÔNG ĐÁP ỨNG → Áp dụng PENALTY -50 điểm NGAY
+QUY TRÌNH CHẤM ĐIỂM:
+1. Đọc KỸ bảng tiêu chí của từng job
+2. Chấm điểm TỪNG TIÊU CHÍ theo hướng dẫn trong rubric
+3. Tính contribution = (điểm tiêu chí * trọng số) / 100
+4. TỔNG ĐIỂM = Tổng contribution của tất cả tiêu chí
 
 ═══════════════════════════════════════════════════════════════
 
-🔵 BƯỚC 2A: CHẤM ĐIỂM (NẾU PASS MANDATORY/đáp ứng trường bắt buộc hoặc KHÔNG CÓ MANDATORY)
+🔵 BƯỚC 2: PHÂN TÍCH CHI TIẾT
 
-NẾU job CÓ BẢNG ĐIỂM TÙY CHỈNH (SCORING RUBRIC):
-- Sử dụng TIÊU CHÍ từ bảng điểm đã được thiết lập
-- Chấm điểm THEO TỪNG TIÊU CHÍ trong rubric
-- Tính điểm = (điểm từng tiêu chí * trọng số) / 100
-- TỔNG ĐIỂM = Tổng của tất cả tiêu chí
-
-NẾU job KHÔNG CÓ BẢNG ĐIỂM TÙY CHỈNH:
-- Sử dụng tiêu chí MẶC ĐỊNH:
-  - Kinh nghiệm phù hợp: 0-30 điểm
-  - Kỹ năng kỹ thuật: 0-25 điểm  
-  - Học vấn phù hợp: 0-15 điểm
-  - Level/Seniority match: 0-15 điểm
-  - Địa điểm phù hợp: 0-10 điểm
-  - Kỹ năng mềm: 0-5 điểm
-- TỔNG: X/100
-
-Strengths: ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"]
-Weaknesses: ["Điểm yếu 1", "Điểm yếu 2"], Các điểm yếu thông thường (KHÔNG liên quan mandatory)
-Recommendation: "Đánh giá chi tiết 80-120 từ"
+CHO MỖI JOB:
+- Tìm bằng chứng trong CV cho từng tiêu chí
+- Chấm điểm dựa trên hướng dẫn "excellent/good/average/poor"
+- Tính toán điểm số chính xác
+- Xác định điểm mạnh, điểm yếu
+- Đưa ra gợi ý và khuyến nghị
 
 ═══════════════════════════════════════════════════════════════
 
-🔴 BƯỚC 2B: CHẤM ĐIỂM (NẾU FAIL MANDATORY / không đáp ứng trường bắt buộc)
+🔵 BƯỚC 3: XÁC ĐỊNH BEST MATCH & GỠI Ý
 
-🚨 ÁP DỤNG PENALTY ngay lập tức: -50 ĐIỂM
- Base điểm giảm: 100 → 50
- Điểm tối đa có thể: 50 (Base mới)
+- best_match = job có match_score CAO NHẤT
+- overall_score = best_match.match_score
+- all_matches sắp xếp theo điểm giảm dần
 
-NẾU job CÓ BẢNG ĐIỂM TÙY CHỈNH:
-- Chấm trên BASE 50 (mỗi tiêu chí giảm 50% trọng số)
-- Tính điểm = (điểm từng tiêu chí * trọng số * 0.5) / 100
-
-NẾU job KHÔNG CÓ BẢNG ĐIỂM TÙY CHỈNH:
-- Chấm trên BASE 50 (mỗi component giảm 50%):
-  - Kinh nghiệm phù hợp: 0-15 điểm (giảm 50%)
-  - Kỹ năng kỹ thuật: 0-12 điểm (giảm 50%)
-  - Học vấn: 0-8 điểm (giảm 50%)
-  - Level phù hợp: 0-8 điểm (giảm 50%)
-  - Địa điểm: 0-5 điểm (giảm 50%)
-  - Kỹ năng mềm: 0-2 điểm (giảm 50%)
-
-TỔNG: Y/50 (tối đa 50)
-
-⚠️ LƯU Ý QUAN TRỌNG:
-- Điểm yếu: PHẢI có "Ứng viên không đáp ứng yêu cầu bắt buộc: [yêu cầu cụ thể]" + các điểm yếu khác"
-- Recommendation: "Ứng viên có [điểm mạnh] nhưng KHÔNG ĐỦ ĐIỀU KIỆN do thiếu [requirement cụ thể]"
-
-QUAN TRỌNG: Với JOB ⭐ PRIMARY (job ứng viên đã apply):
-- Đánh giá CHI TIẾT HỖN hơn
-- Đây là job ứng viên QUAN TÂM - phải đánh giá kỹ lưỡng
-
+GỠI Ý CÔNG VIỆC PHÙ HỢP HƠN:
+- Nếu best_match == primary_job (job đã apply): Khuyến khích tiếp tục
+- Nếu best_match != primary_job: Gợi ý chuyển sang vị trí phù hợp hơn với lý do cụ thể
 
 ═══════════════════════════════════════════════════════════════
 🎯 OUTPUT FORMAT
@@ -1036,49 +1043,49 @@ Trả về JSON với format:
   "best_match": {
     "job_id": "<job_id>",
     "job_title": "<job_title>",
-    "match_score": <0-100 hoặc 0-50 nếu fail mandatory>,
+    "match_score": <0-100>,
     "detailed_scores": {
       "<criterion_name>": {
-        "score": <điểm số>,
+        "score": <điểm số 0-100>,
         "weight": <trọng số>,
         "contribution": <điểm đóng góp>,
-        "reasoning": "<giải thích ngắn>"
+        "reasoning": "<giải thích ngắn gọn>"
       },
       ...
     },
-    "strengths": ["...", "...", "..."],
-    "weaknesses": ["...", "..."],
-    "recommendation": "..."
+    "strengths": ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"],
+    "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
+    "recommendation": "Đánh giá chi tiết 100-150 từ về độ phù hợp và gợi ý công việc khác nếu phù hợp hơn"
   },
   "all_matches": [
     {
       "job_id": "<job_id>",
       "job_title": "<job_title>",
-      "match_score": <0-100 hoặc 0-50>,
+      "match_score": <0-100>,
       "detailed_scores": {
         "<criterion_name>": {
-          "score": <điểm số>,
+          "score": <điểm số 0-100>,
           "weight": <trọng số>,
           "contribution": <điểm đóng góp>,
-          "reasoning": "<giải thích ngắn>"
+          "reasoning": "<giải thích ngắn gọn>"
         },
         ...
       },
-      "strengths": ["...", "...", "..."],
-      "weaknesses": ["...", "..."],
-      "recommendation": "..."
+      "strengths": ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"],
+      "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
+      "recommendation": "Đánh giá chi tiết 100-150 từ về độ phù hợp và gợi ý công việc khác nếu phù hợp hơn"
     },
     ...
   ]
 }
 
 ⚠️ CRITICAL RULES:
-1. Nếu FAIL mandatory → match_score PHẢI ≤ 50
-2. Weaknesses của job fail mandatory PHẢI có: "❌ Không đáp ứng yêu cầu bắt buộc: [requirement]"
-3. KHÔNG được suy luận: "Có Đại học" ≠ "Có Cử nhân"
-4. Phải tìm CHÍNH XÁC từ khóa trong CV
-5. all_matches phải được sắp xếp theo match_score giảm dần
-6. best_match = job có match_score CAO NHẤT
+1. match_score = tổng contribution của tất cả tiêu chí trong rubric
+2. detailed_scores PHẢI có cho MỖI tiêu chí trong rubric của job
+3. strengths/weaknesses dựa trên phân tích rubric
+4. recommendation PHẢI bao gồm gợi ý công việc phù hợp hơn nếu best_match != primary_job
+5. all_matches sắp xếp theo match_score giảm dần
+6. best_match = job có match_score cao nhất
 7. overall_score = best_match.match_score
 
 QUAN TRỌNG: 
@@ -1086,7 +1093,7 @@ QUAN TRỌNG:
 - Luôn trả về JSON hợp lệ, không thêm text giải thích bên ngoài"""
 
         # ==================== USER PROMPT ====================
-        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH CHÍNH XÁC:
+        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH RUBRIC-BASED:
 
 {cv_context}
 
@@ -1098,66 +1105,40 @@ CÁC CÔNG VIỆC CẦN MATCHING:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Hãy phân tích và chấm điểm cho TẤT CẢ {len(request.jobs)} jobs trên theo đúng quy trình:
+Hãy phân tích và chấm điểm cho TẤT CẢ {len(request.jobs)} jobs trên theo đúng quy trình RUBRIC-BASED:
 
-1. Với MỖI JOB: Kiểm tra mandatory TRƯỚC
-2. Nếu PASS hoặc không có mandatory → Sử dụng base 100
-3. Nếu FAIL mandatory → Penalty -50 → Base 50
-4. CHẤM ĐIỂM THEO BẢNG ĐIỂM (RUBRIC):
-   - Nếu job CÓ BẢNG ĐIỂM TÙY CHỈNH: Sử dụng tiêu chí và trọng số từ rubric
-   - Nếu job KHÔNG CÓ BẢNG ĐIỂM: Sử dụng tiêu chí mặc định
-5. Tính điểm chi tiết cho từng tiêu chí
-6. Sắp xếp all_matches theo điểm giảm dần
-7. best_match = job có điểm cao nhất
-
-LƯU Ý QUAN TRỌNG:
-- ĐỌC KỸ bảng điểm của từng job trong phần "BẢNG ĐIỂM CHẤM ĐÁNH GIÁ"
-- Sử dụng mô tả và hướng dẫn chấm điểm từ rubric
-- Tính contribution = (score * weight) / 100
-- Tổng match_score = tổng contribution của tất cả tiêu chí
-- Với job fail mandatory: giảm 50% trọng số cho mỗi tiêu chí
-- Job PRIMARY → Đánh giá kỹ hơn
-
-CHI TIẾT VỀ CHẤM ĐIỂM THEO RUBRIC:
+1. Với MỖI JOB: Đọc KỸ bảng tiêu chí chấm điểm (SCORING RUBRIC)
+2. Chấm điểm TỪNG TIÊU CHÍ theo hướng dẫn trong rubric
+3. Tính contribution = (score * weight) / 100 cho mỗi tiêu chí
+4. TỔNG match_score = tổng contribution của tất cả tiêu chí
+5. Xác định strengths, weaknesses dựa trên phân tích rubric
+6. Viết recommendation chi tiết với gợi ý công việc phù hợp hơn nếu cần
 
 CHI TIẾT VỀ CHẤM ĐIỂM THEO RUBRIC:
 
 Ví dụ với job CÓ RUBRIC tùy chỉnh:
-- Tiêu chí 1: "Kỹ năng kỹ thuật" (35%) - Đánh giá 85/100 → contribution = 85 * 35 / 100 = 29.75
-- Tiêu chí 2: "Kinh nghiệm" (25%) - Đánh giá 70/100 → contribution = 70 * 25 / 100 = 17.5
-- Tiêu chí 3: "Học vấn" (20%) - Đánh giá 90/100 → contribution = 90 * 20 / 100 = 18
+- Tiêu chí "Kỹ năng kỹ thuật" (35%): Đánh giá dựa trên hướng dẫn excellent/good/average/poor
+  → Score 85/100 → contribution = 85 * 35 / 100 = 29.75
+- Tiêu chí "Kinh nghiệm" (25%): Đánh giá dựa trên kinh nghiệm thực tế
+  → Score 70/100 → contribution = 70 * 25 / 100 = 17.5
+- Tiêu chí "Học vấn" (20%): Đánh giá bằng cấp và chuyên ngành
+  → Score 90/100 → contribution = 90 * 20 / 100 = 18
 - TỔNG: 29.75 + 17.5 + 18 = 65.25/100
 
-Ví dụ với job KHÔNG CÓ RUBRIC (dùng mặc định):
-- Kinh nghiệm: 28/30 → contribution = 28
-- Kỹ năng: 23/25 → contribution = 23
-- Học vấn: 15/15 → contribution = 15
-- Level: 12/15 → contribution = 12
-- Địa điểm: 8/10 → contribution = 8
-- Kỹ năng mềm: 3/5 → contribution = 3
-- TỔNG: 28+23+15+12+8+3 = 89/100
-
-Với job FAIL MANDATORY:
-- Giảm 50% trọng số cho mỗi tiêu chí
-- Ví dụ tiêu chí 35% → thành 17.5%, điểm 85/100 → contribution = 85 * 17.5 / 100 = 14.875
-- TỔNG tối đa = 50
+LƯU Ý QUAN TRỌNG:
+- ĐỌC KỸ mô tả và hướng dẫn chấm điểm của từng tiêu chí trong rubric
+- Tìm bằng chứng CỤ THỂ trong CV cho từng tiêu chí
+- Tính toán contribution chính xác
+- Job PRIMARY (⭐) → Đánh giá chi tiết và kỹ lưỡng hơn
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ĐẶC BIỆT CHÚ Ý VỀ BEST_MATCH:
+ĐẶC BIỆT CHÚ Ý VỀ RECOMMENDATION:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. best_match PHẢI là job có match_score CAO NHẤT trong all_matches
-2. overall_score PHẢI = best_match.match_score
-3. all_matches PHẢI được sắp xếp theo match_score giảm dần
-
-4. Khi viết recommendation cho best_match:
-   - NẾU best_match.job_id == primary_job_id (job ứng viên đã apply):
-     → Viết: "Ứng viên đã apply đúng vị trí phù hợp với hồ sơ. [Điểm mạnh chính]..."
-   
-   - NẾU best_match.job_id != primary_job_id:
-     → Viết: "Ứng viên phù hợp hơn với vị trí [best_match_title] so với vị trí đã apply [primary_job_title]. Lý do: [so sánh cụ thể]..."
-
-5. Đảm bảo recommendation dài 100-150 từ, chi tiết và có bằng chứng cụ thể
+1. Recommendation PHẢI dài 100-150 từ
+2. Bao gồm phân tích chi tiết về độ phù hợp
+3. Nếu best_match != primary_job: Gợi ý chuyển sang vị trí phù hợp hơn với lý do cụ thể
+4. Nếu best_match == primary_job: Khuyến khích tiếp tục với vị trí đã apply
 
 Trả về ONLY valid JSON theo format đã cho."""
 
