@@ -203,7 +203,9 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         "generationConfig": {
             "temperature": temperature,
             "maxOutputTokens": max_tokens,
-            "responseMimeType": "application/json"
+            # ❌ KHÔNG dùng responseMimeType: "application/json"
+            # → Gemini áp dụng strict JSON schema và cắt output tại ~531 chars!
+            # → Thay vào đó: yêu cầu JSON trong prompt, parse thủ công
         },
         "safetySettings": [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -213,9 +215,10 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         ]
     }
         
-    url = f"https://generativelanguage.googleapis.com/v1alpha/models/{model}:generateContent?key={api_key}"
+    # ✅ v1beta + gemini-2.5-flash (stable, không bị truncation)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     try:
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
+        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
         if response.status_code != 200:
             error_msg = response.text
             print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
@@ -289,8 +292,8 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
     is_gemini = config.get("is_gemini_enabled")
     gemini_key = config.get("gemini_api_key")
     if is_gemini and gemini_key:
-        print("🤖 Route -> Gemini API (v1alpha Gemini 3.0 Document API)")
-        gemini_model = "gemini-3-flash-preview"
+        print("🤖 Route -> Gemini 2.5 Flash (v1beta, stable)")
+        gemini_model = "gemini-2.5-flash"  # ✅ stable, không bị giới hạn bởi preview quirks
         return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
         
     is_openai = config.get("is_openai_enabled")
