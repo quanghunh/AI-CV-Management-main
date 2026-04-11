@@ -39,7 +39,7 @@ import { CategoryManagerDialog } from "@/components/jobs/CategoryManagerDialog"
 // SCORING RUBRIC — Types & Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ScoringLevel = 'required' | 'important' | 'nice_to_have'
+export type ScoringLevel = string // Dynamic levels from categories
 
 export interface RubricCriterion {
   id: string
@@ -67,10 +67,34 @@ export interface ScoringRubric {
   updated_at?: string
 }
 
-const LEVEL_META: Record<ScoringLevel, { label: string; color: string; bg: string }> = {
-  required:      { label: 'Bắt buộc',    color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },
-  important:     { label: 'Quan trọng',  color: 'text-blue-700',   bg: 'bg-blue-50 border-blue-200' },
-  nice_to_have:  { label: 'Cộng điểm',  color: 'text-green-700',  bg: 'bg-green-50 border-green-200' },
+// Dynamic level meta based on categories
+const getLevelMeta = (level: string, jobCategories: Record<string, CategoryItem[]>) => {
+  const rubricLevels = jobCategories["rubric_level"] || []
+  const item = rubricLevels.find(l => l.value === level)
+  if (!item) return { label: level, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', style: {} }
+
+  const metadata = (item as any).metadata || {}
+  const color = metadata.color || '#3b82f6'
+  
+  // Map color to Tailwind classes if possible, else use inline style
+  const colorMap: Record<string, { color: string; bg: string }> = {
+    '#ef4444': { color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+    '#3b82f6': { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+    '#10b981': { color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+    '#f59e0b': { color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
+    '#8b5cf6': { color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+  }
+
+  const colorSet = colorMap[color] || { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' }
+
+  return { 
+    label: item.label, 
+    ...colorSet,
+    style: { borderColor: `${color}33`, backgroundColor: `${color}1a` }, // fallback inline style
+    priority: metadata.priority || 1,
+    description: metadata.description || '',
+    default_weight: metadata.default_weight || 0
+  }
 }
 
 const DEFAULT_CRITERIA: Omit<RubricCriterion, 'id'>[] = [
@@ -164,14 +188,15 @@ function WeightBar({ weight, total }: WeightBarProps) {
 interface CriterionRowProps {
   criterion: RubricCriterion
   totalWeight: number
+  jobCategories: Record<string, CategoryItem[]>
   onUpdate: (id: string, patch: Partial<RubricCriterion>) => void
   onDelete: (id: string) => void
   isExpanded: boolean
   onToggleExpand: (id: string) => void
 }
 
-function CriterionRow({ criterion, totalWeight, onUpdate, onDelete, isExpanded, onToggleExpand }: CriterionRowProps) {
-  const lm = LEVEL_META[criterion.level]
+function CriterionRow({ criterion, totalWeight, jobCategories, onUpdate, onDelete, isExpanded, onToggleExpand }: CriterionRowProps) {
+  const lm = getLevelMeta(criterion.level, jobCategories)
   return (
     <div className={`border rounded-xl overflow-hidden transition-shadow hover:shadow-sm ${lm.bg}`}>
       {/* Header row */}
@@ -189,13 +214,13 @@ function CriterionRow({ criterion, totalWeight, onUpdate, onDelete, isExpanded, 
         </div>
 
         {/* Level badge */}
-        <Select value={criterion.level} onValueChange={v => onUpdate(criterion.id, { level: v as ScoringLevel })}>
+        <Select value={criterion.level} onValueChange={v => onUpdate(criterion.id, { level: v })}>
           <SelectTrigger className={`w-32 h-7 text-xs border ${lm.bg} ${lm.color} focus:ring-0`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white z-[70]">
-            {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => (
-              <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+            {(jobCategories["rubric_level"] || []).map((level) => (
+              <SelectItem key={level.value} value={level.value} className="text-xs">{level.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -281,9 +306,10 @@ interface ScoringRubricDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   job: Job | null
+  jobCategories: Record<string, CategoryItem[]>
 }
 
-function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogProps) {
+function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: ScoringRubricDialogProps) {
   const [criteria, setCriteria] = useState<RubricCriterion[]>([])
   const [passingScore, setPassingScore] = useState(70)
   const [notes, setNotes] = useState('')
@@ -373,7 +399,25 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
   const collapseAll = () => setExpandedIds(new Set())
 
   const loadPreset = () => {
-    setCriteria(DEFAULT_CRITERIA.map(c => ({ ...c, id: genId() })))
+    const rubricLevels = jobCategories["rubric_level"] || []
+    const presetCriteria = rubricLevels.map(level => {
+      const meta = getLevelMeta(level.value, jobCategories) as any
+      return {
+        id: genId(),
+        name: `Tiêu chí ${level.label}`,
+        description: meta.description || `Đánh giá theo mức ${level.label}`,
+        weight: meta.default_weight || 10,
+        level: level.value,
+        max_score: meta.default_weight || 10,
+        scoring_guide: {
+          excellent: 'Xuất sắc',
+          good: 'Tốt',
+          average: 'Trung bình',
+          poor: 'Yếu',
+        },
+      }
+    })
+    setCriteria(presetCriteria)
     setPassingScore(70)
   }
 
@@ -531,11 +575,12 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => {
-                      const sum = criteria.filter(c => c.level === k).reduce((s, c) => s + c.weight, 0)
+                    {(jobCategories["rubric_level"] || []).map((level) => {
+                      const sum = criteria.filter(c => c.level === level.value).reduce((s, c) => s + c.weight, 0)
+                      const lm = getLevelMeta(level.value, jobCategories)
                       return sum > 0 ? (
-                        <span key={k} className={`text-[10px] font-medium ${v.color}`}>
-                          {v.label}: {sum}%
+                        <span key={level.value} className={`text-[10px] font-medium ${lm.color}`}>
+                          {lm.label}: {sum}%
                         </span>
                       ) : null
                     })}
@@ -550,6 +595,7 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
                     key={c.id}
                     criterion={c}
                     totalWeight={totalWeight}
+                    jobCategories={jobCategories}
                     onUpdate={updateCriterion}
                     onDelete={deleteCriterion}
                     isExpanded={expandedIds.has(c.id)}
@@ -605,11 +651,14 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
               {/* ── Legend ─────────────────────────────────────────────────── */}
               <div className="flex flex-wrap gap-3 text-xs text-gray-500 p-3 bg-gray-50 rounded-lg border border-dashed">
                 <span className="font-medium text-gray-600">Loại tiêu chí:</span>
-                {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => (
-                  <span key={k} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${v.bg} ${v.color} font-medium`}>
-                    {v.label}
-                  </span>
-                ))}
+                {(jobCategories["rubric_level"] || []).map((level) => {
+                  const lm = getLevelMeta(level.value, jobCategories)
+                  return (
+                    <span key={level.value} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${lm.bg} ${lm.color} font-medium`}>
+                      {lm.label}
+                    </span>
+                  )
+                })}
                 <span className="text-gray-400 ml-auto">
                   · <strong>Bắt buộc</strong>: ứng viên thiếu tiêu chí này có thể bị loại
                   · <strong>Cộng điểm</strong>: không bắt buộc nhưng tăng điểm
@@ -675,7 +724,16 @@ interface Job {
   cv_candidates: { count: number }[]
 }
 
-interface CategoryItem { value: string; label: string }
+interface CategoryItem { 
+  value: string; 
+  label: string;
+  metadata?: {
+    color?: string;
+    priority?: number;
+    description?: string;
+    default_weight?: number;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI SERVICE FUNCTIONS
@@ -868,6 +926,23 @@ export function JobsPage() {
       { value: 'Bản nháp', label: 'Bản nháp' },
       { value: 'Đã đăng', label: 'Đã đăng' },
       { value: 'Đã đóng', label: 'Đã đóng' },
+    ],
+    rubric_level: [
+      { 
+        value: 'required', 
+        label: 'Bắt buộc',
+        metadata: { color: '#ef4444', priority: 3, description: 'Tiêu chí bắt buộc phải đáp ứng', default_weight: 35 }
+      },
+      { 
+        value: 'important', 
+        label: 'Quan trọng',
+        metadata: { color: '#3b82f6', priority: 2, description: 'Tiêu chí quan trọng, ảnh hưởng lớn đến quyết định', default_weight: 20 }
+      },
+      { 
+        value: 'nice_to_have', 
+        label: 'Cộng điểm',
+        metadata: { color: '#10b981', priority: 1, description: 'Tiêu chí cộng điểm, không bắt buộc', default_weight: 8 }
+      },
     ],
   }
 
@@ -1666,6 +1741,7 @@ export function JobsPage() {
           if (!v) fetchJobs()   // refresh rubric badges after close
         }}
         job={rubricJob}
+        jobCategories={jobCategories}
       />
 
       {/* ══ CATEGORY MANAGER ══════════════════════════════════════════════════ */}

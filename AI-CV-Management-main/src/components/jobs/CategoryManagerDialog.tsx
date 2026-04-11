@@ -4,6 +4,14 @@ import { useState, useEffect } from "react"
 import { Plus, Trash2, Edit, Save, X, Tag, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +30,12 @@ export interface JobCategory {
   label: string
   is_default: boolean
   sort_order: number
+  metadata?: {
+    color?: string
+    priority?: number
+    description?: string
+    default_weight?: number
+  }
 }
 
 interface CategoryGroup {
@@ -46,6 +60,7 @@ const CATEGORY_TYPES: Record<string, { label: string; icon: string }> = {
   work_location: { label: "Địa điểm", icon: "📍" },
   job_type: { label: "Loại hình", icon: "⏰" },
   status: { label: "Trạng thái", icon: "🔖" },
+  rubric_level: { label: "Mức đánh giá tiêu chí", icon: "⭐" },
 }
 
 // ==================== MAIN COMPONENT ====================
@@ -60,8 +75,20 @@ export function CategoryManagerDialog({
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingLabel, setEditingLabel] = useState("")
+  const [editingMetadata, setEditingMetadata] = useState<{
+    color?: string
+    priority?: number
+    description?: string
+    default_weight?: number
+  }>({})
   const [addingType, setAddingType] = useState<string | null>(null)
   const [newLabel, setNewLabel] = useState("")
+  const [newMetadata, setNewMetadata] = useState<{
+    color?: string
+    priority?: number
+    description?: string
+    default_weight?: number
+  }>({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -111,15 +138,19 @@ export function CategoryManagerDialog({
       ...categories.filter((c) => c.type === type).map((c) => c.sort_order)
     )
 
-    const { error } = await supabase.from("cv_job_categories").insert([
-      {
-        type,
-        value,
-        label: value,
-        is_default: false,
-        sort_order: maxOrder + 1,
-      },
-    ])
+    const insertData: any = {
+      type,
+      value,
+      label: value,
+      is_default: false,
+      sort_order: maxOrder + 1,
+    }
+
+    if (type === 'rubric_level' && Object.keys(newMetadata).length > 0) {
+      insertData.metadata = newMetadata
+    }
+
+    const { error } = await supabase.from("cv_job_categories").insert([insertData])
 
     if (error) {
       if (error.code === "23505") {
@@ -142,9 +173,14 @@ export function CategoryManagerDialog({
     if (!editingLabel.trim()) return
 
     setSaving(true)
+    const updateData: any = { label: editingLabel.trim(), value: editingLabel.trim() }
+    if (Object.keys(editingMetadata).length > 0) {
+      updateData.metadata = editingMetadata
+    }
+
     const { error } = await supabase
       .from("cv_job_categories")
-      .update({ label: editingLabel.trim(), value: editingLabel.trim() })
+      .update(updateData)
       .eq("id", id)
       .eq("is_default", false) // Only allow editing non-default items
 
@@ -241,19 +277,80 @@ export function CategoryManagerDialog({
                         {editingId === item.id ? (
                           // Edit Mode
                           <>
-                            <Input
-                              value={editingLabel}
-                              onChange={(e) => setEditingLabel(e.target.value)}
-                              className="flex-1 h-8 text-sm"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleEdit(item.id)
-                                if (e.key === "Escape") {
-                                  setEditingId(null)
-                                  setEditingLabel("")
-                                }
-                              }}
-                            />
+                            <div className="flex-1 space-y-2">
+                              <Input
+                                value={editingLabel}
+                                onChange={(e) => setEditingLabel(e.target.value)}
+                                className="h-8 text-sm"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleEdit(item.id)
+                                  if (e.key === "Escape") {
+                                    setEditingId(null)
+                                    setEditingLabel("")
+                                    setEditingMetadata({})
+                                  }
+                                }}
+                              />
+                              {group.type === 'rubric_level' && (
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <label className="block text-gray-600 mb-1">Màu sắc</label>
+                                    <Select
+                                      value={editingMetadata.color || '#3b82f6'}
+                                      onValueChange={(v) => setEditingMetadata(prev => ({ ...prev, color: v }))}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="#ef4444">🔴 Đỏ</SelectItem>
+                                        <SelectItem value="#3b82f6">🔵 Xanh dương</SelectItem>
+                                        <SelectItem value="#10b981">🟢 Xanh lá</SelectItem>
+                                        <SelectItem value="#f59e0b">🟡 Vàng</SelectItem>
+                                        <SelectItem value="#8b5cf6">🟣 Tím</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-gray-600 mb-1">Độ ưu tiên</label>
+                                    <Select
+                                      value={editingMetadata.priority?.toString() || '1'}
+                                      onValueChange={(v) => setEditingMetadata(prev => ({ ...prev, priority: parseInt(v) }))}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="1">Thấp</SelectItem>
+                                        <SelectItem value="2">Trung bình</SelectItem>
+                                        <SelectItem value="3">Cao</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <label className="block text-gray-600 mb-1">Mô tả quy tắc</label>
+                                    <Textarea
+                                      value={editingMetadata.description || ''}
+                                      onChange={(e) => setEditingMetadata(prev => ({ ...prev, description: e.target.value }))}
+                                      placeholder="Mô tả quy tắc đánh giá cho mức này..."
+                                      className="min-h-[60px] text-sm resize-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-gray-600 mb-1">Trọng số mặc định (%)</label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      value={editingMetadata.default_weight || 0}
+                                      onChange={(e) => setEditingMetadata(prev => ({ ...prev, default_weight: parseInt(e.target.value) || 0 }))}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -270,6 +367,7 @@ export function CategoryManagerDialog({
                               onClick={() => {
                                 setEditingId(null)
                                 setEditingLabel("")
+                                setEditingMetadata({})
                               }}
                             >
                               <X className="w-3.5 h-3.5" />
@@ -298,6 +396,7 @@ export function CategoryManagerDialog({
                                   onClick={() => {
                                     setEditingId(item.id)
                                     setEditingLabel(item.label)
+                                    setEditingMetadata(item.metadata || {})
                                   }}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -319,41 +418,107 @@ export function CategoryManagerDialog({
 
                     {/* Add New Item */}
                     {addingType === group.type ? (
-                      <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200">
-                        <Input
-                          placeholder={`Nhập ${group.label.toLowerCase()} mới...`}
-                          value={newLabel}
-                          onChange={(e) => setNewLabel(e.target.value)}
-                          className="flex-1 h-8 text-sm bg-white"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleAdd(group.type)
-                            if (e.key === "Escape") {
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 space-y-3">
+                        <div className="space-y-2">
+                          <Input
+                            placeholder={`Nhập ${group.label.toLowerCase()} mới...`}
+                            value={newLabel}
+                            onChange={(e) => setNewLabel(e.target.value)}
+                            className="h-8 text-sm bg-white"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleAdd(group.type)
+                              if (e.key === "Escape") {
+                                setAddingType(null)
+                                setNewLabel("")
+                                setNewMetadata({})
+                              }
+                            }}
+                          />
+                          {group.type === 'rubric_level' && (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <label className="block text-gray-600 mb-1">Màu sắc</label>
+                                <Select
+                                  value={newMetadata.color || '#3b82f6'}
+                                  onValueChange={(v) => setNewMetadata(prev => ({ ...prev, color: v }))}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="#ef4444">🔴 Đỏ</SelectItem>
+                                    <SelectItem value="#3b82f6">🔵 Xanh dương</SelectItem>
+                                    <SelectItem value="#10b981">🟢 Xanh lá</SelectItem>
+                                    <SelectItem value="#f59e0b">🟡 Vàng</SelectItem>
+                                    <SelectItem value="#8b5cf6">🟣 Tím</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <label className="block text-gray-600 mb-1">Độ ưu tiên</label>
+                                <Select
+                                  value={newMetadata.priority?.toString() || '1'}
+                                  onValueChange={(v) => setNewMetadata(prev => ({ ...prev, priority: parseInt(v) }))}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Thấp</SelectItem>
+                                    <SelectItem value="2">Trung bình</SelectItem>
+                                    <SelectItem value="3">Cao</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-2">
+                                <label className="block text-gray-600 mb-1">Mô tả quy tắc</label>
+                                <Textarea
+                                  value={newMetadata.description || ''}
+                                  onChange={(e) => setNewMetadata(prev => ({ ...prev, description: e.target.value }))}
+                                  placeholder="Mô tả quy tắc đánh giá cho mức này..."
+                                  className="min-h-[60px] text-sm resize-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-gray-600 mb-1">Trọng số mặc định (%)</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={newMetadata.default_weight || 0}
+                                  onChange={(e) => setNewMetadata(prev => ({ ...prev, default_weight: parseInt(e.target.value) || 0 }))}
+                                  className="h-8"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => handleAdd(group.type)}
+                            disabled={saving || !newLabel.trim()}
+                          >
+                            <Save className="w-3.5 h-3.5 mr-1" />
+                            Thêm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-gray-500"
+                            onClick={() => {
                               setAddingType(null)
                               setNewLabel("")
-                            }
-                          }}
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleAdd(group.type)}
-                          disabled={saving || !newLabel.trim()}
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-gray-500"
-                          onClick={() => {
-                            setAddingType(null)
-                            setNewLabel("")
-                          }}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
+                              setNewMetadata({})
+                            }}
+                          >
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Hủy
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <Button

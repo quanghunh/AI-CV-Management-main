@@ -129,6 +129,51 @@ def get_scoring_rubrics(job_ids: List[str]) -> dict:
         print(f"Error fetching scoring rubrics: {e}")
     return {}
 
+
+def get_rubric_level_definitions() -> dict:
+    """Fetch rubric level categories and their metadata."""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return {}
+
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}"
+        }
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_job_categories?select=*&type=eq.rubric_level", headers=headers, timeout=10)
+        if res.status_code == 200:
+            levels = res.json()
+            return {level['value']: level for level in levels}
+    except Exception as e:
+        print(f"Error fetching rubric level definitions: {e}")
+    return {}
+
+
+def format_rubric_level_label(level: str, definitions: dict) -> str:
+    item = definitions.get(level)
+    if item:
+        return item.get('label', level)
+    fallback = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}
+    return fallback.get(level, level)
+
+
+def format_rubric_level_details(level: str, definitions: dict) -> str:
+    item = definitions.get(level)
+    if not item:
+        fallback = {'required': 'Yêu cầu bắt buộc cho tiêu chí này.', 'important': 'Tiêu chí quan trọng cần ưu tiên.', 'nice_to_have': 'Tiêu chí điểm cộng.'}
+        return fallback.get(level, '')
+
+    metadata = item.get('metadata') or {}
+    details = []
+    if metadata.get('description'):
+        details.append(f"Mô tả trạng thái: {metadata['description']}")
+    if metadata.get('priority') is not None:
+        details.append(f"Ưu tiên: {metadata['priority']}")
+    if metadata.get('default_weight') is not None:
+        details.append(f"Trọng số mặc định: {metadata['default_weight']}")
+    return ' '.join(details)
+
+
 def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https://api.openai.com/v1", model: str = "gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     if not endpoint:
         endpoint = "https://api.openai.com/v1"
@@ -820,7 +865,29 @@ async def match_cv_jobs(request: MatchCVJobsRequest):
         job_ids = [job.id for job in request.jobs]
         rubrics_map = get_scoring_rubrics(job_ids)
         print(f"📊 Rubrics loaded: {len(rubrics_map)}/{len(job_ids)} jobs have custom rubrics")
-        
+
+        rubric_level_defs = get_rubric_level_definitions()
+        if rubric_level_defs:
+            print(f"📌 Rubric level definitions loaded: {len(rubric_level_defs)}")
+        else:
+            print("📌 No rubric level definitions found")
+
+        rubric_level_text = ""
+        if rubric_level_defs:
+            rubric_level_text = "\nĐỊNH NGHĨA TRẠNG THÁI/THUỘC TÍNH ĐÁNH GIÁ (rubric_level):\n"
+            for value, item in rubric_level_defs.items():
+                meta = item.get('metadata') or {}
+                desc = meta.get('description', 'Không có mô tả')
+                priority = meta.get('priority')
+                default_weight = meta.get('default_weight')
+                level_label = item.get('label', value)
+                rubric_level_text += f"- {level_label} ({value}): {desc}"
+                if priority is not None:
+                    rubric_level_text += f" | Ưu tiên: {priority}"
+                if default_weight is not None:
+                    rubric_level_text += f" | Trọng số mặc định: {default_weight}"
+                rubric_level_text += "\n"
+
         # ==================== BUILD CV CONTEXT ====================
         cv_context = f"""
 📋 ỨNG VIÊN PROFILE
@@ -864,11 +931,13 @@ Ghi chú: {rubric.get('notes', 'Không có ghi chú')}
 Tiêu chí chấm điểm:
 """
                 for crit in rubric.get('criteria', []):
-                    level_label = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}[crit.get('level', 'important')]
+                    level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
+                    level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
                     rubric_text += f"""
 • {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
   Mô tả: {crit['description']}
-  Hướng dẫn chấm điểm:
+  Trạng thái/thuộc tính đánh giá: {level_label}
+{f'  {level_details}\n' if level_details else ''}  Hướng dẫn chấm điểm:
     - Xuất sắc: {crit['scoring_guide']['excellent']}
     - Tốt: {crit['scoring_guide']['good']}
     - Trung bình: {crit['scoring_guide']['average']}
@@ -949,11 +1018,13 @@ Tiêu chí chấm điểm:
                 ]
                 
                 for crit in default_criteria:
-                    level_label = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}[crit.get('level', 'important')]
+                    level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
+                    level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
                     rubric_text += f"""
 • {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
   Mô tả: {crit['description']}
-  Hướng dẫn chấm điểm:
+  Trạng thái/thuộc tính đánh giá: {level_label}
+{f'  {level_details}\n' if level_details else ''}  Hướng dẫn chấm điểm:
     - Xuất sắc: {crit['scoring_guide']['excellent']}
     - Tốt: {crit['scoring_guide']['good']}
     - Trung bình: {crit['scoring_guide']['average']}
@@ -1001,6 +1072,7 @@ MỖI JOB có bảng tiêu chí riêng với:
 - Các tiêu chí chấm điểm (criteria)
 - Trọng số (weight) cho từng tiêu chí
 - Mô tả và hướng dẫn chấm điểm chi tiết
+- Trạng thái/thuộc tính đánh giá (rubric_level) của tiêu chí và metadata liên quan nếu có
 - Điểm đạt yêu cầu tối thiểu (passing_score)
 
 QUY TRÌNH CHẤM ĐIỂM:
@@ -1097,6 +1169,7 @@ QUAN TRỌNG:
 
 {cv_context}
 
+{rubric_level_text}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CÁC CÔNG VIỆC CẦN MATCHING:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
