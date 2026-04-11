@@ -39,7 +39,7 @@ import { CategoryManagerDialog } from "@/components/jobs/CategoryManagerDialog"
 // SCORING RUBRIC — Types & Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ScoringLevel = 'required' | 'important' | 'nice_to_have'
+export type ScoringLevel = string // Dynamic levels from categories
 
 export interface RubricCriterion {
   id: string
@@ -67,10 +67,34 @@ export interface ScoringRubric {
   updated_at?: string
 }
 
-const LEVEL_META: Record<ScoringLevel, { label: string; color: string; bg: string }> = {
-  required:      { label: 'Bắt buộc',    color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },
-  important:     { label: 'Quan trọng',  color: 'text-blue-700',   bg: 'bg-blue-50 border-blue-200' },
-  nice_to_have:  { label: 'Cộng điểm',  color: 'text-green-700',  bg: 'bg-green-50 border-green-200' },
+// Dynamic level meta based on categories
+const getLevelMeta = (level: string, jobCategories: Record<string, CategoryItem[]>) => {
+  const rubricLevels = jobCategories["rubric_level"] || []
+  const item = rubricLevels.find(l => l.value === level)
+  if (!item) return { label: level, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', style: {} }
+
+  const metadata = (item as any).metadata || {}
+  const color = metadata.color || '#3b82f6'
+  
+  // Map color to Tailwind classes if possible, else use inline style
+  const colorMap: Record<string, { color: string; bg: string }> = {
+    '#ef4444': { color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+    '#3b82f6': { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+    '#10b981': { color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+    '#f59e0b': { color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
+    '#8b5cf6': { color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+  }
+
+  const colorSet = colorMap[color] || { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' }
+
+  return { 
+    label: item.label, 
+    ...colorSet,
+    style: { borderColor: `${color}33`, backgroundColor: `${color}1a` }, // fallback inline style
+    priority: metadata.priority || 1,
+    description: metadata.description || '',
+    default_weight: metadata.default_weight || 0
+  }
 }
 
 const DEFAULT_CRITERIA: Omit<RubricCriterion, 'id'>[] = [
@@ -164,14 +188,15 @@ function WeightBar({ weight, total }: WeightBarProps) {
 interface CriterionRowProps {
   criterion: RubricCriterion
   totalWeight: number
+  jobCategories: Record<string, CategoryItem[]>
   onUpdate: (id: string, patch: Partial<RubricCriterion>) => void
   onDelete: (id: string) => void
   isExpanded: boolean
   onToggleExpand: (id: string) => void
 }
 
-function CriterionRow({ criterion, totalWeight, onUpdate, onDelete, isExpanded, onToggleExpand }: CriterionRowProps) {
-  const lm = LEVEL_META[criterion.level]
+function CriterionRow({ criterion, totalWeight, jobCategories, onUpdate, onDelete, isExpanded, onToggleExpand }: CriterionRowProps) {
+  const lm = getLevelMeta(criterion.level, jobCategories)
   return (
     <div className={`border rounded-xl overflow-hidden transition-shadow hover:shadow-sm ${lm.bg}`}>
       {/* Header row */}
@@ -189,13 +214,13 @@ function CriterionRow({ criterion, totalWeight, onUpdate, onDelete, isExpanded, 
         </div>
 
         {/* Level badge */}
-        <Select value={criterion.level} onValueChange={v => onUpdate(criterion.id, { level: v as ScoringLevel })}>
+        <Select value={criterion.level} onValueChange={v => onUpdate(criterion.id, { level: v })}>
           <SelectTrigger className={`w-32 h-7 text-xs border ${lm.bg} ${lm.color} focus:ring-0`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white z-[70]">
-            {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => (
-              <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+            {(jobCategories["rubric_level"] || []).map((level) => (
+              <SelectItem key={level.value} value={level.value} className="text-xs">{level.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -281,9 +306,10 @@ interface ScoringRubricDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   job: Job | null
+  jobCategories: Record<string, CategoryItem[]>
 }
 
-function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogProps) {
+function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: ScoringRubricDialogProps) {
   const [criteria, setCriteria] = useState<RubricCriterion[]>([])
   const [passingScore, setPassingScore] = useState(70)
   const [notes, setNotes] = useState('')
@@ -373,7 +399,25 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
   const collapseAll = () => setExpandedIds(new Set())
 
   const loadPreset = () => {
-    setCriteria(DEFAULT_CRITERIA.map(c => ({ ...c, id: genId() })))
+    const rubricLevels = jobCategories["rubric_level"] || []
+    const presetCriteria = rubricLevels.map(level => {
+      const meta = getLevelMeta(level.value, jobCategories) as any
+      return {
+        id: genId(),
+        name: `Tiêu chí ${level.label}`,
+        description: meta.description || `Đánh giá theo mức ${level.label}`,
+        weight: meta.default_weight || 10,
+        level: level.value,
+        max_score: meta.default_weight || 10,
+        scoring_guide: {
+          excellent: 'Xuất sắc',
+          good: 'Tốt',
+          average: 'Trung bình',
+          poor: 'Yếu',
+        },
+      }
+    })
+    setCriteria(presetCriteria)
     setPassingScore(70)
   }
 
@@ -433,7 +477,6 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
           job_type: job.job_type,
           description: job.description,
           requirements: job.requirements,
-          mandatory_requirements: job.mandatory_requirements,
         }),
       })
       if (!res.ok) throw new Error(`Backend error: ${res.status}`)
@@ -532,11 +575,12 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => {
-                      const sum = criteria.filter(c => c.level === k).reduce((s, c) => s + c.weight, 0)
+                    {(jobCategories["rubric_level"] || []).map((level) => {
+                      const sum = criteria.filter(c => c.level === level.value).reduce((s, c) => s + c.weight, 0)
+                      const lm = getLevelMeta(level.value, jobCategories)
                       return sum > 0 ? (
-                        <span key={k} className={`text-[10px] font-medium ${v.color}`}>
-                          {v.label}: {sum}%
+                        <span key={level.value} className={`text-[10px] font-medium ${lm.color}`}>
+                          {lm.label}: {sum}%
                         </span>
                       ) : null
                     })}
@@ -551,6 +595,7 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
                     key={c.id}
                     criterion={c}
                     totalWeight={totalWeight}
+                    jobCategories={jobCategories}
                     onUpdate={updateCriterion}
                     onDelete={deleteCriterion}
                     isExpanded={expandedIds.has(c.id)}
@@ -606,11 +651,14 @@ function ScoringRubricDialog({ open, onOpenChange, job }: ScoringRubricDialogPro
               {/* ── Legend ─────────────────────────────────────────────────── */}
               <div className="flex flex-wrap gap-3 text-xs text-gray-500 p-3 bg-gray-50 rounded-lg border border-dashed">
                 <span className="font-medium text-gray-600">Loại tiêu chí:</span>
-                {(Object.entries(LEVEL_META) as [ScoringLevel, typeof LEVEL_META[ScoringLevel]][]).map(([k, v]) => (
-                  <span key={k} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${v.bg} ${v.color} font-medium`}>
-                    {v.label}
-                  </span>
-                ))}
+                {(jobCategories["rubric_level"] || []).map((level) => {
+                  const lm = getLevelMeta(level.value, jobCategories)
+                  return (
+                    <span key={level.value} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${lm.bg} ${lm.color} font-medium`}>
+                      {lm.label}
+                    </span>
+                  )
+                })}
                 <span className="text-gray-400 ml-auto">
                   · <strong>Bắt buộc</strong>: ứng viên thiếu tiêu chí này có thể bị loại
                   · <strong>Cộng điểm</strong>: không bắt buộc nhưng tăng điểm
@@ -672,11 +720,20 @@ interface Job {
   id: string; created_at: string; title: string; department: string
   status: string; level: string; job_type?: string; location?: string
   work_location?: string; description?: string; requirements?: string
-  benefits?: string; mandatory_requirements?: string
+  benefits?: string
   cv_candidates: { count: number }[]
 }
 
-interface CategoryItem { value: string; label: string }
+interface CategoryItem { 
+  value: string; 
+  label: string;
+  metadata?: {
+    color?: string;
+    priority?: number;
+    description?: string;
+    default_weight?: number;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI SERVICE FUNCTIONS
@@ -704,7 +761,7 @@ async function generateJobDescriptionAI(data: {
 async function generateInterviewQuestionsAI(data: {
   job_id: string; job_title: string; department: string; level: string
   job_type?: string; work_location?: string; description?: string
-  requirements?: string; mandatory_requirements?: string; language: string
+  requirements?: string; language: string
 }) {
   const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
   const response = await fetch(`${API_URL}/api/generate-interview-questions`, {
@@ -752,7 +809,7 @@ export function JobsPage() {
   const [formData, setFormData] = useState({
     title: '', department: '', location: '', work_location: '',
     level: 'Mid-level', job_type: 'Full-time', status: 'Bản nháp',
-    description: '', requirements: '', benefits: '', mandatory_requirements: '',
+    description: '', requirements: '', benefits: '',
     posted_date: new Date().toISOString().split('T')[0]
   })
   const [editFormData, setEditFormData] = useState<any>(null)
@@ -870,6 +927,23 @@ export function JobsPage() {
       { value: 'Đã đăng', label: 'Đã đăng' },
       { value: 'Đã đóng', label: 'Đã đóng' },
     ],
+    rubric_level: [
+      { 
+        value: 'required', 
+        label: 'Bắt buộc',
+        metadata: { color: '#ef4444', priority: 3, description: 'Tiêu chí bắt buộc phải đáp ứng', default_weight: 35 }
+      },
+      { 
+        value: 'important', 
+        label: 'Quan trọng',
+        metadata: { color: '#3b82f6', priority: 2, description: 'Tiêu chí quan trọng, ảnh hưởng lớn đến quyết định', default_weight: 20 }
+      },
+      { 
+        value: 'nice_to_have', 
+        label: 'Cộng điểm',
+        metadata: { color: '#10b981', priority: 1, description: 'Tiêu chí cộng điểm, không bắt buộc', default_weight: 8 }
+      },
+    ],
   }
 
   // ── Form handlers ──────────────────────────────────────────────────────────
@@ -883,7 +957,7 @@ export function JobsPage() {
     setFormData({
       title: '', department: '', location: '', work_location: '',
       level: 'Mid-level', job_type: 'Full-time', status: 'Bản nháp',
-      description: '', requirements: '', benefits: '', mandatory_requirements: '',
+      description: '', requirements: '', benefits: '',
       posted_date: new Date().toISOString().split('T')[0]
     })
   }
@@ -901,7 +975,7 @@ export function JobsPage() {
       })
       setFormData(prev => ({
         ...prev, description: generated.description, requirements: generated.requirements,
-        benefits: generated.benefits, mandatory_requirements: generated.mandatory_requirements || ''
+        benefits: generated.benefits
       }))
       setActiveTab('manual')
       alert('✅ Đã tạo gợi ý JD với AI thành công!')
@@ -918,7 +992,6 @@ export function JobsPage() {
         work_location: job.work_location || job.location || 'Remote',
         description: job.description || undefined,
         requirements: job.requirements || undefined,
-        mandatory_requirements: job.mandatory_requirements || undefined,
         language: aiQuestionLanguage
       })
       setAiQuestions(result.questions)
@@ -954,7 +1027,7 @@ export function JobsPage() {
       location: formData.location || null, work_location: formData.work_location || null,
       level: formData.level, job_type: formData.job_type, status: formData.status,
       description: formData.description || null, requirements: formData.requirements || null,
-      benefits: formData.benefits || null, mandatory_requirements: formData.mandatory_requirements || null,
+      benefits: formData.benefits || null,
       posted_date: formData.posted_date
     }]).select()
     if (error) { alert(`Có lỗi xảy ra khi tạo JD: ${error.message}`) }
@@ -975,7 +1048,7 @@ export function JobsPage() {
       location: job.location || '', work_location: job.work_location || '',
       level: job.level, job_type: job.job_type || 'Full-time', status: job.status,
       description: job.description || '', requirements: job.requirements || '',
-      benefits: job.benefits || '', mandatory_requirements: job.mandatory_requirements || ''
+      benefits: job.benefits || ''
     })
     setIsEditDialogOpen(true)
   }
@@ -988,7 +1061,7 @@ export function JobsPage() {
       location: editFormData.location || null, work_location: editFormData.work_location || null,
       level: editFormData.level, job_type: editFormData.job_type, status: editFormData.status,
       description: editFormData.description || null, requirements: editFormData.requirements || null,
-      benefits: editFormData.benefits || null, mandatory_requirements: editFormData.mandatory_requirements || null
+      benefits: editFormData.benefits || null
     }).eq('id', editFormData.id)
     if (error) { alert(`❌ Lỗi: ${error.message}`) }
     else { alert('✅ Đã cập nhật Job Description thành công!'); setIsEditDialogOpen(false); setEditFormData(null); fetchJobs() }
@@ -1001,7 +1074,7 @@ export function JobsPage() {
       location: job.location || null, work_location: job.work_location || null,
       level: job.level, job_type: job.job_type || 'Full-time', status: 'Bản nháp',
       description: job.description || null, requirements: job.requirements || null,
-      benefits: job.benefits || null, mandatory_requirements: job.mandatory_requirements || null,
+      benefits: job.benefits || null,
       posted_date: new Date().toISOString().split('T')[0]
     }])
     if (error) alert(`❌ Lỗi khi sao chép: ${error.message}`)
@@ -1360,8 +1433,6 @@ export function JobsPage() {
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Kỹ năng cần thiết (tùy chọn)</label>
                   <Textarea placeholder="Ví dụ: React, Node.js, TypeScript, Git..." className="min-h-[80px] resize-none" value={formData.requirements} onChange={e => handleInputChange('requirements', e.target.value)} /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Yêu cầu bắt buộc (tùy chọn)</label>
-                  <Textarea placeholder="Ví dụ: Bằng đại học chuyên ngành CNTT..." className="min-h-[80px] resize-none" value={formData.mandatory_requirements} onChange={e => handleInputChange('mandatory_requirements', e.target.value)} /></div>
                 <div className="flex gap-3 pt-4 border-t">
                   <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAIGenerate} disabled={generatingAI}>
                     {generatingAI ? <><div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />Đang tạo với AI...</> : <><Sparkles className="w-4 h-4 mr-2" />Tạo gợi ý với AI</>}
@@ -1390,7 +1461,6 @@ export function JobsPage() {
                   { field: 'description', label: 'Mô tả công việc', req: true },
                   { field: 'requirements', label: 'Yêu cầu công việc', req: true },
                   { field: 'benefits', label: 'Quyền lợi', req: true },
-                  { field: 'mandatory_requirements', label: 'Yêu cầu bắt buộc', req: false },
                 ].map(({ field, label, req }) => (
                   <div key={field}><label className="block text-sm font-medium text-gray-700 mb-1.5">{label}{req && <span className="text-red-500"> *</span>}</label>
                     <Textarea placeholder={`Nhập ${label.toLowerCase()}...`} className="min-h-[100px] resize-none"
@@ -1435,7 +1505,6 @@ export function JobsPage() {
             {selectedJob?.description && <div><h3 className="font-semibold mb-2">Mô tả công việc</h3><div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">{selectedJob.description}</div></div>}
             {selectedJob?.requirements && <div><h3 className="font-semibold mb-2">Yêu cầu công việc</h3><div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">{selectedJob.requirements}</div></div>}
             {selectedJob?.benefits && <div><h3 className="font-semibold mb-2">Quyền lợi</h3><div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">{selectedJob.benefits}</div></div>}
-            {selectedJob?.mandatory_requirements && <div><h3 className="font-semibold mb-2">Yêu cầu bắt buộc</h3><div className="p-3 bg-amber-50 rounded-lg text-sm whitespace-pre-wrap border border-amber-200">{selectedJob.mandatory_requirements}</div></div>}
             {/* ── NEW: quick rubric link in view dialog ────────────────────── */}
             {selectedJob && (
               <div className={`flex items-center justify-between p-3 rounded-xl border ${jobsWithRubric.has(selectedJob.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-dashed border-gray-200'}`}>
@@ -1556,9 +1625,9 @@ export function JobsPage() {
                     </Select></div>
                 ))}
               </div>
-              {['description', 'requirements', 'benefits', 'mandatory_requirements'].map(field => (
+              {['description', 'requirements', 'benefits'].map(field => (
                 <div key={field}><label className="block text-sm font-medium text-gray-700 mb-1.5 capitalize">{
-                  field === 'description' ? 'Mô tả công việc' : field === 'requirements' ? 'Yêu cầu công việc' : field === 'benefits' ? 'Quyền lợi' : 'Yêu cầu bắt buộc'
+                  field === 'description' ? 'Mô tả công việc' : field === 'requirements' ? 'Yêu cầu công việc' : 'Quyền lợi'
                 }</label>
                   <Textarea className="min-h-[100px] resize-none" value={editFormData[field] || ''}
                     onChange={e => handleEditInputChange(field, e.target.value)} /></div>
@@ -1672,6 +1741,7 @@ export function JobsPage() {
           if (!v) fetchJobs()   // refresh rubric badges after close
         }}
         job={rubricJob}
+        jobCategories={jobCategories}
       />
 
       {/* ══ CATEGORY MANAGER ══════════════════════════════════════════════════ */}

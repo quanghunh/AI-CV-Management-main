@@ -1,5 +1,4 @@
 // src/utils/cvMatchingService.ts
-// ✅ UPDATED: Thêm mandatory_requirements support
 
 export interface JobMatchResult {
   job_id: string
@@ -56,7 +55,6 @@ export async function analyzeWithGPT4o(
         description: job.description,
         requirements: job.requirements,
         benefits: job.benefits,
-        mandatory_requirements: job.mandatory_requirements || null,  // ✅ NEW: Thêm dòng này
       })),
       primary_job_id: primaryJobId,
     };

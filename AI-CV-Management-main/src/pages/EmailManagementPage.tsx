@@ -21,6 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 import { EmailRecipientSelector } from "@/components/EmailRecipientSelector"
+import { useCompanyProfile } from "../hooks/useCompanyProfile"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -349,6 +350,9 @@ export function EmailManagementPage() {
   const [testEmailForm, setTestEmailForm] = useState({ test_email: '', template_id: '' })
   const [emailHistory, setEmailHistory] = useState<any[]>([])
 
+  // Company profile for template variables
+  const { profile: companyProfile } = useCompanyProfile()
+
   // URL param: open compose from Interviews page
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -511,7 +515,15 @@ export function EmailManagementPage() {
   // ── Email sending ──────────────────────────────────────────────────────────
 
   const formatEmailContent = (content: string, subject?: string) => {
-    const safe = content.replace(/\n/g,'<br/>').replace(/\{\{([^}]+)\}\}/g,'<span style="color:#3b82f6;font-weight:500">{{$1}}</span>')
+    // Replace company variables first
+    let processedContent = content
+      .replace(/\{\{company_name\}\}/g, companyProfile?.company_name || 'Công ty')
+      .replace(/\{\{company_description\}\}/g, companyProfile?.company_description || 'Mô tả công ty')
+      .replace(/\{\{company_address\}\}/g, companyProfile?.company_address || 'Địa chỉ công ty')
+      .replace(/\{\{contact_email\}\}/g, companyProfile?.contact_email || 'email@company.com')
+      .replace(/\{\{website\}\}/g, companyProfile?.website || 'https://company.com')
+
+    const safe = processedContent.replace(/\n/g,'<br/>').replace(/\{\{([^}]+)\}\}/g,'<span style="color:#3b82f6;font-weight:500">{{$1}}</span>')
     return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${subject??'Recruit AI'}</title>
 <style>body{margin:0;padding:0;font-family:-apple-system,sans-serif;background:#f4f7fa;color:#1f2937;line-height:1.6}
@@ -954,6 +966,62 @@ export function EmailManagementPage() {
               </div>
               <div><label className="block text-sm font-semibold mb-2">Tiêu đề email</label><Input placeholder="VD: [{{companyName}}] Mời phỏng vấn - {{position}}" className="bg-gray-50" value={templateForm.subject} onChange={e=>setTemplateForm(prev=>({...prev,subject:e.target.value}))}/></div>
               <div><label className="block text-sm font-semibold mb-2">Nội dung email</label><Textarea placeholder="Nhập nội dung... Dùng {{variableName}} để tạo biến động" className="min-h-[250px] bg-gray-50 font-mono text-sm" value={templateForm.body} onChange={e=>setTemplateForm(prev=>({...prev,body:e.target.value}))}/><p className="text-xs text-gray-500 mt-2">Sử dụng {`{{candidateName}}, {{position}}`}</p></div>
+
+              {/* Available Variables */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Biến có sẵn
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="font-medium text-blue-800 mb-1">Thông tin công ty:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_name}}'}</code>
+                        <span className="text-blue-600">→ {companyProfile?.company_name || 'Tên công ty'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_description}}'}</code>
+                        <span className="text-blue-600">→ {companyProfile?.company_description ? 'Mô tả công ty' : 'Mô tả'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_address}}'}</code>
+                        <span className="text-blue-600">→ {companyProfile?.company_address ? 'Địa chỉ' : 'Địa chỉ công ty'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{contact_email}}'}</code>
+                        <span className="text-blue-600">→ {companyProfile?.contact_email || 'email@company.com'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{website}}'}</code>
+                        <span className="text-blue-600">→ {companyProfile?.website || 'https://company.com'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-medium text-blue-800 mb-1">Biến ứng viên:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{candidate_name}}'}</code>
+                        <span className="text-blue-600">→ Tên ứng viên</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{position}}'}</code>
+                        <span className="text-blue-600">→ Vị trí ứng tuyển</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{interview_date}}'}</code>
+                        <span className="text-blue-600">→ Ngày phỏng vấn</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{interview_time}}'}</code>
+                        <span className="text-blue-600">→ Giờ phỏng vấn</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-2"><input type="checkbox" id="is_default" checked={templateForm.is_default} onChange={e=>setTemplateForm(prev=>({...prev,is_default:e.target.checked}))} className="rounded w-4 h-4"/><label htmlFor="is_default" className="text-sm">Đặt làm template mặc định</label></div>
               <div className="flex gap-3 pt-4 border-t">
                 <Button variant="outline" onClick={()=>{setIsTemplateOpen(false);setTemplateForm({name:'',subject:'',body:'',category_id:'',is_default:false})}} disabled={isSaving}>Hủy</Button>

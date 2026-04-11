@@ -724,31 +724,31 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent
                       position="popper" side="bottom" align="start" sideOffset={5}
-                      className="bg-white border shadow-lg max-h-80 overflow-y-auto"
-                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                      className="bg-white border border-slate-200 shadow-lg max-h-80 overflow-y-auto min-w-[var(--radix-select-trigger-width)] w-auto"
+                      style={{ zIndex: 9999, width: 'auto', minWidth: 'var(--radix-select-trigger-width)' }}
                     >
                       {roles.map((role) => (
                         <SelectItem
                           key={role.roles}
                           value={role.roles.toString()}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                          className="cursor-pointer hover:bg-accent/80 focus:bg-accent/80"
                         >
-                          <div className="flex items-center gap-2">
-                            {role.icon
-                              ? <span>{role.icon}</span>
-                              : getRoleIcon(role.name)
-                            }
-                            <span>{role.name}</span>
-                            {role.description && (
-                              <span className="text-xs text-gray-400 ml-1">— {role.description}</span>
-                            )}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1 text-sm">
+                              {role.icon ? <span>{role.icon}</span> : getRoleIcon(role.name)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{role.name}</p>
+                              {role.description && (
+                                <p className="text-xs text-muted-foreground truncate">{role.description}</p>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
-                      {/* Shortcut thêm vai trò mới ngay trong dropdown */}
-                      <div className="border-t mt-1 pt-1">
+                      <div className="border-t border-slate-200 mt-1 pt-2">
                         <button
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded"
                           onClick={() => {
                             setIsDialogOpen(false)
                             setIsRoleManagerOpen(true)
@@ -904,21 +904,25 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent
                       position="popper" side="bottom" align="start" sideOffset={5}
-                      className="bg-white border shadow-lg max-h-80 overflow-y-auto"
-                      style={{ zIndex: 9999, width: 'var(--radix-select-trigger-width)' }}
+                      className="bg-white border border-slate-200 shadow-lg max-h-80 overflow-y-auto min-w-[var(--radix-select-trigger-width)] w-auto"
+                      style={{ zIndex: 9999, width: 'auto', minWidth: 'var(--radix-select-trigger-width)' }}
                     >
                       {roles.map((role) => (
                         <SelectItem
                           key={role.roles}
                           value={role.roles.toString()}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                          className="cursor-pointer hover:bg-accent/80 focus:bg-accent/80"
                         >
-                          <div className="flex items-center gap-2">
-                            {role.icon ? <span>{role.icon}</span> : getRoleIcon(role.name)}
-                            <span>{role.name}</span>
-                            {role.description && (
-                              <span className="text-xs text-gray-400 ml-1">— {role.description}</span>
-                            )}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1 text-sm">
+                              {role.icon ? <span>{role.icon}</span> : getRoleIcon(role.name)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{role.name}</p>
+                              {role.description && (
+                                <p className="text-xs text-muted-foreground truncate">{role.description}</p>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
@@ -1087,7 +1091,7 @@ export default function UsersPage() {
 
           {/* ===== DIALOG LỊCH SỬ ===== */}
           <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogContent showCloseButton={false} className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
