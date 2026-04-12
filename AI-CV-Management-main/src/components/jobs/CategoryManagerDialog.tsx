@@ -60,7 +60,6 @@ const CATEGORY_TYPES: Record<string, { label: string; icon: string }> = {
   work_location: { label: "Địa điểm", icon: "📍" },
   job_type: { label: "Loại hình", icon: "⏰" },
   status: { label: "Trạng thái", icon: "🔖" },
-  rubric_level: { label: "Mức đánh giá tiêu chí", icon: "⭐" },
 }
 
 // ==================== MAIN COMPONENT ====================
@@ -109,6 +108,42 @@ export function CategoryManagerDialog({
     setLoading(false)
   }
 
+  function isMetadataError(error: any) {
+    const message = String(error?.message || error || "").toLowerCase()
+    return message.includes("metadata") && (message.includes("schema cache") || message.includes("column") || message.includes("could not find"))
+  }
+
+  async function safeInsertCategory(insertData: any) {
+    const { data, error } = await supabase.from("cv_job_categories").insert([insertData])
+    if (!error) return { data, error }
+    if (isMetadataError(error) && insertData.metadata) {
+      const fallback = { ...insertData }
+      delete fallback.metadata
+      return await supabase.from("cv_job_categories").insert([fallback])
+    }
+    return { data, error }
+  }
+
+  async function safeUpdateCategory(id: string, updateData: any) {
+    const { data, error } = await supabase
+      .from("cv_job_categories")
+      .update(updateData)
+      .eq("id", id)
+      .eq("is_default", false)
+
+    if (!error) return { data, error }
+    if (isMetadataError(error) && updateData.metadata) {
+      const fallback = { ...updateData }
+      delete fallback.metadata
+      return await supabase
+        .from("cv_job_categories")
+        .update(fallback)
+        .eq("id", id)
+        .eq("is_default", false)
+    }
+    return { data, error }
+  }
+
   // ==================== GROUP BY TYPE ====================
 
   const groupedCategories: CategoryGroup[] = Object.entries(CATEGORY_TYPES).map(
@@ -150,7 +185,7 @@ export function CategoryManagerDialog({
       insertData.metadata = newMetadata
     }
 
-    const { error } = await supabase.from("cv_job_categories").insert([insertData])
+    const { error } = await safeInsertCategory(insertData)
 
     if (error) {
       if (error.code === "23505") {
@@ -178,11 +213,7 @@ export function CategoryManagerDialog({
       updateData.metadata = editingMetadata
     }
 
-    const { error } = await supabase
-      .from("cv_job_categories")
-      .update(updateData)
-      .eq("id", id)
-      .eq("is_default", false) // Only allow editing non-default items
+    const { error } = await safeUpdateCategory(id, updateData)
 
     if (error) {
       alert(`❌ Lỗi: ${error.message}`)

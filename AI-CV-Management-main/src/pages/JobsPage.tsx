@@ -68,15 +68,58 @@ export interface ScoringRubric {
 }
 
 // Dynamic level meta based on categories
-const getLevelMeta = (level: string, jobCategories: Record<string, CategoryItem[]>) => {
-  const rubricLevels = jobCategories["rubric_level"] || []
-  const item = rubricLevels.find(l => l.value === level)
-  if (!item) return { label: level, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', style: {} }
+const DEFAULT_RUBRIC_LEVELS: CategoryItem[] = [
+  {
+    value: 'required',
+    label: 'Bắt buộc',
+    metadata: {
+      color: '#ef4444',
+      priority: 3,
+      description: 'Nếu không có sẽ bị loại',
+      default_weight: 35,
+    },
+  },
+  {
+    value: 'important',
+    label: 'Quan trọng',
+    metadata: {
+      color: '#3b82f6',
+      priority: 2,
+      description: 'Tiêu chí quan trọng, ảnh hưởng lớn đến quyết định',
+      default_weight: 20,
+    },
+  },
+  {
+    value: 'nice_to_have',
+    label: 'Cộng điểm',
+    metadata: {
+      color: '#10b981',
+      priority: 1,
+      description: 'Không bắt buộc, nếu có được cộng điểm',
+      default_weight: 8,
+    },
+  },
+]
 
-  const metadata = (item as any).metadata || {}
+const getRubricLevels = (_jobCategories: Record<string, CategoryItem[]>) => DEFAULT_RUBRIC_LEVELS
+
+const getLevelMeta = (level: string, jobCategories: Record<string, CategoryItem[]>) => {
+  const rubricLevels = getRubricLevels(jobCategories)
+  const item = rubricLevels.find(l => l.value === level)
+
+  const fallbackMap: Record<string, Partial<CategoryItem>> = {
+    required: DEFAULT_RUBRIC_LEVELS[0],
+    important: DEFAULT_RUBRIC_LEVELS[1],
+    nice_to_have: DEFAULT_RUBRIC_LEVELS[2],
+  }
+
+  const fallback = fallbackMap[level]
+  const selected = item || fallback
+  if (!selected) return { label: level, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', style: {} }
+
+  const metadata = (selected as any).metadata || {}
   const color = metadata.color || '#3b82f6'
   
-  // Map color to Tailwind classes if possible, else use inline style
   const colorMap: Record<string, { color: string; bg: string }> = {
     '#ef4444': { color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
     '#3b82f6': { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
@@ -88,12 +131,12 @@ const getLevelMeta = (level: string, jobCategories: Record<string, CategoryItem[
   const colorSet = colorMap[color] || { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' }
 
   return { 
-    label: item.label, 
+    label: selected.label, 
     ...colorSet,
-    style: { borderColor: `${color}33`, backgroundColor: `${color}1a` }, // fallback inline style
+    style: { borderColor: `${color}33`, backgroundColor: `${color}1a` },
     priority: metadata.priority || 1,
     description: metadata.description || '',
-    default_weight: metadata.default_weight || 0
+    default_weight: metadata.default_weight || 0,
   }
 }
 
@@ -219,7 +262,7 @@ function CriterionRow({ criterion, totalWeight, jobCategories, onUpdate, onDelet
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white z-[70]">
-            {(jobCategories["rubric_level"] || []).map((level) => (
+            {getRubricLevels(jobCategories).map((level) => (
               <SelectItem key={level.value} value={level.value} className="text-xs">{level.label}</SelectItem>
             ))}
           </SelectContent>
@@ -354,7 +397,12 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
     }
   }
 
-  const totalWeight = criteria.reduce((s, c) => s + c.weight, 0)
+  const totalWeight = criteria
+    .filter(c => c.level !== 'nice_to_have')
+    .reduce((s, c) => s + c.weight, 0)
+  const bonusWeight = criteria
+    .filter(c => c.level === 'nice_to_have')
+    .reduce((s, c) => s + c.weight, 0)
   const weightOk = totalWeight === 100
 
   const updateCriterion = (id: string, patch: Partial<RubricCriterion>) => {
@@ -399,7 +447,7 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
   const collapseAll = () => setExpandedIds(new Set())
 
   const loadPreset = () => {
-    const rubricLevels = jobCategories["rubric_level"] || []
+    const rubricLevels = getRubricLevels(jobCategories)
     const presetCriteria = rubricLevels.map(level => {
       const meta = getLevelMeta(level.value, jobCategories) as any
       return {
@@ -562,10 +610,10 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
                   </p>
                   {/* Mini stacked bar */}
                   <div className="flex h-2 rounded-full overflow-hidden mt-1.5 gap-px">
-                    {criteria.map(c => (
+                    {criteria.filter(c => c.level !== 'nice_to_have').map(c => (
                       <div key={c.id} title={`${c.name}: ${c.weight}%`}
                         className={`h-full transition-all ${
-                          c.level === 'required' ? 'bg-red-400' : c.level === 'important' ? 'bg-blue-400' : 'bg-green-400'
+                          c.level === 'required' ? 'bg-red-400' : 'bg-blue-400'
                         }`}
                         style={{ width: `${(c.weight / Math.max(totalWeight, 100)) * 100}%` }}
                       />
@@ -573,17 +621,31 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
                     {totalWeight < 100 && (
                       <div className="h-full flex-1 bg-gray-200" />
                     )}
+                    {bonusWeight > 0 && (
+                      <div className="h-full bg-green-400 opacity-60" title={`Bonus: ${bonusWeight}%`}
+                        style={{ width: `${(bonusWeight / 100) * 100}%` }}
+                      />
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    {(jobCategories["rubric_level"] || []).map((level) => {
-                      const sum = criteria.filter(c => c.level === level.value).reduce((s, c) => s + c.weight, 0)
-                      const lm = getLevelMeta(level.value, jobCategories)
-                      return sum > 0 ? (
-                        <span key={level.value} className={`text-[10px] font-medium ${lm.color}`}>
-                          {lm.label}: {sum}%
-                        </span>
-                      ) : null
-                    })}
+                    <span className={`text-[10px] font-medium ${totalWeight === 100 ? 'text-green-700' : 'text-red-700'}`}>
+                      Base: {totalWeight}% {totalWeight === 100 ? '✓' : '(chưa hợp lệ)'}
+                    </span>
+                    {criteria.filter(c => c.level === 'required').length > 0 && (
+                      <span className="text-[10px] font-medium text-red-700">
+                        Bắt buộc: {criteria.filter(c => c.level === 'required').reduce((s, c) => s + c.weight, 0)}%
+                      </span>
+                    )}
+                    {criteria.filter(c => c.level === 'important').length > 0 && (
+                      <span className="text-[10px] font-medium text-blue-700">
+                        Quan trọng: {criteria.filter(c => c.level === 'important').reduce((s, c) => s + c.weight, 0)}%
+                      </span>
+                    )}
+                    {bonusWeight > 0 && (
+                      <span className="text-[10px] font-medium text-green-700 opacity-70">
+                        Bonus: +{bonusWeight}%
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -649,20 +711,25 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
               </div>
 
               {/* ── Legend ─────────────────────────────────────────────────── */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-500 p-3 bg-gray-50 rounded-lg border border-dashed">
-                <span className="font-medium text-gray-600">Loại tiêu chí:</span>
-                {(jobCategories["rubric_level"] || []).map((level) => {
-                  const lm = getLevelMeta(level.value, jobCategories)
-                  return (
-                    <span key={level.value} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${lm.bg} ${lm.color} font-medium`}>
-                      {lm.label}
-                    </span>
-                  )
-                })}
-                <span className="text-gray-400 ml-auto">
-                  · <strong>Bắt buộc</strong>: ứng viên thiếu tiêu chí này có thể bị loại
-                  · <strong>Cộng điểm</strong>: không bắt buộc nhưng tăng điểm
-                </span>
+              <div className="space-y-2.5 text-xs p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="font-medium text-amber-900">📋 Cách thức chấm điểm:</div>
+                <div className="space-y-1.5 text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <span className="inline-block w-3 h-3 bg-red-400 rounded-full flex-shrink-0 mt-1"></span>
+                    <div><strong>Bắt buộc</strong>: Nếu thiếu → Loại ứng viên. Bao gồm trong tổng điểm base (0–100%)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="inline-block w-3 h-3 bg-blue-400 rounded-full flex-shrink-0 mt-1"></span>
+                    <div><strong>Quan trọng</strong>: Thông thường, bao gồm trong tổng điểm base (0–100%)</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="inline-block w-3 h-3 bg-green-400 rounded-full flex-shrink-0 mt-1"></span>
+                    <div><strong>Cộng điểm</strong>: Không bắt buộc. Chỉ cộng thêm (bonus) nếu ứng viên có. <strong>Không tính vào base 100%</strong></div>
+                  </div>
+                </div>
+                <div className="text-amber-700 mt-1 pt-1.5 border-t border-amber-200">
+                  💡 Ứng viên đạt base 100% (tất cả bắt buộc + quan trọng) có thể đạt tối đa 100% + bonus điểm
+                </div>
               </div>
             </>
           )}
@@ -844,6 +911,7 @@ export function JobsPage() {
     if (data) {
       const grouped: Record<string, CategoryItem[]> = {}
       data.forEach((item: any) => {
+        if (item.type === 'rubric_level') return
         if (!grouped[item.type]) grouped[item.type] = []
         grouped[item.type].push({ value: item.value, label: item.label })
       })
