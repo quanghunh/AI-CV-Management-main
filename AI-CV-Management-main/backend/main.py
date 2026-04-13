@@ -131,9 +131,9 @@ def get_scoring_rubrics(job_ids: List[str]) -> dict:
 
 
 def get_rubric_level_definitions() -> dict:
-    """Fetch rubric level categories and their metadata."""
+    """Fetch rubric level categories and their metadata. Use built-in defaults if DB is empty."""
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
-        return {}
+        return get_default_rubric_level_definitions()
 
     try:
         headers = {
@@ -143,10 +143,50 @@ def get_rubric_level_definitions() -> dict:
         res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_job_categories?select=*&type=eq.rubric_level", headers=headers, timeout=10)
         if res.status_code == 200:
             levels = res.json()
-            return {level['value']: level for level in levels}
+            if levels:
+                return {level['value']: level for level in levels}
     except Exception as e:
         print(f"Error fetching rubric level definitions: {e}")
-    return {}
+    
+    # Fallback to built-in defaults if DB is empty or error
+    return get_default_rubric_level_definitions()
+
+
+def get_default_rubric_level_definitions() -> dict:
+    """Built-in default rubric level definitions (when not in DB)."""
+    return {
+        'required': {
+            'value': 'required',
+            'label': 'Bắt buộc',
+            'metadata': {
+                'color': '#ef4444',
+                'priority': 3,
+                'description': 'Nếu không có sẽ bị loại',
+                'default_weight': 35,
+            }
+        },
+        'important': {
+            'value': 'important',
+            'label': 'Quan trọng',
+            'metadata': {
+                'color': '#3b82f6',
+                'priority': 2,
+                'description': 'Tiêu chí quan trọng, ảnh hưởng lớn đến quyết định',
+                'default_weight': 20,
+            }
+        },
+        'nice_to_have': {
+            'value': 'nice_to_have',
+            'label': 'Cộng điểm',
+            'metadata': {
+                'color': '#10b981',
+                'priority': 1,
+                'description': 'Không bắt buộc, nếu có được cộng điểm',
+                'default_weight': 8,
+            }
+        },
+    }
+
 
 
 def format_rubric_level_label(level: str, definitions: dict) -> str:
