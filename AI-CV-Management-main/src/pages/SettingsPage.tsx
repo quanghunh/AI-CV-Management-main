@@ -1,4 +1,4 @@
-// src/pages/SettingsPage.tsx - FIXED VERSION
+// src/pages/SettingsPage.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,12 +7,9 @@ import { Button } from "@/components/ui/button"
 import { CompanySettings } from "@/components/settings/CompanySettings"
 import AiSettings from "@/components/settings/AiSettings"
 import { supabase } from "@/lib/supabaseClient"
-import { NotificationSettings } from "@/components/settings/NotificationSettings"
 import { EmailSettings } from "@/components/settings/EmailSettings"
 import { useTranslation } from 'react-i18next'
 import UsersPage from "@/pages/User"
-// ❌ REMOVED: import Authorization from "@/pages/Authorization"
-// ✅ USE: Permissions accessible via /phan-quyen route (defined in App.tsx)
 import { toast } from "sonner"
 
 interface CompanyProfile {
@@ -29,19 +26,10 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("company");
   const [profile, setProfile] = useState<CompanyProfile>({});
   const [loading, setLoading] = useState(true);
-
-  // ========================================
-  // TABS CONFIGURATION
-  // ========================================
-  // NOTE: "permissions" tab removed from here
-  // Access permissions via dedicated route: /phan-quyen
   const tabs = [
     { id: "company", label: t('settings.tabs.company'), icon: Building2 },
     { id: "ai", label: t('settings.tabs.ai'), icon: Bot },
     { id: "email", label: t('settings.tabs.email'), icon: Mail },
-    { id: "notifications", label: t('settings.tabs.notifications'), icon: Bell },
-    // ❌ REMOVED: permissions tab
-    // Permissions now has its own dedicated page at /phan-quyen
   ];
 
   useEffect(() => {
@@ -189,7 +177,6 @@ export default function SettingsPage() {
 
           {activeTab === "ai" && <AiSettings />}
 
-          {activeTab === "notifications" && <NotificationSettings />}
 
           {activeTab === "email" && (
             <div>
@@ -206,13 +193,6 @@ export default function SettingsPage() {
               <UsersPage />
             </div>
           )}
-
-          {/* ❌ REMOVED: Permissions tab content */}
-          {/* Permissions now accessible via:
-              - Sidebar: "Phân quyền" menu item (requires permissions.view)
-              - Direct URL: /phan-quyen
-              - Uses: PermissionsPage.tsx component
-          */}
         </div>
 
         {/* Save Button (only for company tab) */}

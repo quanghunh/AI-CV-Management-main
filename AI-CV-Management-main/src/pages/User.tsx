@@ -870,7 +870,7 @@ export default function UsersPage() {
                   <p className="text-xs text-muted-foreground">Email không thể thay đổi</p>
                 </div>
 
-                {/* ✅ Vai trò — có link quản lý */}
+                {/* Vai trò — có link quản lý */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="edit-role" className="flex items-center gap-1">

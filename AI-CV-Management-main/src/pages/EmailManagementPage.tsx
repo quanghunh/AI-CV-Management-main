@@ -3,10 +3,11 @@
 
 import { useState, useEffect } from "react"
 import {
-  Search, Plus, Mail, Send, Clock, FileText, Eye, Filter,
+  Search, Plus, Mail, Send, Clock, FileText, Eye,
   Sparkles, Users, CheckCircle, AlertCircle, RefreshCw, Zap, ToggleLeft,
   ToggleRight, Trash2, Pencil, ChevronDown, ChevronUp, Settings2,
-  Copy, Info, X
+  Copy, Info, X, ChevronRight, Filter, PlayCircle, PauseCircle,
+  ArrowRight, Check, Layers, Bell, GitBranch
 } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -52,8 +53,6 @@ interface CampaignLog {
   status: string; error_message?: string; triggered_at: string
 }
 
-// ─── Custom trigger rule types ─────────────────────────────────────────────
-
 type RuleOperator = 'AND' | 'OR'
 
 type RuleField =
@@ -78,17 +77,63 @@ interface CustomRule {
   field: RuleField
   condition: RuleCondition
   value: string
-  operator: RuleOperator   // how this rule connects with the NEXT rule
+  operator: RuleOperator
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
+const TRIGGER_OPTIONS = [
+  {
+    value: 'interview_created',
+    label: 'Lịch phỏng vấn được tạo',
+    description: 'Khi một lịch phỏng vấn mới được thêm vào hệ thống',
+    icon: '📅',
+    color: 'blue',
+  },
+  {
+    value: 'interview_rescheduled',
+    label: 'Lịch phỏng vấn thay đổi',
+    description: 'Khi lịch phỏng vấn đã có bị dời hoặc chỉnh sửa',
+    icon: '🔄',
+    color: 'orange',
+  },
+  {
+    value: 'interview_result_published',
+    label: 'Kết quả phỏng vấn được công bố',
+    description: 'Khi kết quả đạt / không đạt được cập nhật',
+    icon: '📋',
+    color: 'purple',
+  },
+  {
+    value: 'candidate_status_changed',
+    label: 'Trạng thái ứng viên thay đổi',
+    description: 'Khi ứng viên chuyển sang trạng thái mới',
+    icon: '👤',
+    color: 'green',
+  },
+  {
+    value: 'custom',
+    label: 'Điều kiện tùy chỉnh',
+    description: 'Kết hợp nhiều điều kiện linh hoạt theo ý muốn',
+    icon: '⚙️',
+    color: 'gray',
+  },
+]
+
 const TRIGGER_LABELS: Record<string, string> = {
-  interview_created:          'Khi tạo lịch phỏng vấn mới',
-  interview_rescheduled:      'Khi thay đổi lịch phỏng vấn',
-  interview_result_published: 'Khi công bố kết quả phỏng vấn',
-  candidate_status_changed:   'Khi trạng thái ứng viên thay đổi',
-  custom:                     '⚙️ Điều kiện tùy chỉnh',
+  interview_created:          'Lịch phỏng vấn được tạo',
+  interview_rescheduled:      'Lịch phỏng vấn thay đổi',
+  interview_result_published: 'Kết quả phỏng vấn được công bố',
+  candidate_status_changed:   'Trạng thái ứng viên thay đổi',
+  custom:                     'Điều kiện tùy chỉnh',
+}
+
+const TRIGGER_COLOR: Record<string, string> = {
+  interview_created:          'bg-blue-50 text-blue-700 border-blue-200',
+  interview_rescheduled:      'bg-orange-50 text-orange-700 border-orange-200',
+  interview_result_published: 'bg-purple-50 text-purple-700 border-purple-200',
+  candidate_status_changed:   'bg-green-50 text-green-700 border-green-200',
+  custom:                     'bg-gray-50 text-gray-700 border-gray-200',
 }
 
 const RULE_FIELD_LABELS: Record<RuleField, string> = {
@@ -163,6 +208,17 @@ const getCategoryBadge = (category: string) => {
   return <Badge variant="outline" className={colors[category] || 'bg-gray-50 text-gray-700'}>{category}</Badge>
 }
 
+// ─── Campaign Wizard Steps ─────────────────────────────────────────────────
+
+type WizardStep = 'trigger' | 'filter' | 'template' | 'settings'
+
+const WIZARD_STEPS: { key: WizardStep; label: string; icon: React.ReactNode }[] = [
+  { key: 'trigger',  label: 'Sự kiện',   icon: <Bell className="h-4 w-4" /> },
+  { key: 'filter',   label: 'Điều kiện', icon: <Filter className="h-4 w-4" /> },
+  { key: 'template', label: 'Nội dung',  icon: <Mail className="h-4 w-4" /> },
+  { key: 'settings', label: 'Cài đặt',   icon: <Settings2 className="h-4 w-4" /> },
+]
+
 // ─── CustomRuleBuilder ────────────────────────────────────────────────────
 
 interface CustomRuleBuilderProps {
@@ -178,10 +234,12 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
     onChange(rules.map(r => r.id === id ? { ...r, ...patch } : r))
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {rules.length === 0 && (
-        <div className="text-center py-6 border-2 border-dashed border-purple-200 rounded-xl text-sm text-gray-400">
-          Chưa có điều kiện nào. Nhấn <strong>"Thêm điều kiện"</strong> để bắt đầu.
+        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+          <GitBranch className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+          <p className="text-sm text-gray-400">Chưa có điều kiện nào</p>
+          <p className="text-xs text-gray-400 mt-0.5">Nhấn "Thêm điều kiện" để bắt đầu</p>
         </div>
       )}
 
@@ -189,26 +247,21 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
         const availableConds = FIELD_CONDITIONS[rule.field] || ['equals']
         const suggestions    = FIELD_SUGGESTIONS[rule.field] || []
         const isNumeric      = NUMERIC_FIELDS.includes(rule.field)
-        // check if value is custom (not in suggestions list)
         const isCustomValue  = suggestions.length > 0 && rule.value !== '' && !suggestions.includes(rule.value)
 
         return (
           <div key={rule.id}>
-            {/* ── Rule row ── */}
-            <div className="flex items-start gap-2 p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
-              {/* Index badge */}
+            <div className="flex items-start gap-2 p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-200 transition-colors">
               <span className="flex-shrink-0 w-5 h-5 mt-2.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center">
                 {idx + 1}
               </span>
 
-              {/* 3 selectors */}
               <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {/* Field */}
                 <Select value={rule.field} onValueChange={v => {
                   const nf = v as RuleField
                   updateRule(rule.id, { field: nf, condition: FIELD_CONDITIONS[nf][0], value: '' })
                 }}>
-                  <SelectTrigger className="bg-gray-50 text-sm h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-gray-50 text-sm h-9 border-gray-200"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white z-[70]">
                     {(Object.keys(RULE_FIELD_LABELS) as RuleField[]).map(f => (
                       <SelectItem key={f} value={f}>{RULE_FIELD_LABELS[f]}</SelectItem>
@@ -216,9 +269,8 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
                   </SelectContent>
                 </Select>
 
-                {/* Condition */}
                 <Select value={rule.condition} onValueChange={v => updateRule(rule.id, { condition: v as RuleCondition })}>
-                  <SelectTrigger className="bg-gray-50 text-sm h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-gray-50 text-sm h-9 border-gray-200"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white z-[70]">
                     {availableConds.map(c => (
                       <SelectItem key={c} value={c}>{RULE_CONDITION_LABELS[c]}</SelectItem>
@@ -226,14 +278,13 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
                   </SelectContent>
                 </Select>
 
-                {/* Value */}
                 <div className="space-y-1">
                   {suggestions.length > 0 ? (
                     <Select
                       value={isCustomValue ? '__custom__' : (rule.value || '')}
                       onValueChange={v => updateRule(rule.id, { value: v === '__custom__' ? '' : v })}
                     >
-                      <SelectTrigger className="bg-gray-50 text-sm h-9">
+                      <SelectTrigger className="bg-gray-50 text-sm h-9 border-gray-200">
                         <SelectValue placeholder="Chọn giá trị..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white z-[70]">
@@ -244,9 +295,8 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
                   ) : (
                     <Input value={rule.value} onChange={e => updateRule(rule.id, { value: e.target.value })}
                       placeholder={isNumeric ? 'Nhập số...' : 'Nhập giá trị...'}
-                      type={isNumeric ? 'number' : 'text'} className="bg-gray-50 text-sm h-9" />
+                      type={isNumeric ? 'number' : 'text'} className="bg-gray-50 text-sm h-9 border-gray-200" />
                   )}
-                  {/* Free-text input when "Nhập tùy chỉnh" is selected */}
                   {(isCustomValue || (suggestions.length > 0 && !suggestions.includes(rule.value) && rule.value === '')) && (
                     <Input value={rule.value} onChange={e => updateRule(rule.id, { value: e.target.value })}
                       placeholder="Nhập giá trị tùy chỉnh..."
@@ -255,26 +305,24 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
                 </div>
               </div>
 
-              {/* Row actions */}
               <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
                 <button type="button" onClick={() => dupRule(rule)} title="Nhân bản"
                   className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                   <Copy className="h-3.5 w-3.5" />
                 </button>
                 <button type="button" onClick={() => removeRule(rule.id)} title="Xóa"
-                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* ── AND / OR connector ── */}
             {idx < rules.length - 1 && (
-              <div className="flex items-center gap-2 my-2">
+              <div className="flex items-center gap-2 my-1.5">
                 <div className="h-px flex-1 bg-gray-200" />
-                <button type="button" title="Nhấn để chuyển AND ↔ OR"
+                <button type="button"
                   onClick={() => updateRule(rule.id, { operator: rule.operator === 'AND' ? 'OR' : 'AND' })}
-                  className={`px-3 py-1 rounded-full text-xs font-bold border select-none transition-all cursor-pointer
+                  className={`px-3 py-0.5 rounded-full text-xs font-bold border select-none transition-all cursor-pointer
                     ${rule.operator === 'AND'
                       ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
                       : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'}`}>
@@ -287,21 +335,539 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
         )
       })}
 
-      <Button type="button" variant="outline" size="sm" onClick={addRule}
-        className="w-full border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400">
-        <Plus className="h-4 w-4 mr-1.5" />Thêm điều kiện
-      </Button>
+      <button type="button" onClick={addRule}
+        className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-blue-600 border border-dashed border-blue-300 rounded-xl hover:bg-blue-50 hover:border-blue-400 transition-colors">
+        <Plus className="h-4 w-4" />Thêm điều kiện
+      </button>
 
-      {/* Human-readable preview */}
       {rules.length > 0 && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-          <p className="font-semibold flex items-center gap-1.5 mb-1">
-            <Info className="h-3.5 w-3.5" />Điều kiện được áp dụng:
-          </p>
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex gap-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
           <p className="font-mono leading-relaxed break-words">{describeRules(rules)}</p>
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Campaign Wizard ──────────────────────────────────────────────────────────
+
+interface CampaignWizardProps {
+  open: boolean
+  onClose: () => void
+  editCampaign: Campaign | null
+  templates: EmailTemplate[]
+  onSaved: () => void
+}
+
+function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: CampaignWizardProps) {
+  const [step, setStep] = useState<WizardStep>('trigger')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    trigger: '',
+    template_id: '',
+    is_active: true,
+    delay_hours: 0,
+    cc_emails: '',
+    condition_result: '',
+    custom_rules: [] as CustomRule[],
+  })
+
+  // Reset wizard when opening
+  useEffect(() => {
+    if (!open) return
+    setStep('trigger')
+    if (editCampaign) {
+      setForm({
+        name: editCampaign.name,
+        description: editCampaign.description || '',
+        trigger: editCampaign.trigger,
+        template_id: editCampaign.template_id || '',
+        is_active: editCampaign.is_active,
+        delay_hours: editCampaign.delay_hours,
+        cc_emails: editCampaign.cc_emails || '',
+        condition_result: editCampaign.conditions?.result || editCampaign.conditions?.new_status || '',
+        custom_rules: editCampaign.conditions?.custom_rules || [],
+      })
+    } else {
+      setForm({ name: '', description: '', trigger: '', template_id: '', is_active: true, delay_hours: 0, cc_emails: '', condition_result: '', custom_rules: [] })
+    }
+  }, [open, editCampaign])
+
+  const stepIndex = WIZARD_STEPS.findIndex(s => s.key === step)
+
+  const canProceed = () => {
+    if (step === 'trigger') return !!form.trigger
+    if (step === 'filter') {
+      if (form.trigger === 'custom') {
+        if (!form.custom_rules.length) return false
+        return form.custom_rules.every(r => r.value.trim() !== '')
+      }
+      return true // filter step is optional for non-custom
+    }
+    if (step === 'template') return !!form.template_id
+    if (step === 'settings') return !!form.name.trim()
+    return true
+  }
+
+  const goNext = () => {
+    const idx = WIZARD_STEPS.findIndex(s => s.key === step)
+    if (idx < WIZARD_STEPS.length - 1) setStep(WIZARD_STEPS[idx + 1].key)
+  }
+
+  const goBack = () => {
+    const idx = WIZARD_STEPS.findIndex(s => s.key === step)
+    if (idx > 0) setStep(WIZARD_STEPS[idx - 1].key)
+  }
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.trigger || !form.template_id) {
+      alert('Vui lòng điền đầy đủ thông tin'); return
+    }
+    setIsSaving(true)
+    try {
+      let conditions: Campaign['conditions'] = null
+      if (form.trigger === 'interview_result_published' && form.condition_result.trim())
+        conditions = { result: form.condition_result }
+      else if (form.trigger === 'candidate_status_changed' && form.condition_result.trim())
+        conditions = { new_status: form.condition_result }
+      else if (form.trigger === 'custom' && form.custom_rules.length)
+        conditions = { custom_rules: form.custom_rules }
+
+      const payload = {
+        name: form.name, description: form.description || null,
+        trigger: form.trigger, template_id: form.template_id,
+        is_active: form.is_active, delay_hours: form.delay_hours,
+        cc_emails: form.cc_emails || null, conditions,
+        updated_at: new Date().toISOString()
+      }
+      if (editCampaign) {
+        const { error } = await supabase.from('cv_email_campaigns').update(payload).eq('id', editCampaign.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('cv_email_campaigns').insert([payload])
+        if (error) throw error
+      }
+      onSaved()
+      onClose()
+    } catch (e: any) { alert('Lỗi: ' + e.message) }
+    finally { setIsSaving(false) }
+  }
+
+  const selectedTrigger = TRIGGER_OPTIONS.find(t => t.value === form.trigger)
+  const selectedTemplate = templates.find(t => t.id === form.template_id)
+
+  const needsFilter = form.trigger === 'interview_result_published' || form.trigger === 'candidate_status_changed' || form.trigger === 'custom'
+
+  return (
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-hidden flex flex-col p-0 gap-0">
+
+        {/* ── Header ── */}
+        <div className="px-6 pt-6 pb-4 border-b bg-white">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Zap className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                {editCampaign ? 'Chỉnh sửa Campaign' : 'Tạo Campaign Mới'}
+              </h2>
+              <p className="text-xs text-gray-500">Tự động gửi email khi sự kiện xảy ra</p>
+            </div>
+          </div>
+
+          {/* Step progress */}
+          <div className="flex items-center gap-1">
+            {WIZARD_STEPS.map((s, idx) => {
+              const isActive   = s.key === step
+              const isComplete = WIZARD_STEPS.findIndex(x => x.key === step) > idx
+              return (
+                <div key={s.key} className="flex items-center gap-1 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Allow going back to any completed step
+                      if (isComplete) setStep(s.key)
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center
+                      ${isActive   ? 'bg-blue-600 text-white shadow-sm'
+                      : isComplete ? 'bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100'
+                      :              'bg-gray-100 text-gray-400 cursor-default'}`}>
+                    {isComplete
+                      ? <Check className="h-3 w-3" />
+                      : <span className="flex items-center">{s.icon}</span>}
+                    {s.label}
+                  </button>
+                  {idx < WIZARD_STEPS.length - 1 && (
+                    <ChevronRight className={`h-3 w-3 flex-shrink-0 ${isComplete ? 'text-blue-400' : 'text-gray-300'}`} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+
+          {/* ══ Step 1: Trigger ══ */}
+          {step === 'trigger' && (
+            <div className="space-y-3">
+              <div className="mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Chọn sự kiện kích hoạt</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Campaign sẽ tự động chạy khi sự kiện này xảy ra trong hệ thống</p>
+              </div>
+              <div className="grid gap-2">
+                {TRIGGER_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, trigger: opt.value, condition_result: '', custom_rules: [] }))}
+                    className={`w-full text-left flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                      ${form.trigger === opt.value
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0
+                      ${form.trigger === opt.value ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                      {opt.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-gray-900">{opt.label}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{opt.description}</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                      ${form.trigger === opt.value ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                      {form.trigger === opt.value && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══ Step 2: Filter / Conditions ══ */}
+          {step === 'filter' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Thiết lập điều kiện lọc</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {form.trigger === 'custom'
+                    ? 'Xây dựng các điều kiện tùy chỉnh để kiểm soát chính xác khi nào email được gửi'
+                    : 'Chọn điều kiện để lọc – hoặc bỏ qua để gửi cho tất cả trường hợp'}
+                </p>
+              </div>
+
+              {/* Trigger summary chip */}
+              {selectedTrigger && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                  <span className="text-lg">{selectedTrigger.icon}</span>
+                  <div>
+                    <p className="text-xs text-gray-500">Sự kiện đã chọn</p>
+                    <p className="text-sm font-medium text-gray-800">{selectedTrigger.label}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Interview result filter */}
+              {form.trigger === 'interview_result_published' && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-700">Lọc theo kết quả phỏng vấn:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: '', label: 'Tất cả', sub: 'Đạt & Không đạt', icon: '📊' },
+                      { value: 'Đạt', label: 'Chỉ Đạt', sub: 'Kết quả đạt yêu cầu', icon: '✅' },
+                      { value: 'Không đạt', label: 'Chỉ Không đạt', sub: 'Kết quả không đạt', icon: '❌' },
+                    ].map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => setForm(p => ({ ...p, condition_result: opt.value }))}
+                        className={`p-3 rounded-xl border-2 text-left transition-all
+                          ${form.condition_result === opt.value
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                        <div className="text-xl mb-1">{opt.icon}</div>
+                        <div className="text-sm font-semibold text-gray-800">{opt.label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{opt.sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Candidate status filter */}
+              {form.trigger === 'candidate_status_changed' && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-700">Lọc theo trạng thái mới của ứng viên:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: '', label: 'Tất cả trạng thái', sub: 'Gửi khi chuyển sang bất kỳ trạng thái nào', icon: '🔄' },
+                      { value: 'Mới', label: 'Mới', sub: 'Vừa nộp đơn', icon: '🆕' },
+                      { value: 'Sàng lọc', label: 'Sàng lọc', sub: 'Đang được xem xét', icon: '🔍' },
+                      { value: 'Phỏng vấn', label: 'Phỏng vấn', sub: 'Đã lên lịch phỏng vấn', icon: '💬' },
+                      { value: 'Chấp nhận', label: 'Chấp nhận', sub: 'Thông qua tuyển dụng', icon: '🎉' },
+                      { value: 'Từ chối', label: 'Từ chối', sub: 'Không phù hợp', icon: '🚫' },
+                    ].map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => setForm(p => ({ ...p, condition_result: opt.value }))}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all
+                          ${form.condition_result === opt.value
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                        <span className="text-lg">{opt.icon}</span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-800">{opt.label}</div>
+                          <div className="text-xs text-gray-500 truncate">{opt.sub}</div>
+                        </div>
+                        {form.condition_result === opt.value && (
+                          <Check className="h-4 w-4 text-blue-500 flex-shrink-0 ml-auto" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Other triggers: no filter needed */}
+              {(form.trigger === 'interview_created' || form.trigger === 'interview_rescheduled') && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">Không cần lọc thêm</p>
+                  <p className="text-xs text-gray-500 mt-1">Campaign sẽ chạy với mọi trường hợp của sự kiện này</p>
+                </div>
+              )}
+
+              {/* Custom rule builder */}
+              {form.trigger === 'custom' && (
+                <CustomRuleBuilder
+                  rules={form.custom_rules}
+                  onChange={rules => setForm(p => ({ ...p, custom_rules: rules }))}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ══ Step 3: Template ══ */}
+          {step === 'template' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Chọn template email</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Nội dung email sẽ được gửi khi campaign kích hoạt</p>
+              </div>
+
+              <div className="grid gap-2 max-h-80 overflow-y-auto pr-1">
+                {templates.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+                    <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Chưa có template nào</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Hãy tạo template trước</p>
+                  </div>
+                ) : templates.map(t => (
+                  <button key={t.id} type="button"
+                    onClick={() => setForm(p => ({ ...p, template_id: t.id }))}
+                    className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
+                      ${form.template_id === t.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
+                      ${form.template_id === t.id ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                      <Mail className={`h-4 w-4 ${form.template_id === t.id ? 'text-blue-600' : 'text-gray-400'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900 truncate">{t.name}</span>
+                        {t.is_default && <span className="text-yellow-500 text-xs">⭐</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">{t.subject}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getCategoryBadge(t.email_categories?.name || 'General')}
+                        <span className="text-[10px] text-gray-400">{t.variables?.length || 0} biến · {t.usage_count || 0} lần dùng</span>
+                      </div>
+                    </div>
+                    {form.template_id === t.id && (
+                      <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Variable hint */}
+              {form.template_id && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Biến hỗ trợ trong template:</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {[
+                      ['{{candidateName}}', 'Tên ứng viên'],
+                      ['{{position}}', 'Vị trí'],
+                      ['{{companyName}}', 'Tên công ty'],
+                      ['{{interviewTime}}', 'Ngày & giờ PV'],
+                      ['{{interviewType}}', 'Hình thức'],
+                      ['{{result}}', 'Kết quả'],
+                    ].map(([code, desc]) => (
+                      <div key={code} className="flex items-center gap-1">
+                        <code className="bg-white border border-gray-200 px-1 rounded text-[10px] text-blue-700 shrink-0">{code}</code>
+                        <span className="text-[10px] text-gray-400 truncate">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══ Step 4: Settings ══ */}
+          {step === 'settings' && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Cài đặt campaign</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Đặt tên và tinh chỉnh cách campaign hoạt động</p>
+              </div>
+
+              {/* Summary card */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Tóm tắt campaign</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {selectedTrigger && (
+                    <span className="flex items-center gap-1 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-blue-800">
+                      <span>{selectedTrigger.icon}</span>{selectedTrigger.label}
+                    </span>
+                  )}
+                  {form.condition_result && (
+                    <span className="flex items-center gap-1 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-blue-800">
+                      <Filter className="h-3 w-3" />Lọc: {form.condition_result}
+                    </span>
+                  )}
+                  {form.trigger === 'custom' && form.custom_rules.length > 0 && (
+                    <span className="flex items-center gap-1 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-blue-800">
+                      <GitBranch className="h-3 w-3" />{form.custom_rules.length} điều kiện
+                    </span>
+                  )}
+                  {selectedTemplate && (
+                    <span className="flex items-center gap-1 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-blue-800">
+                      <Mail className="h-3 w-3" />{selectedTemplate.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Tên Campaign <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="VD: Gửi mail mời phỏng vấn vòng 1"
+                  value={form.name}
+                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="bg-white"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Mô tả <span className="text-gray-400 font-normal">(tùy chọn)</span></label>
+                <Input
+                  placeholder="Mô tả ngắn gọn mục đích của campaign"
+                  value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  className="bg-white"
+                />
+              </div>
+
+              {/* Delay + CC */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Gửi sau (giờ)</label>
+                  <Input
+                    type="number" min={0}
+                    value={form.delay_hours}
+                    onChange={e => setForm(p => ({ ...p, delay_hours: parseInt(e.target.value) || 0 }))}
+                    className="bg-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">0 = gửi ngay lập tức</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">CC Email <span className="text-gray-400 font-normal">(tùy chọn)</span></label>
+                  <Input
+                    placeholder="a@b.com, c@d.com"
+                    value={form.cc_emails}
+                    onChange={e => setForm(p => ({ ...p, cc_emails: e.target.value }))}
+                    className="bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Active toggle */}
+              <div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all
+                ${form.is_active ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {form.is_active ? '🟢 Bật ngay sau khi lưu' : '⚫ Lưu ở trạng thái tắt'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {form.is_active
+                      ? 'Campaign sẽ hoạt động ngay khi được tạo'
+                      : 'Bạn có thể bật campaign sau trong danh sách'}
+                  </p>
+                </div>
+                <button type="button"
+                  onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))}
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0
+                    ${form.is_active ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform
+                    ${form.is_active ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={stepIndex === 0 ? onClose : goBack}>
+            {stepIndex === 0 ? 'Hủy' : '← Quay lại'}
+          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* Dot indicators */}
+            <div className="flex gap-1 mr-2">
+              {WIZARD_STEPS.map((s, i) => (
+                <div key={s.key} className={`w-1.5 h-1.5 rounded-full transition-all
+                  ${i === stepIndex ? 'bg-blue-600 w-4' : i < stepIndex ? 'bg-blue-300' : 'bg-gray-300'}`} />
+              ))}
+            </div>
+
+            {stepIndex < WIZARD_STEPS.length - 1 ? (
+              <Button
+                size="sm"
+                disabled={!canProceed()}
+                onClick={goNext}
+                className="bg-blue-600 hover:bg-blue-700 text-white">
+                Tiếp theo <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                disabled={!canProceed() || isSaving}
+                onClick={handleSave}
+                className="bg-green-600 hover:bg-green-700 text-white">
+                {isSaving ? (
+                  <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />Đang lưu...</>
+                ) : (
+                  <><Check className="h-4 w-4 mr-1.5" />{editCampaign ? 'Cập nhật' : 'Tạo Campaign'}</>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -329,31 +895,19 @@ export function EmailManagementPage() {
   const [isSaving,         setIsSaving]         = useState(false)
   const [emailSendingStatus, setEmailSendingStatus] = useState<Record<string, 'idle' | 'sending' | 'success' | 'error'>>({})
 
-  // Campaign
   const [campaigns,     setCampaigns]     = useState<Campaign[]>([])
   const [campaignLogs,  setCampaignLogs]  = useState<CampaignLog[]>([])
-  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false)
+  const [isWizardOpen,  setIsWizardOpen]  = useState(false)
   const [editCampaign,  setEditCampaign]  = useState<Campaign | null>(null)
-  const [isSavingCampaign, setIsSavingCampaign] = useState(false)
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null)
 
-  const [campaignForm, setCampaignForm] = useState({
-    name: '', description: '', trigger: 'interview_created',
-    template_id: '', is_active: true, delay_hours: 0,
-    cc_emails: '', condition_result: '',
-    custom_rules: [] as CustomRule[],
-  })
-
-  // Compose / Template / Test forms
   const [composeForm,  setComposeForm]  = useState({ candidate_id: '', template_id: '', subject: '', body: '', scheduled_at: '', cc: '', priority: 'normal' })
   const [templateForm, setTemplateForm] = useState({ name: '', subject: '', body: '', category_id: '', is_default: false })
   const [testEmailForm, setTestEmailForm] = useState({ test_email: '', template_id: '' })
   const [emailHistory, setEmailHistory] = useState<any[]>([])
 
-  // Company profile for template variables
   const { profile: companyProfile } = useCompanyProfile()
 
-  // URL param: open compose from Interviews page
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('compose') === 'true') {
@@ -371,8 +925,6 @@ export function EmailManagementPage() {
     const id = setInterval(checkApiKeyStatus, 30000)
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id) }
   }, [])
-
-  // ── Data fetching ──────────────────────────────────────────────────────────
 
   const checkApiKeyStatus = async () => {
     setIsRefreshingApiKey(true)
@@ -442,65 +994,6 @@ export function EmailManagementPage() {
     if (data) setCampaignLogs(data as CampaignLog[])
   }
 
-  // ── Campaign CRUD ──────────────────────────────────────────────────────────
-
-  const openCreateCampaign = () => {
-    setEditCampaign(null)
-    setCampaignForm({ name:'', description:'', trigger:'interview_created', template_id:'', is_active:true, delay_hours:0, cc_emails:'', condition_result:'', custom_rules:[] })
-    setIsCampaignDialogOpen(true)
-  }
-
-  const openEditCampaign = (c: Campaign) => {
-    setEditCampaign(c)
-    setCampaignForm({
-      name: c.name, description: c.description||'',
-      trigger: c.trigger, template_id: c.template_id||'',
-      is_active: c.is_active, delay_hours: c.delay_hours,
-      cc_emails: c.cc_emails||'',
-      condition_result: c.conditions?.result || c.conditions?.new_status || '',
-      custom_rules: c.conditions?.custom_rules || [],
-    })
-    setIsCampaignDialogOpen(true)
-  }
-
-  const handleSaveCampaign = async () => {
-    if (!campaignForm.name || !campaignForm.trigger || !campaignForm.template_id) {
-      alert('Vui lòng điền Tên, Trigger và chọn Template'); return
-    }
-    if (campaignForm.trigger === 'custom') {
-      if (!campaignForm.custom_rules.length) { alert('Vui lòng thêm ít nhất 1 điều kiện'); return }
-      const bad = campaignForm.custom_rules.find(r => !r.value.trim())
-      if (bad) { alert(`Điều kiện #${campaignForm.custom_rules.indexOf(bad)+1} chưa có giá trị`); return }
-    }
-    setIsSavingCampaign(true)
-    try {
-      let conditions: Campaign['conditions'] = null
-      if (campaignForm.trigger === 'interview_result_published' && campaignForm.condition_result)
-        conditions = { result: campaignForm.condition_result }
-      else if (campaignForm.trigger === 'candidate_status_changed' && campaignForm.condition_result)
-        conditions = { new_status: campaignForm.condition_result }
-      else if (campaignForm.trigger === 'custom' && campaignForm.custom_rules.length)
-        conditions = { custom_rules: campaignForm.custom_rules }
-
-      const payload = {
-        name: campaignForm.name, description: campaignForm.description||null,
-        trigger: campaignForm.trigger, template_id: campaignForm.template_id,
-        is_active: campaignForm.is_active, delay_hours: campaignForm.delay_hours,
-        cc_emails: campaignForm.cc_emails||null, conditions,
-        updated_at: new Date().toISOString()
-      }
-      if (editCampaign) {
-        const { error } = await supabase.from('cv_email_campaigns').update(payload).eq('id', editCampaign.id)
-        if (error) throw error; alert('✓ Đã cập nhật campaign!')
-      } else {
-        const { error } = await supabase.from('cv_email_campaigns').insert([payload])
-        if (error) throw error; alert('✓ Đã tạo campaign mới!')
-      }
-      setIsCampaignDialogOpen(false); fetchCampaigns()
-    } catch (e: any) { alert('Lỗi: ' + e.message) }
-    finally { setIsSavingCampaign(false) }
-  }
-
   const handleToggleCampaign = async (c: Campaign) => {
     const { error } = await supabase.from('cv_email_campaigns').update({ is_active: !c.is_active }).eq('id', c.id)
     if (!error) setCampaigns(prev => prev.map(x => x.id === c.id ? { ...x, is_active: !c.is_active } : x))
@@ -512,10 +1005,7 @@ export function EmailManagementPage() {
     if (!error) setCampaigns(prev => prev.filter(x => x.id !== c.id))
   }
 
-  // ── Email sending ──────────────────────────────────────────────────────────
-
   const formatEmailContent = (content: string, subject?: string) => {
-    // Replace company variables first
     let processedContent = content
       .replace(/\{\{company_name\}\}/g, companyProfile?.company_name || 'Công ty')
       .replace(/\{\{company_description\}\}/g, companyProfile?.company_description || 'Mô tả công ty')
@@ -628,11 +1118,11 @@ export function EmailManagementPage() {
   const categoryCounts: Record<string,number> = {}
   categories.forEach(c => { categoryCounts[c.name]=templates.filter(t=>t.category_id===c.id).length })
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const activeCampaigns   = campaigns.filter(c => c.is_active).length
+  const inactiveCampaigns = campaigns.filter(c => !c.is_active).length
 
   return (
     <>
-      {/* Mobile not supported */}
       <div className="sm:hidden flex flex-col items-center justify-center min-h-[80vh] p-6 text-center space-y-4">
         <div className="bg-gray-100 p-4 rounded-full">
           <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -705,7 +1195,7 @@ export function EmailManagementPage() {
               <button key={tab}
                 className={`pb-3 px-1 text-sm font-medium transition-colors relative ${currentTab===tab?'text-blue-600':'text-gray-600 hover:text-gray-900'}`}
                 onClick={()=>setCurrentTab(tab)}>
-                {tab==='templates'?`Templates (${filteredTemplates.length})`:tab==='history'?'History':'Statistical'}
+                {tab==='templates'?`Templates (${filteredTemplates.length})`:'History'}
                 {currentTab===tab&&<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"/>}
               </button>
             ))}
@@ -713,7 +1203,9 @@ export function EmailManagementPage() {
               className={`pb-3 px-1 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${currentTab==='campaigns'?'text-blue-600':'text-gray-600 hover:text-gray-900'}`}
               onClick={()=>{setCurrentTab('campaigns');fetchCampaigns();fetchCampaignLogs()}}>
               <Zap className="h-4 w-4"/>Campaigns
-              <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full font-semibold">{campaigns.length}</span>
+              {campaigns.length > 0 && (
+                <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full font-semibold">{campaigns.length}</span>
+              )}
               {currentTab==='campaigns'&&<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"/>}
             </button>
           </div>
@@ -785,72 +1277,149 @@ export function EmailManagementPage() {
           {/* Campaigns */}
           {currentTab==='campaigns'&&(
             <div className="space-y-6">
+
+              {/* Campaign header + stats */}
               <div className="flex items-center justify-between">
-                <div><h3 className="text-lg font-semibold">Email Campaigns Tự Động</h3><p className="text-sm text-gray-500 mt-0.5">Tự động gửi email khi sự kiện xảy ra trong hệ thống</p></div>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={openCreateCampaign}><Plus className="mr-2 h-4 w-4"/>Tạo Campaign</Button>
+                <div>
+                  <h3 className="text-lg font-semibold">Email Campaigns Tự Động</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {campaigns.length === 0
+                      ? 'Chưa có campaign nào – tạo campaign đầu tiên để bắt đầu'
+                      : `${activeCampaigns} đang bật · ${inactiveCampaigns} đã tắt`}
+                  </p>
+                </div>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => { setEditCampaign(null); setIsWizardOpen(true) }}>
+                  <Plus className="mr-2 h-4 w-4"/>Tạo Campaign
+                </Button>
               </div>
 
-              {campaigns.length===0?(
-                <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
-                  <Zap className="mx-auto h-10 w-10 text-gray-300 mb-3"/>
-                  <p className="text-gray-500 font-medium">Chưa có campaign nào</p>
-                  <p className="text-gray-400 text-sm mt-1">Tạo campaign đầu tiên để tự động gửi email</p>
+              {campaigns.length === 0 ? (
+                /* Empty state */
+                <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+                  <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Zap className="h-8 w-8 text-blue-400" />
+                  </div>
+                  <p className="text-gray-700 font-semibold text-base">Chưa có campaign nào</p>
+                  <p className="text-gray-400 text-sm mt-1 mb-5">Tự động hóa quy trình gửi email tuyển dụng của bạn</p>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => { setEditCampaign(null); setIsWizardOpen(true) }}>
+                    <Plus className="mr-2 h-4 w-4"/>Tạo Campaign đầu tiên
+                  </Button>
                 </div>
-              ):(
+              ) : (
                 <div className="space-y-3">
-                  {campaigns.map(c=>{
-                    const isExpanded = expandedCampaign === c.id
-                    const hasCustomRules = c.trigger==='custom' && (c.conditions?.custom_rules?.length??0)>0
+                  {campaigns.map(c => {
+                    const isExpanded   = expandedCampaign === c.id
+                    const hasCustomRules = c.trigger === 'custom' && (c.conditions?.custom_rules?.length ?? 0) > 0
+                    const triggerOpt   = TRIGGER_OPTIONS.find(t => t.value === c.trigger)
+
                     return (
-                      <div key={c.id} className={`bg-white border rounded-xl shadow-sm transition-all ${c.is_active?'border-blue-100':'border-gray-200 opacity-70'}`}>
+                      <div key={c.id}
+                        className={`bg-white border rounded-2xl shadow-sm transition-all overflow-hidden
+                          ${c.is_active ? 'border-blue-100' : 'border-gray-200 opacity-75'}`}>
+
                         <div className="p-4 flex items-center gap-4">
-                          <div className={`w-2 h-10 rounded-full flex-shrink-0 ${c.is_active?'bg-green-400':'bg-gray-300'}`}/>
+                          {/* Status indicator */}
+                          <div className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${c.is_active ? 'bg-green-400' : 'bg-gray-300'}`} />
+
+                          {/* Trigger icon */}
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0
+                            ${c.is_active ? 'bg-blue-50' : 'bg-gray-100'}`}>
+                            {triggerOpt?.icon ?? '⚡'}
+                          </div>
+
+                          {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-gray-900">{c.name}</span>
-                              <Badge variant="outline" className={c.is_active?'bg-green-50 text-green-700 border-green-200':'bg-gray-50 text-gray-500'}>{c.is_active?'Đang bật':'Đã tắt'}</Badge>
-                              {c.trigger==='custom'&&<Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1 text-[11px]"><Settings2 className="h-3 w-3"/>Điều kiện tùy chỉnh</Badge>}
+                              <span className="font-semibold text-gray-900 text-sm">{c.name}</span>
+                              <Badge variant="outline"
+                                className={c.is_active ? 'bg-green-50 text-green-700 border-green-200 text-[10px]' : 'bg-gray-50 text-gray-500 text-[10px]'}>
+                                {c.is_active ? '● Đang bật' : '○ Đã tắt'}
+                              </Badge>
+                              {c.trigger === 'custom' && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px]">
+                                  ⚙️ Tùy chỉnh
+                                </Badge>
+                              )}
                             </div>
-                            <p className="text-xs text-blue-600 mt-0.5 flex flex-wrap items-center gap-2">
-                              <span><Zap className="inline h-3 w-3 mr-0.5"/>{TRIGGER_LABELS[c.trigger]||c.trigger}</span>
-                              {c.conditions?.result&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border text-[11px]">Kết quả: <b>{c.conditions.result}</b></span>}
-                              {c.conditions?.new_status&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border text-[11px]">Trạng thái: <b>{c.conditions.new_status}</b></span>}
-                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${TRIGGER_COLOR[c.trigger] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                {TRIGGER_LABELS[c.trigger] || c.trigger}
+                              </span>
+                              {(c.conditions?.result || c.conditions?.new_status) && (
+                                <span className="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full border border-gray-200">
+                                  Lọc: <b>{c.conditions.result || c.conditions.new_status}</b>
+                                </span>
+                              )}
+                              {c.delay_hours > 0 && (
+                                <span className="text-[11px] text-gray-500 flex items-center gap-0.5">
+                                  <Clock className="h-3 w-3" />Gửi sau {c.delay_hours}h
+                                </span>
+                              )}
+                            </div>
+
                             <p className="text-xs text-gray-500 mt-0.5">
-                              Template: <span className="text-gray-700 font-medium">{(c as any).cv_email_templates?.name||'Chưa chọn'}</span>
-                              {c.delay_hours>0&&<span className="ml-2">· Gửi sau {c.delay_hours}h</span>}
-                              {c.cc_emails&&<span className="ml-2">· CC: {c.cc_emails}</span>}
+                              <Mail className="inline h-3 w-3 mr-0.5 text-gray-400" />
+                              {(c as any).cv_email_templates?.name || <span className="text-orange-500">Chưa chọn template</span>}
+                              {c.cc_emails && <span className="ml-2 text-gray-400">· CC: {c.cc_emails}</span>}
                             </p>
-                            {hasCustomRules&&<p className="text-[11px] text-purple-600 mt-1 line-clamp-1">📋 {describeRules(c.conditions!.custom_rules!)}</p>}
+
+                            {hasCustomRules && (
+                              <p className="text-[11px] text-purple-600 mt-0.5 truncate">
+                                📋 {describeRules(c.conditions!.custom_rules!)}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {hasCustomRules&&(
-                              <button onClick={()=>setExpandedCampaign(isExpanded?null:c.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Xem điều kiện">
-                                {isExpanded?<ChevronUp className="h-4 w-4"/>:<ChevronDown className="h-4 w-4"/>}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {hasCustomRules && (
+                              <button onClick={() => setExpandedCampaign(isExpanded ? null : c.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                                title="Xem điều kiện chi tiết">
+                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </button>
                             )}
-                            <button onClick={()=>handleToggleCampaign(c)} className={`p-1.5 rounded-lg transition-colors ${c.is_active?'text-green-600 hover:bg-green-50':'text-gray-400 hover:bg-gray-100'}`}>
-                              {c.is_active?<ToggleRight className="h-6 w-6"/>:<ToggleLeft className="h-6 w-6"/>}
+                            <button onClick={() => handleToggleCampaign(c)}
+                              className={`p-1.5 rounded-lg transition-colors ${c.is_active ? 'text-green-500 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                              title={c.is_active ? 'Tắt campaign' : 'Bật campaign'}>
+                              {c.is_active ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
                             </button>
-                            <button onClick={()=>openEditCampaign(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="h-4 w-4"/></button>
-                            <button onClick={()=>handleDeleteCampaign(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-4 w-4"/></button>
+                            <button onClick={() => { setEditCampaign(c); setIsWizardOpen(true) }}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Chỉnh sửa">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleDeleteCampaign(c)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Xóa">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
+
                         {/* Expanded custom rules */}
-                        {isExpanded&&hasCustomRules&&(
-                          <div className="px-4 pb-4 border-t border-gray-100">
-                            <p className="text-xs font-semibold text-gray-600 mb-2 mt-3 flex items-center gap-1.5"><Settings2 className="h-3.5 w-3.5 text-purple-500"/>Chi tiết điều kiện tùy chỉnh:</p>
+                        {isExpanded && hasCustomRules && (
+                          <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                            <p className="text-xs font-semibold text-gray-500 mb-2 mt-3 flex items-center gap-1.5">
+                              <GitBranch className="h-3.5 w-3.5 text-purple-500" />Chi tiết điều kiện:
+                            </p>
                             <div className="space-y-1.5">
-                              {c.conditions!.custom_rules!.map((rule,idx)=>(
+                              {c.conditions!.custom_rules!.map((rule, idx) => (
                                 <div key={rule.id} className="flex items-center gap-2">
-                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-100 rounded-lg text-xs text-purple-800 flex-1">
-                                    <span className="w-4 h-4 rounded-full bg-purple-200 text-purple-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{idx+1}</span>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-100 rounded-lg text-xs text-purple-800 flex-1">
+                                    <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{idx + 1}</span>
                                     <span className="font-medium">{RULE_FIELD_LABELS[rule.field]}</span>
-                                    <span className="text-purple-500">{RULE_CONDITION_LABELS[rule.condition]}</span>
+                                    <span className="text-purple-400">{RULE_CONDITION_LABELS[rule.condition]}</span>
                                     <span className="font-semibold">"{rule.value}"</span>
                                   </div>
-                                  {idx<c.conditions!.custom_rules!.length-1&&(
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${rule.operator==='AND'?'bg-blue-100 text-blue-700':'bg-orange-100 text-orange-700'}`}>{rule.operator}</span>
+                                  {idx < c.conditions!.custom_rules!.length - 1 && (
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0
+                                      ${rule.operator === 'AND' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                                      {rule.operator}
+                                    </span>
                                   )}
                                 </div>
                               ))}
@@ -863,22 +1432,32 @@ export function EmailManagementPage() {
                 </div>
               )}
 
-              {/* Logs */}
-              {campaignLogs.length>0&&(
+              {/* Campaign logs */}
+              {campaignLogs.length > 0 && (
                 <div>
-                  <h4 className="text-base font-semibold mb-3 flex items-center gap-2"><Clock className="h-4 w-4 text-gray-400"/>Lịch sử Campaign (50 gần nhất)</h4>
-                  <div className="border rounded-xl overflow-hidden">
-                    <table className="w-full text-sm"><thead className="bg-gray-50"><tr>{['Campaign','Gửi đến','Trạng thái','Thời gian'].map(h=><th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">{h}</th>)}</tr></thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {campaignLogs.map(log=>(
-                          <tr key={log.id}>
-                            <td className="px-4 py-2.5 font-medium text-gray-800">{log.campaign_name||'—'}</td>
-                            <td className="px-4 py-2.5 text-gray-600">{log.email_sent_to||'—'}</td>
+                  <h4 className="text-base font-semibold mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />Lịch sử Campaign <span className="text-sm font-normal text-gray-400">(50 gần nhất)</span>
+                  </h4>
+                  <div className="border rounded-xl overflow-hidden bg-white">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>{['Campaign','Gửi đến','Trạng thái','Thời gian'].map(h=>(
+                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">{h}</th>
+                        ))}</tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {campaignLogs.map(log => (
+                          <tr key={log.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2.5 font-medium text-gray-800">{log.campaign_name || '—'}</td>
+                            <td className="px-4 py-2.5 text-gray-600">{log.email_sent_to || '—'}</td>
                             <td className="px-4 py-2.5">
-                              <Badge variant="outline" className={log.status==='sent'?'bg-green-50 text-green-700 border-green-200':log.status==='failed'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-500'}>
-                                {log.status==='sent'?'Đã gửi':log.status==='failed'?'Thất bại':'Bỏ qua'}
+                              <Badge variant="outline" className={
+                                log.status==='sent'   ? 'bg-green-50 text-green-700 border-green-200' :
+                                log.status==='failed' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-gray-50 text-gray-500'}>
+                                {log.status==='sent' ? '✓ Đã gửi' : log.status==='failed' ? '✗ Thất bại' : 'Bỏ qua'}
                               </Badge>
-                              {log.error_message&&<p className="text-xs text-red-500 mt-0.5">{log.error_message}</p>}
+                              {log.error_message && <p className="text-xs text-red-500 mt-0.5">{log.error_message}</p>}
                             </td>
                             <td className="px-4 py-2.5 text-gray-500 text-xs">{new Date(log.triggered_at).toLocaleString('vi-VN')}</td>
                           </tr>
@@ -894,6 +1473,15 @@ export function EmailManagementPage() {
         </div>
 
         {/* ══════════════ DIALOGS ══════════════════════════════════════════════ */}
+
+        {/* Campaign Wizard */}
+        <CampaignWizard
+          open={isWizardOpen}
+          onClose={() => setIsWizardOpen(false)}
+          editCampaign={editCampaign}
+          templates={templates}
+          onSaved={() => { fetchCampaigns(); setEditCampaign(null) }}
+        />
 
         {/* Compose */}
         <Dialog open={isComposeOpen} onOpenChange={o=>{if(!o)setIsComposeOpen(false)}}>
@@ -964,58 +1552,29 @@ export function EmailManagementPage() {
               </div>
               <div><label className="block text-sm font-semibold mb-2">Tiêu đề email</label><Input placeholder="VD: [{{companyName}}] Mời phỏng vấn - {{position}}" className="bg-gray-50" value={templateForm.subject} onChange={e=>setTemplateForm(prev=>({...prev,subject:e.target.value}))}/></div>
               <div><label className="block text-sm font-semibold mb-2">Nội dung email</label><Textarea placeholder="Nhập nội dung... Dùng {{variableName}} để tạo biến động" className="min-h-[250px] bg-gray-50 font-mono text-sm" value={templateForm.body} onChange={e=>setTemplateForm(prev=>({...prev,body:e.target.value}))}/><p className="text-xs text-gray-500 mt-2">Sử dụng {`{{candidateName}}, {{position}}`}</p></div>
-
-              {/* Available Variables */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Biến có sẵn
-                </h4>
+                <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2"><Info className="h-4 w-4" />Biến có sẵn</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="font-medium text-blue-800 mb-1">Thông tin công ty:</p>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_name}}'}</code>
-                        <span className="text-blue-600">→ {companyProfile?.company_name || 'Tên công ty'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_description}}'}</code>
-                        <span className="text-blue-600">→ {companyProfile?.company_description ? 'Mô tả công ty' : 'Mô tả'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{company_address}}'}</code>
-                        <span className="text-blue-600">→ {companyProfile?.company_address ? 'Địa chỉ' : 'Địa chỉ công ty'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{contact_email}}'}</code>
-                        <span className="text-blue-600">→ {companyProfile?.contact_email || 'email@company.com'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{website}}'}</code>
-                        <span className="text-blue-600">→ {companyProfile?.website || 'https://company.com'}</span>
-                      </div>
+                      {[['{{company_name}}', companyProfile?.company_name||'Tên công ty'],['{{company_description}}','Mô tả công ty'],['{{company_address}}','Địa chỉ công ty'],['{{contact_email}}',companyProfile?.contact_email||'email@company.com'],['{{website}}',companyProfile?.website||'https://company.com']].map(([code,val])=>(
+                        <div key={code} className="flex items-center gap-2">
+                          <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{code}</code>
+                          <span className="text-blue-600">→ {val}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div>
                     <p className="font-medium text-blue-800 mb-1">Biến ứng viên:</p>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{candidate_name}}'}</code>
-                        <span className="text-blue-600">→ Tên ứng viên</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{position}}'}</code>
-                        <span className="text-blue-600">→ Vị trí ứng tuyển</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{interview_date}}'}</code>
-                        <span className="text-blue-600">→ Ngày phỏng vấn</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{'{{interview_time}}'}</code>
-                        <span className="text-blue-600">→ Giờ phỏng vấn</span>
-                      </div>
+                      {[['{{candidate_name}}','Tên ứng viên'],['{{position}}','Vị trí ứng tuyển'],['{{interview_date}}','Ngày phỏng vấn'],['{{interview_time}}','Giờ phỏng vấn']].map(([code,val])=>(
+                        <div key={code} className="flex items-center gap-2">
+                          <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">{code}</code>
+                          <span className="text-blue-600">→ {val}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1065,135 +1624,6 @@ export function EmailManagementPage() {
                 <Button variant="outline" onClick={()=>setIsTestEmailOpen(false)}>Hủy</Button>
                 <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleTestEmail} disabled={isSaving||emailSendingStatus.test==='sending'}>
                   {emailSendingStatus.test==='sending'?<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"/>Đang gửi...</>:emailSendingStatus.test==='success'?<><CheckCircle className="mr-2 h-4 w-4"/>Đã gửi</>:emailSendingStatus.test==='error'?<><AlertCircle className="mr-2 h-4 w-4"/>Gửi thất bại</>:<><Sparkles className="mr-2 h-4 w-4"/>Gửi Email Thử</>}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ══ Campaign Dialog ══════════════════════════════════════════════════ */}
-        <Dialog open={isCampaignDialogOpen} onOpenChange={setIsCampaignDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-blue-600"/>{editCampaign?'Chỉnh sửa Campaign':'Tạo Campaign Mới'}</DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">Thiết lập điều kiện tự động gửi email khi sự kiện xảy ra</p>
-            </DialogHeader>
-
-            <div className="space-y-5 mt-2">
-              {/* Name */}
-              <div><label className="block text-sm font-medium mb-1">Tên Campaign <span className="text-red-500">*</span></label><Input placeholder="VD: Thông báo lịch phỏng vấn" value={campaignForm.name} onChange={e=>setCampaignForm(prev=>({...prev,name:e.target.value}))}/></div>
-
-              {/* Description */}
-              <div><label className="block text-sm font-medium mb-1">Mô tả</label><Input placeholder="Tóm tắt mục đích campaign" value={campaignForm.description} onChange={e=>setCampaignForm(prev=>({...prev,description:e.target.value}))}/></div>
-
-              {/* Trigger selector */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Điều kiện kích hoạt <span className="text-red-500">*</span></label>
-                <Select value={campaignForm.trigger} onValueChange={v=>setCampaignForm(prev=>({...prev,trigger:v,condition_result:'',custom_rules:[]}))}>
-                  <SelectTrigger className="bg-white"><SelectValue/></SelectTrigger>
-                  <SelectContent className="bg-white z-[70]">
-                    {Object.entries(TRIGGER_LABELS).map(([val,label])=><SelectItem key={val} value={val}>{label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1"><Zap className="h-3 w-3"/>Campaign sẽ tự động chạy khi sự kiện này xảy ra</p>
-              </div>
-
-              {/* Preset filter: interview result */}
-              {campaignForm.trigger==='interview_result_published'&&(
-                <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                  <label className="block text-sm font-medium mb-1 text-blue-900">Lọc theo kết quả phỏng vấn</label>
-                  <Select value={campaignForm.condition_result} onValueChange={v=>setCampaignForm(prev=>({...prev,condition_result:v}))}>
-                    <SelectTrigger className="bg-white"><SelectValue placeholder="Không lọc (gửi cho cả Đạt & Không đạt)"/></SelectTrigger>
-                    <SelectContent className="bg-white z-[70]"><SelectItem value=" ">Không lọc</SelectItem><SelectItem value="Đạt">Chỉ gửi khi: Đạt</SelectItem><SelectItem value="Không đạt">Chỉ gửi khi: Không đạt</SelectItem></SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Preset filter: status changed */}
-              {campaignForm.trigger==='candidate_status_changed'&&(
-                <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                  <label className="block text-sm font-medium mb-1 text-blue-900">Lọc theo trạng thái mới</label>
-                  <Select value={campaignForm.condition_result} onValueChange={v=>setCampaignForm(prev=>({...prev,condition_result:v}))}>
-                    <SelectTrigger className="bg-white"><SelectValue placeholder="Không lọc (tất cả trạng thái)"/></SelectTrigger>
-                    <SelectContent className="bg-white z-[70]">
-                      <SelectItem value=" ">Không lọc</SelectItem>
-                      {['Mới','Sàng lọc','Phỏng vấn','Chấp nhận','Từ chối'].map(s=><SelectItem key={s} value={s}>Chỉ gửi khi chuyển sang: {s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* ══ Custom trigger builder ══════════════════════════════════ */}
-              {campaignForm.trigger==='custom'&&(
-                <div className="border-2 border-purple-200 bg-purple-50/20 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Settings2 className="h-4 w-4 text-purple-600"/>
-                      <h4 className="text-sm font-semibold text-purple-900">Xây dựng điều kiện tùy chỉnh</h4>
-                    </div>
-                    <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 text-[10px]">
-                      {campaignForm.custom_rules.length} điều kiện
-                    </Badge>
-                  </div>
-
-                  <div className="text-xs text-purple-700 bg-purple-100/70 rounded-lg p-3 flex items-start gap-2">
-                    <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0"/>
-                    <span>
-                      Thêm nhiều điều kiện và kết hợp bằng{' '}
-                      <strong className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px]">AND</strong>{' '}
-                      (tất cả phải đúng) hoặc{' '}
-                      <strong className="bg-orange-500 text-white px-1.5 py-0.5 rounded text-[10px]">OR</strong>{' '}
-                      (một trong số phải đúng).
-                      Nhấn vào nút kết nối giữa hai điều kiện để chuyển đổi AND ↔ OR.
-                    </span>
-                  </div>
-
-                  <CustomRuleBuilder
-                    rules={campaignForm.custom_rules}
-                    onChange={rules=>setCampaignForm(prev=>({...prev,custom_rules:rules}))}
-                  />
-                </div>
-              )}
-
-              {/* Template */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Template Email <span className="text-red-500">*</span></label>
-                <Select value={campaignForm.template_id} onValueChange={v=>setCampaignForm(prev=>({...prev,template_id:v}))}>
-                  <SelectTrigger className="bg-white"><SelectValue placeholder="Chọn template..."/></SelectTrigger>
-                  <SelectContent className="bg-white z-[70]">{templates.map(t=><SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-                {/* Variables cheat sheet */}
-                {campaignForm.template_id&&(
-                  <div className="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg p-3 border">
-                    <p className="font-semibold text-gray-600 mb-2">Biến hỗ trợ trong nội dung template:</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      {[['{{candidateName}}','Tên ứng viên'],['{{position}}','Vị trí'],['{{companyName}}','Tên công ty'],['{{interviewTime}}','Ngày & giờ PV'],['{{interviewType}}','Hình thức'],['{{interviewLocation}}','Địa điểm / Link'],['{{interviewerName}}','Người PV'],['{{result}}','Kết quả'],['{{rating}}','Điểm (1-5)'],['{{feedback}}','Nhận xét'],['{{confirmDeadline}}','Hạn xác nhận']].map(([code,desc])=>(
-                        <div key={code} className="flex items-center gap-1"><code className="bg-white border border-gray-200 px-1 rounded text-[10px] shrink-0">{code}</code><span className="text-[10px] text-gray-400 truncate">{desc}</span></div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Delay + CC */}
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-sm font-medium mb-1">Gửi sau (giờ)</label><Input type="number" min={0} value={campaignForm.delay_hours} onChange={e=>setCampaignForm(prev=>({...prev,delay_hours:parseInt(e.target.value)||0}))}/><p className="text-xs text-gray-400 mt-0.5">0 = gửi ngay lập tức</p></div>
-                <div><label className="block text-sm font-medium mb-1">CC Email</label><Input placeholder="a@b.com, c@d.com" value={campaignForm.cc_emails} onChange={e=>setCampaignForm(prev=>({...prev,cc_emails:e.target.value}))}/></div>
-              </div>
-
-              {/* Toggle */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                <div><p className="text-sm font-medium">Trạng thái campaign</p><p className="text-xs text-gray-500">{campaignForm.is_active?'Đang bật – sẽ tự gửi email khi điều kiện xảy ra':'Đang tắt – không gửi email'}</p></div>
-                <button type="button" onClick={()=>setCampaignForm(prev=>({...prev,is_active:!prev.is_active}))} className={`transition-colors ${campaignForm.is_active?'text-green-600':'text-gray-400'}`}>
-                  {campaignForm.is_active?<ToggleRight className="h-8 w-8"/>:<ToggleLeft className="h-8 w-8"/>}
-                </button>
-              </div>
-
-              {/* Save buttons */}
-              <div className="flex gap-3 pt-2 border-t">
-                <Button variant="outline" onClick={()=>setIsCampaignDialogOpen(false)}>Hủy</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSaveCampaign} disabled={isSavingCampaign}>
-                  {isSavingCampaign?'Đang lưu...':editCampaign?'Cập nhật Campaign':'Tạo Campaign'}
                 </Button>
               </div>
             </div>

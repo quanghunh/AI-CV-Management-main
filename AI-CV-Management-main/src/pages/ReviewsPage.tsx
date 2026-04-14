@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-// ✅ ADDED: AlertTriangle
 import { RefreshCw, FileText, Star, TrendingUp, MoreHorizontal, X, AlertTriangle } from "lucide-react"
 import { fireCampaign } from '@/utils/campaignTriggerEngine'
 import { supabase } from "@/lib/supabaseClient"
@@ -14,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 
-// Helper Component để hiển thị sao
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-1">
@@ -33,7 +32,7 @@ interface Review {
   outcome: string;
   notes: string;
   created_at: string;
-  updated_at?: string; // Lấy từ V2 để theo dõi chỉnh sửa
+  updated_at?: string;
   cv_interviews: {
     id: string;
     interviewer: string;
@@ -128,7 +127,6 @@ useEffect(() => {
       .order('interview_date', { ascending: false });
 
     if (reviewData) {
-      // ✅ LOGIC V2: Unique Reviews
       const uniqueReviews = (reviewData as Review[]).reduce((acc: Review[], review: Review) => {
         const existingIndex = acc.findIndex((r: Review) => r.cv_interviews?.id === review.cv_interviews?.id);
         
@@ -167,15 +165,12 @@ useEffect(() => {
     setLoading(false);
   }
 
-  // --- Handlers ---
-
-  // Hiển thị chi tiết
   const handleViewDetail = (review: Review) => {
     setSelectedReview(review);
     setIsDetailDialogOpen(true);
   };
 
-  // Mở form đánh giá cho interview đang chờ
+
   const handleCreateReview = (interview: PendingInterview) => {
     setSelectedPendingInterview(interview);
     setIsNewReviewDialogOpen(true);
@@ -184,7 +179,7 @@ useEffect(() => {
     setReviewOutcome('Đạt');
   };
 
-  // ✅ MERGED LOGIC: Nộp đánh giá mới + Update Candidate Status
+
   const handleSubmitNewReview = async () => {
 if (!selectedPendingInterview || newRating === 0) {
       alert('Vui lòng chọn số sao đánh giá!');
@@ -193,7 +188,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
     setSubmitting(true);
     try {
-      // 1. Tạo review mới
+      
       const { error: reviewError } = await supabase
         .from('cv_interview_reviews')
         .insert([{
@@ -205,7 +200,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
       if (reviewError) throw reviewError;
 
-      // 2. Cập nhật trạng thái interview thành "Hoàn thành"
+      
       const { error: updateError } = await supabase
         .from('cv_interviews')
         .update({ status: 'Hoàn thành' })
@@ -213,7 +208,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
       if (updateError) throw updateError;
 
-      // ✅ 3. LOGIC TỪ VERSION 1: CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
+    
       let resolvedCandidateId: string | undefined
       if (reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') {
         const { data: interviewData } = await supabase
@@ -237,15 +232,13 @@ if (!selectedPendingInterview || newRating === 0) {
         }
       }
 
-      // 4. Refresh dữ liệu
+      
       await getReviews();
 
-      // Capture trước khi reset state
       const capturedRating = newRating;
       const capturedNote = newNote;
       const capturedOutcome = reviewOutcome;
 
-      // 5. Đóng dialog và reset form
       setIsNewReviewDialogOpen(false);
       setSelectedPendingInterview(null);
       setNewRating(0);
@@ -254,7 +247,6 @@ if (!selectedPendingInterview || newRating === 0) {
 
       alert('Đánh giá đã được lưu thành công!');
 
-      // 📧 Campaign: Kích hoạt campaign interview_result_published
       fireCampaign('interview_result_published', {
         candidateId: resolvedCandidateId,
         interviewId: selectedPendingInterview.id,
@@ -278,11 +270,10 @@ if (!selectedPendingInterview || newRating === 0) {
     setSelectedReview(review);
     setNewRating(review.rating);
     setNewNote(review.notes || '');
-    setReviewOutcome(review.outcome); // Set outcome hiện tại
+    setReviewOutcome(review.outcome);
     setIsReratingDialogOpen(true);
   };
 
-  // ✅ MERGED LOGIC: Submit đánh giá lại + Update Candidate Status
   const handleSubmitRerating = async () => {
     if (!selectedReview || newRating === 0) {
       alert('Vui lòng chọn số sao đánh giá!');
@@ -291,7 +282,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
     setSubmitting(true);
     try {
-      // ✅ 1. Update review
+      //1. Update review
       const { error } = await supabase
         .from('cv_interview_reviews')
         .update({ 
@@ -304,7 +295,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
       if (error) throw error;
 
-      // ✅ 2. LOGIC TỪ VERSION 1: CẬP NHẬT TRẠNG THÁI ỨNG VIÊN (Nếu outcome thay đổi)
+      // 2. LOGIC: CẬP NHẬT TRẠNG THÁI ỨNG VIÊN 
       if (reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') {
         const { data: interviewData } = await supabase
           .from('cv_interviews')
