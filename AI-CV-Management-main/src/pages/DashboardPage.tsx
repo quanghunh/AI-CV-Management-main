@@ -4,12 +4,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   User, Briefcase, ClipboardList, RefreshCw, Database,
-  Flame, TrendingUp, TrendingDown
+  Flame, TrendingUp, TrendingDown, Clock
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchRecentActivities } from '@/lib/activityLogger';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -30,9 +33,12 @@ interface StatsData {
 interface ActivityData {
   id: string;
   user_name: string;
+  user_id?: string;
   action: string;
   details: string | null;
+  entity_type: string | null;
   created_at: string;
+  metadata?: Record<string, any>;
 }
 
 interface TopJobData {
@@ -42,7 +48,6 @@ interface TopJobData {
   status: string;
 }
 
-/** Only the columns we actually need from cv_candidates */
 interface RawCandidate {
   id: string;
   created_at: string;
@@ -52,25 +57,32 @@ interface RawCandidate {
 
 type TrendPeriod = 'day' | 'month' | 'year';
 
+// ─── isOpenJob ────────────────────────────────────────────────────────────────
+
+const CLOSED_STATUSES = new Set([
+  'bản nháp', 'đã đóng', 'draft', 'closed', 'archived', 'inactive',
+]);
+
+function isOpenJob(status: string): boolean {
+  if (!status) return false;
+  return !CLOSED_STATUSES.has(status.trim().toLowerCase());
+}
+function isClosedJob(status: string): boolean { return !isOpenJob(status); }
+
 // ─── Pure-computation helpers ─────────────────────────────────────────────────
 
 function buildTimeline(period: TrendPeriod): string[] {
   const now = new Date();
   const WINDOW = period === 'day' ? 30 : period === 'month' ? 12 : 5;
   const labels: string[] = [];
-
   for (let i = WINDOW - 1; i >= 0; i--) {
     const d = new Date(now);
     if (period === 'day') {
       d.setDate(d.getDate() - i);
-      labels.push(
-        `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-      );
+      labels.push(`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
     } else if (period === 'month') {
       d.setMonth(d.getMonth() - i);
-      labels.push(
-        `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-      );
+      labels.push(`${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`);
     } else {
       d.setFullYear(d.getFullYear() - i);
       labels.push(`${d.getFullYear()}`);
@@ -81,13 +93,11 @@ function buildTimeline(period: TrendPeriod): string[] {
 
 function dateToBucket(iso: string, period: TrendPeriod): string {
   const d = new Date(iso);
-  if (period === 'day') {
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-  } else if (period === 'month') {
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-  } else {
-    return `${d.getFullYear()}`;
-  }
+  if (period === 'day')
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  if (period === 'month')
+    return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  return `${d.getFullYear()}`;
 }
 
 function cutoffDate(period: TrendPeriod): Date {
@@ -100,31 +110,21 @@ function cutoffDate(period: TrendPeriod): Date {
   return d;
 }
 
-function computeTrend(
-  candidates: RawCandidate[],
-  period: TrendPeriod,
-  jobId: string
-): { label: string; count: number }[] {
+function computeTrend(candidates: RawCandidate[], period: TrendPeriod, jobId: string) {
   const timeline = buildTimeline(period);
   const cutoff = cutoffDate(period);
-
   const buckets: Record<string, number> = {};
   timeline.forEach(l => (buckets[l] = 0));
-
   candidates.forEach(c => {
     if (new Date(c.created_at) < cutoff) return;
     if (jobId !== 'all' && c.job_id !== jobId) return;
     const bucket = dateToBucket(c.created_at, period);
     if (bucket in buckets) buckets[bucket]++;
   });
-
   return timeline.map(label => ({ label, count: buckets[label] }));
 }
 
-function computeSources(
-  candidates: RawCandidate[],
-  jobId: string
-): { source: string; count: number }[] {
+function computeSources(candidates: RawCandidate[], jobId: string) {
   const filtered = jobId === 'all' ? candidates : candidates.filter(c => c.job_id === jobId);
   const buckets: Record<string, number> = {};
   filtered.forEach(c => {
@@ -139,6 +139,88 @@ function computeSources(
 function percentChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function activityMatchesFilter(activity: ActivityData, query: string, entityType: string) {
+  const normalizedQuery = normalizeText(query);
+  if (entityType !== 'all' && activity.entity_type !== entityType) return false;
+  if (!normalizedQuery) return true;
+  const haystack = [activity.user_name, activity.action, activity.details, activity.entity_type]
+    .filter(Boolean)
+    .join(' ').toLowerCase();
+  return haystack.includes(normalizedQuery);
+}
+
+function groupActivitiesByDay(activities: ActivityData[]) {
+  const groups: Record<string, { date: string; items: ActivityData[]; timestamp: number }> = {};
+  activities.forEach(activity => {
+    const date = new Date(activity.created_at);
+    const dateKey = date.toISOString().slice(0, 10);
+    if (!groups[dateKey]) {
+      groups[dateKey] = { date: dateKey, items: [], timestamp: date.getTime() };
+    }
+    groups[dateKey].items.push(activity);
+  });
+  return Object.values(groups)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .map(group => ({ date: group.date, items: group.items }));
+}
+
+function formatActivityGroupLabel(date: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterdayDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (date === today) return 'Hôm nay';
+  if (date === yesterdayDate) return 'Hôm qua';
+  return new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// ─── Activity helpers ─────────────────────────────────────────────────────────
+
+/** Màu dot cho từng action */
+function getActivityDotColor(action: string): string {
+  const a = action.toLowerCase();
+  if (a.includes('cv') || a.includes('ứng viên') || a.includes('nộp')) return 'bg-blue-500';
+  if (a.includes('tạo') || a.includes('công việc') || a.includes('jd')) return 'bg-green-500';
+  if (a.includes('phỏng vấn')) return 'bg-purple-500';
+  if (a.includes('đánh giá')) return 'bg-orange-500';
+  if (a.includes('cập nhật') || a.includes('sửa')) return 'bg-yellow-500';
+  if (a.includes('email') || a.includes('gửi')) return 'bg-pink-500';
+  if (a.includes('xóa')) return 'bg-red-500';
+  if (a.includes('đăng nhập')) return 'bg-teal-500';
+  if (a.includes('vai trò') || a.includes('phân quyền')) return 'bg-indigo-500';
+  return 'bg-gray-400';
+}
+
+/** Badge màu cho entity_type */
+function getEntityBadge(entityType: string | null): { label: string; className: string } | null {
+  const map: Record<string, { label: string; className: string }> = {
+    cv:         { label: 'CV', className: 'bg-blue-100 text-blue-700' },
+    job:        { label: 'JD', className: 'bg-green-100 text-green-700' },
+    interview:  { label: 'PV', className: 'bg-purple-100 text-purple-700' },
+    user:       { label: 'User', className: 'bg-orange-100 text-orange-700' },
+    email:      { label: 'Email', className: 'bg-pink-100 text-pink-700' },
+    role:       { label: 'Role', className: 'bg-indigo-100 text-indigo-700' },
+    permission: { label: 'Quyền', className: 'bg-gray-100 text-gray-700' },
+    auth:       { label: 'Auth', className: 'bg-teal-100 text-teal-700' },
+  };
+  return entityType ? (map[entityType] || null) : null;
+}
+
+/** Format thời gian tương đối */
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'Vừa xong';
+  if (mins < 60) return `${mins} phút trước`;
+  if (hours < 24) return `${hours} giờ trước`;
+  if (days < 30) return `${days} ngày trước`;
+  return new Date(iso).toLocaleDateString('vi-VN');
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -158,39 +240,35 @@ export function DashboardPage() {
 
   const [allCandidates, setAllCandidates] = useState<RawCandidate[]>([]);
   const [topJobs, setTopJobs] = useState<TopJobData[]>([]);
-
-  // ✅ FIX: tách riêng openJobs (stats card) và allJobsForChart (dropdown/chips)
   const [openJobs, setOpenJobs] = useState<TopJobData[]>([]);
   const [allJobsForChart, setAllJobsForChart] = useState<TopJobData[]>([]);
-
+  // ✅ Dùng ActivityData mới có user_id, entity_type, metadata
   const [recentActivities, setRecentActivities] = useState<ActivityData[]>([]);
   const [stats, setStats] = useState<StatsData>({
-    totalCV: 0, cvChange: 0,
-    openJobs: 0, jobsChange: 0,
+    totalCV: 0, cvChange: 0, openJobs: 0, jobsChange: 0,
     interviewingCV: 0, interviewingChange: 0,
   });
   const [loading, setLoading] = useState(true);
-
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>('month');
+  const [activityQuery, setActivityQuery] = useState('');
+  const [activityEntityType, setActivityEntityType] = useState<'all' | string>('all');
+  const [activityLimit, setActivityLimit] = useState(20);
 
   // ── fetch ────────────────────────────────────────────────────────────────
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-
-      // ── 1. All candidates ──
-      const { data: cvRaw, error: cvErr } = await supabase
+      // 1. All candidates
+      const { data: cvRaw } = await supabase
         .from('cv_candidates')
         .select('id, created_at, job_id, source')
         .order('created_at', { ascending: true });
-
-      if (cvErr) console.error('cv_candidates:', cvErr);
       const candidates: RawCandidate[] = (cvRaw as RawCandidate[]) ?? [];
       setAllCandidates(candidates);
 
-      // ── 2. CV stats ──
       const now = new Date();
       const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -207,62 +285,44 @@ export function DashboardPage() {
         cvChange: percentChange(thisMonthCount, lastMonthCount),
       }));
 
-      // ── 3. Jobs ──
-      const { data: jobsRaw, error: jobsErr } = await supabase
-        .from('cv_jobs')
-        .select('id, title, status, created_at');
-
-      if (jobsErr) console.error('cv_jobs:', jobsErr);
+      // 2. Jobs
+      const { data: jobsRaw } = await supabase
+        .from('cv_jobs').select('id, title, status, created_at');
       const allJobs: any[] = jobsRaw ?? [];
 
-      // candidate count per job
+      console.log('🔍 [Dashboard] Job statuses:', [...new Set(allJobs.map(j => j.status))]);
+
       const perJob: Record<string, number> = {};
       candidates.forEach(c => {
         if (c.job_id) perJob[c.job_id] = (perJob[c.job_id] || 0) + 1;
       });
 
       const toTopJob = (j: any): TopJobData => ({
-        id: j.id,
-        title: j.title,
-        status: j.status,
+        id: j.id, title: j.title, status: j.status,
         candidate_count: perJob[j.id] || 0,
       });
+      const allJobsMapped = allJobs.map(toTopJob);
 
-      // open jobs (for stats card)
-      const openList = allJobs
-        .filter(j => j.status === 'Đã đăng' || j.status === 'open')
-        .map(toTopJob);
+      const openList = allJobsMapped.filter(j => isOpenJob(j.status));
       setOpenJobs(openList);
 
-      // ✅ FIX: allJobsForChart = TẤT CẢ jobs có ít nhất 1 candidate OR đang mở
-      // Sắp xếp: jobs đang mở trước, sau đó theo số candidate giảm dần
-      const allJobsMapped = allJobs.map(toTopJob);
-      const jobsWithCandidatesOrOpen = allJobsMapped
-        .filter(j => j.candidate_count > 0 || j.status === 'Đã đăng' || j.status === 'open')
+      const jobsForChart = allJobsMapped
+        .filter(j => isOpenJob(j.status) || j.candidate_count > 0)
         .sort((a, b) => {
-          // Ưu tiên jobs đang mở
-          const aOpen = a.status === 'Đã đăng' || a.status === 'open';
-          const bOpen = b.status === 'Đã đăng' || b.status === 'open';
-          if (aOpen && !bOpen) return -1;
-          if (!aOpen && bOpen) return 1;
-          // Sau đó sort theo candidate count
+          const aO = isOpenJob(a.status), bO = isOpenJob(b.status);
+          if (aO && !bO) return -1; if (!aO && bO) return 1;
           return b.candidate_count - a.candidate_count;
         });
-      setAllJobsForChart(jobsWithCandidatesOrOpen);
+      setAllJobsForChart(jobsForChart);
 
-      // top 6 by candidate count
-      const sorted = allJobsMapped.sort((a, b) => b.candidate_count - a.candidate_count);
+      const sorted = [...allJobsMapped].sort((a, b) => b.candidate_count - a.candidate_count);
       setTopJobs(sorted.slice(0, 6));
 
-      // open jobs month-on-month stats
       const openThisMonth = allJobs.filter(j =>
-        (j.status === 'Đã đăng' || j.status === 'open') &&
-        new Date(j.created_at) >= thisMonthStart
-      ).length;
+        isOpenJob(j.status) && new Date(j.created_at) >= thisMonthStart).length;
       const openLastMonth = allJobs.filter(j => {
         const d = new Date(j.created_at);
-        return (j.status === 'Đã đăng' || j.status === 'open') &&
-          d >= lastMonthStart && d < thisMonthStart;
+        return isOpenJob(j.status) && d >= lastMonthStart && d < thisMonthStart;
       }).length;
 
       setStats(prev => ({
@@ -271,37 +331,25 @@ export function DashboardPage() {
         jobsChange: percentChange(openThisMonth, openLastMonth),
       }));
 
-      // ── 4. Active interviews ──
-      const { data: ivRaw, error: ivErr } = await supabase
-        .from('cv_interviews')
-        .select('id, interview_date, status');
-
-      if (ivErr) console.error('cv_interviews:', ivErr);
+      // 3. Interviews
+      const { data: ivRaw } = await supabase
+        .from('cv_interviews').select('id, interview_date, status');
       const ivAll: any[] = ivRaw ?? [];
-
-      const activeStatuses = ['Đang chờ', 'Đang phỏng vấn', 'Đang đánh giá', 'Đang chờ đánh giá'];
+      const activeStatuses = ['Đang chờ','Đang phỏng vấn','Đang đánh giá','Đang chờ đánh giá'];
       const activeCount = ivAll.filter(i => activeStatuses.includes(i.status)).length;
-
       const ivThisMonth = ivAll.filter(i => new Date(i.interview_date) >= thisMonthStart).length;
       const ivLastMonth = ivAll.filter(i => {
         const d = new Date(i.interview_date);
         return d >= lastMonthStart && d < thisMonthStart;
       }).length;
-
       setStats(prev => ({
         ...prev,
         interviewingCV: activeCount,
         interviewingChange: percentChange(ivThisMonth, ivLastMonth),
       }));
 
-      // ── 5. Recent activities ──
-      const { data: acts } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6);
-
-      if (acts) setRecentActivities(acts as ActivityData[]);
+      // 4. Load recent activities from activityLogger — trong 30 ngày
+      await fetchActivities({ limit: activityLimit, entityType: activityEntityType });
 
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -310,19 +358,90 @@ export function DashboardPage() {
     }
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  const fetchActivities = async ({ limit, entityType }: { limit: number; entityType: string }) => {
+    setLoadingActivities(true);
+    try {
+      const filters = entityType !== 'all' ? { entityType } : undefined;
+      const acts = await fetchRecentActivities(limit, filters);
+      setRecentActivities(acts as ActivityData[]);
+    } catch (err) {
+      console.error('Activity fetch error:', err);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
 
-  // ── Derived chart data ──────────────────────────────────────────────────────
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    fetchActivities({ limit: activityLimit, entityType: activityEntityType });
+  }, [activityLimit, activityEntityType]);
+
+  // ── Derived ──────────────────────────────────────────────────────────────
 
   const trendData = useMemo(
     () => computeTrend(allCandidates, trendPeriod, selectedJobId),
     [allCandidates, trendPeriod, selectedJobId]
   );
-
   const sourceData = useMemo(
     () => computeSources(allCandidates, selectedJobId),
     [allCandidates, selectedJobId]
   );
+  const hasTrendData = trendData.some(d => d.count > 0);
+  const hasSourceData = sourceData.some(s => s.count > 0);
+  const selectedJobTitle = selectedJobId === 'all'
+    ? 'Tất cả vị trí'
+    : allJobsForChart.find(j => j.id === selectedJobId)?.title ?? '';
+  const selectedJobCandidateCount = selectedJobId === 'all'
+    ? allCandidates.length
+    : allJobsForChart.find(j => j.id === selectedJobId)?.candidate_count ?? 0;
+  const filteredActivities = useMemo(
+    () => recentActivities.filter(activity => activityMatchesFilter(activity, activityQuery, activityEntityType)),
+    [recentActivities, activityQuery, activityEntityType]
+  );
+
+  const activityGroups = useMemo(
+    () => groupActivitiesByDay(filteredActivities),
+    [filteredActivities]
+  );
+
+  const activitySummary = useMemo(() => {
+    const users = new Set<string>();
+    const entityCount: Record<string, number> = {};
+    const actionCount: Record<string, number> = {};
+
+    filteredActivities.forEach(activity => {
+      if (activity.user_name) users.add(activity.user_name);
+      const entity = activity.entity_type || 'Khác';
+      entityCount[entity] = (entityCount[entity] || 0) + 1;
+      actionCount[activity.action] = (actionCount[activity.action] || 0) + 1;
+    });
+
+    const topEntity = Object.entries(entityCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    const topAction = Object.entries(actionCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    return {
+      total: filteredActivities.length,
+      users: users.size,
+      topEntity,
+      topAction,
+    };
+  }, [filteredActivities]);
+
+  const canLoadMore = recentActivities.length === activityLimit;
+
+  const activityEntityOptions = [
+    { value: 'all', label: t('dashboard.activityFilters.all') },
+    { value: 'cv', label: t('dashboard.activityFilters.cv') },
+    { value: 'job', label: t('dashboard.activityFilters.job') },
+    { value: 'interview', label: t('dashboard.activityFilters.interview') },
+    { value: 'user', label: t('dashboard.activityFilters.user') },
+    { value: 'email', label: t('dashboard.activityFilters.email') },
+    { value: 'role', label: t('dashboard.activityFilters.role') },
+    { value: 'auth', label: t('dashboard.activityFilters.auth') },
+  ];
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -340,24 +459,12 @@ export function DashboardPage() {
     return <span className="text-gray-500">0%</span>;
   };
 
-  const getActivityColor = (action: string) => {
-    if (action.includes('CV')) return 'bg-blue-500';
-    if (action.includes('Tạo') || action.includes('công việc')) return 'bg-green-500';
-    if (action.includes('Phỏng vấn') || action.includes('phỏng vấn')) return 'bg-purple-500';
-    if (action.includes('Đánh giá')) return 'bg-orange-500';
-    if (action.includes('Cập nhật')) return 'bg-yellow-500';
-    if (action.includes('Email') || action.includes('email')) return 'bg-pink-500';
-    return 'bg-gray-500';
-  };
-
   const TrendTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
         <p className="font-semibold text-gray-700 mb-1">{label}</p>
-        <p className="text-sm text-gray-600">
-          Số CV: <span className="font-bold text-blue-600">{payload[0].value}</span>
-        </p>
+        <p className="text-sm text-gray-600">Số CV: <span className="font-bold text-blue-600">{payload[0].value}</span></p>
       </div>
     );
   };
@@ -367,27 +474,10 @@ export function DashboardPage() {
     return (
       <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
         <p className="font-semibold">{payload[0].name}</p>
-        <p className="text-sm text-gray-600">
-          Số lượng: <span className="font-bold">{payload[0].value}</span>
-        </p>
+        <p className="text-sm text-gray-600">Số lượng: <span className="font-bold">{payload[0].value}</span></p>
       </div>
     );
   };
-
-  const hasTrendData = trendData.some(d => d.count > 0);
-  const hasSourceData = sourceData.some(s => s.count > 0);
-
-  // ✅ FIX: selectedJobTitle dùng allJobsForChart thay vì openJobs
-  const selectedJobTitle =
-    selectedJobId === 'all'
-      ? 'Tất cả vị trí'
-      : allJobsForChart.find(j => j.id === selectedJobId)?.title ?? '';
-
-  // ✅ Tổng candidate của job đang chọn (để hiển thị trong badge)
-  const selectedJobCandidateCount =
-    selectedJobId === 'all'
-      ? allCandidates.length
-      : allJobsForChart.find(j => j.id === selectedJobId)?.candidate_count ?? 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -410,52 +500,32 @@ export function DashboardPage() {
         {t('dashboard.realTimeData')}
       </div>
 
-      {/* ── Stats Cards ── */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('dashboard.stats.totalCV')}</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCV}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              {renderChangeIndicator(stats.cvChange)} {t('dashboard.stats.comparedToLastMonth')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('dashboard.stats.openJobs')}</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.openJobs}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              {renderChangeIndicator(stats.jobsChange)} {t('dashboard.stats.comparedToLastMonth')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('dashboard.stats.interviewingCV')}</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.interviewingCV}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              {renderChangeIndicator(stats.interviewingChange)} {t('dashboard.stats.comparedToLastMonth')}
-            </p>
-          </CardContent>
-        </Card>
+        {[
+          { label: t('dashboard.stats.totalCV'), value: stats.totalCV, change: stats.cvChange, icon: <User className="h-4 w-4 text-muted-foreground" /> },
+          { label: t('dashboard.stats.openJobs'), value: stats.openJobs, change: stats.jobsChange, icon: <Briefcase className="h-4 w-4 text-muted-foreground" /> },
+          { label: t('dashboard.stats.interviewingCV'), value: stats.interviewingCV, change: stats.interviewingChange, icon: <ClipboardList className="h-4 w-4 text-muted-foreground" /> },
+        ].map(card => (
+          <Card key={card.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {renderChangeIndicator(card.change)} {t('dashboard.stats.comparedToLastMonth')}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* ── ROW 1: Top vị trí + Hoạt động gần đây ── */}
+      {/* ROW 1: Top vị trí + Hoạt động gần đây */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
 
-        {/* Top vị trí tuyển dụng */}
+        {/* Top vị trí */}
         <Card className="bg-white shadow-sm">
           <CardHeader className="p-3 sm:p-6">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -470,29 +540,18 @@ export function DashboardPage() {
                   <li key={job.id} className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold flex-shrink-0 ${
-                        index < 3
-                          ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {index + 1}
-                      </span>
+                        index < 3 ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-md' : 'bg-gray-100 text-gray-600'
+                      }`}>{index + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate" title={job.title}>{job.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {job.candidate_count} {t('dashboard.topJobs.candidates')}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{job.candidate_count} {t('dashboard.topJobs.candidates')}</p>
                       </div>
                     </div>
                     <Badge
                       variant={index < 3 ? "destructive" : "secondary"}
                       className={index < 3 ? "bg-gradient-to-r from-orange-500 to-red-500 text-white border-0" : ""}
                     >
-                      {index < 3 ? (
-                        <span className="flex items-center gap-1">
-                          <Flame className="w-3 h-3" />
-                          {t('dashboard.topJobs.hot')}
-                        </span>
-                      ) : t('dashboard.topJobs.normal')}
+                      {index < 3 ? <span className="flex items-center gap-1"><Flame className="w-3 h-3" />{t('dashboard.topJobs.hot')}</span> : t('dashboard.topJobs.normal')}
                     </Badge>
                   </li>
                 ))}
@@ -506,44 +565,127 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Hoạt động gần đây */}
+        {/* ✅ Hoạt động gần đây — cải tiến */}
         <Card className="bg-white shadow-sm">
-          <CardHeader className="p-3 sm:p-6">
-            <CardTitle className="text-base sm:text-lg">{t('dashboard.charts.recentActivities')}</CardTitle>
+          <CardHeader className="p-3 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base sm:text-lg">{t('dashboard.charts.recentActivities')}</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">{t('dashboard.activity.subTitle')}</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <Clock className="w-3.5 h-3.5" />
+                <span>30 ngày gần nhất</span>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <Input
+                value={activityQuery}
+                onChange={event => setActivityQuery(event.target.value)}
+                placeholder={t('dashboard.activity.searchPlaceholder')}
+                className="w-full"
+              />
+              <div className="text-xs text-gray-600 flex flex-col items-start sm:items-end gap-1">
+                <span>{activitySummary.total} {t('dashboard.activityInsights.activities')}</span>
+                <span>{activitySummary.users} {t('dashboard.activityInsights.users')}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {activityEntityOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setActivityEntityType(option.value)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${activityEntityType === option.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-700'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            {recentActivities.length > 0 ? (
-              <ul className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <li key={activity.id} className="flex items-start gap-3">
-                    <span className={`block w-2.5 h-2.5 mt-1.5 rounded-full flex-shrink-0 ${getActivityColor(activity.action)}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.user_name}</p>
-                      <p className="text-sm text-gray-600">
-                        {activity.action}
-                        {activity.details && <span className="text-gray-500"> • {activity.details}</span>}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(activity.created_at).toLocaleString('vi-VN', {
-                          year: 'numeric', month: '2-digit', day: '2-digit',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="grid gap-3 sm:grid-cols-2 mb-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{t('dashboard.activityInsights.totalLabel')}</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{activitySummary.total}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{t('dashboard.activityInsights.topEntityLabel')}</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{activitySummary.topEntity}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('dashboard.activityInsights.topActionLabel')}: {activitySummary.topAction}</p>
+              </div>
+            </div>
+            {loadingActivities ? (
+              <div className="flex flex-col items-center justify-center h-[240px] text-gray-400">
                 <Database className="w-12 h-12 mb-2" />
-                <p className="text-sm">{t('dashboard.noActivities')}</p>
+                <p className="text-sm">{t('dashboard.loading')}</p>
+              </div>
+            ) : activityGroups.length > 0 ? (
+              <div className="max-h-[420px] overflow-y-auto pr-2 space-y-4">
+                {activityGroups.map(group => (
+                  <div key={group.date} className="space-y-3">
+                    <div className="sticky top-0 z-10 bg-white/90 px-2 py-2 backdrop-blur-sm border-b border-slate-200">
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{formatActivityGroupLabel(group.date)}</p>
+                    </div>
+                    <ul className="space-y-3">
+                      {group.items.map(activity => {
+                        const entityBadge = getEntityBadge(activity.entity_type);
+                        const dotColor = getActivityDotColor(activity.action);
+                        return (
+                          <li key={activity.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-sm">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className={`text-[11px] font-bold text-white ${dotColor}`}>
+                                  {activity.user_name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900 truncate">{activity.user_name}</span>
+                                {entityBadge && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${entityBadge.className}`}>
+                                    {entityBadge.label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-700 mt-1">{activity.action}</p>
+                              {activity.details && (
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2" title={activity.details}>{activity.details}</p>
+                              )}
+                              <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span title={new Date(activity.created_at).toLocaleString('vi-VN')}>
+                                  {formatRelativeTime(activity.created_at)}
+                                </span>
+                              </p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[260px] text-gray-400">
+                <Database className="w-12 h-12 mb-2" />
+                <p className="text-sm">{activityQuery ? t('dashboard.activity.noMatch') : t('dashboard.noActivities')}</p>
+                {activityQuery && <p className="text-xs mt-1 text-gray-300">{t('dashboard.activity.tryDifferentSearch')}</p>}
+              </div>
+            )}
+            {canLoadMore && !activityQuery && (
+              <div className="pt-4 text-center">
+                <Button variant="outline" size="sm" onClick={() => setActivityLimit(prev => prev + 20)}>
+                  {t('dashboard.activity.loadMore')}
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* ── ROW 2: Vị trí đang tuyển — full width ── */}
+      {/* ROW 2: Vị trí đang tuyển */}
       <Card className="bg-white shadow-sm">
         <CardHeader className="p-3 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -553,68 +695,41 @@ export function DashboardPage() {
                 Vị trí đang tuyển
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {/* ✅ FIX: hiện đúng số lượng */}
                 <span className="font-semibold text-blue-600">{openJobs.length} vị trí</span> đang mở •{' '}
                 <span className="font-semibold text-gray-600">{allJobsForChart.length} vị trí</span> có dữ liệu
               </p>
             </div>
-
             <div className="flex flex-wrap items-center gap-2">
-              {/* ✅ FIX: Dropdown dùng allJobsForChart */}
               <Select value={selectedJobId} onValueChange={setSelectedJobId}>
                 <SelectTrigger className="w-[220px] text-sm">
                   <SelectValue placeholder="Chọn vị trí..." />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50 shadow-lg border border-gray-200 max-h-[300px]">
-                  <SelectItem value="all">
-                    Tất cả vị trí ({allCandidates.length} CV)
-                  </SelectItem>
-                  {/* ✅ Nhóm: đang mở */}
-                  {allJobsForChart.filter(j => j.status === 'Đã đăng' || j.status === 'open').length > 0 && (
+                  <SelectItem value="all">Tất cả vị trí ({allCandidates.length} CV)</SelectItem>
+                  {allJobsForChart.filter(j => isOpenJob(j.status)).length > 0 && (
                     <>
-                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                        Đang tuyển
-                      </div>
-                      {allJobsForChart
-                        .filter(j => j.status === 'Đã đăng' || j.status === 'open')
-                        .map(job => (
-                          <SelectItem key={job.id} value={job.id}>
-                            {job.title} ({job.candidate_count} CV)
-                          </SelectItem>
-                        ))}
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Đang tuyển</div>
+                      {allJobsForChart.filter(j => isOpenJob(j.status)).map(job => (
+                        <SelectItem key={job.id} value={job.id}>{job.title} ({job.candidate_count} CV)</SelectItem>
+                      ))}
                     </>
                   )}
-                  {/* ✅ Nhóm: đã đóng nhưng có candidate */}
-                  {allJobsForChart.filter(j => j.status !== 'Đã đăng' && j.status !== 'open' && j.candidate_count > 0).length > 0 && (
+                  {allJobsForChart.filter(j => isClosedJob(j.status) && j.candidate_count > 0).length > 0 && (
                     <>
-                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mt-1">
-                        Đã đóng / Bản nháp
-                      </div>
-                      {allJobsForChart
-                        .filter(j => j.status !== 'Đã đăng' && j.status !== 'open' && j.candidate_count > 0)
-                        .map(job => (
-                          <SelectItem key={job.id} value={job.id}>
-                            {job.title} ({job.candidate_count} CV)
-                          </SelectItem>
-                        ))}
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mt-1">Đã đóng / Bản nháp</div>
+                      {allJobsForChart.filter(j => isClosedJob(j.status) && j.candidate_count > 0).map(job => (
+                        <SelectItem key={job.id} value={job.id}>{job.title} ({job.candidate_count} CV)</SelectItem>
+                      ))}
                     </>
                   )}
                 </SelectContent>
               </Select>
-
-              {/* Period toggle */}
               <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-                {(['day', 'month', 'year'] as TrendPeriod[]).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setTrendPeriod(p)}
-                    className={`px-3 py-1.5 transition-colors ${
-                      trendPeriod === p
-                        ? 'bg-blue-600 text-white font-medium'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
+                {(['day','month','year'] as TrendPeriod[]).map(p => (
+                  <button key={p} onClick={() => setTrendPeriod(p)}
+                    className={`px-3 py-1.5 transition-colors ${trendPeriod === p ? 'bg-blue-600 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >
-                    {{ day: 'Ngày', month: 'Tháng', year: 'Năm' }[p]}
+                    {{ day:'Ngày', month:'Tháng', year:'Năm' }[p]}
                   </button>
                 ))}
               </div>
@@ -624,80 +739,53 @@ export function DashboardPage() {
           {selectedJobId !== 'all' && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-500">Đang xem:</span>
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border border-blue-200">
-                {selectedJobTitle}
-              </Badge>
-              {/* ✅ Hiện trạng thái job */}
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border border-blue-200">{selectedJobTitle}</Badge>
               {(() => {
                 const job = allJobsForChart.find(j => j.id === selectedJobId);
                 if (!job) return null;
-                const isOpen = job.status === 'Đã đăng' || job.status === 'open';
+                const open = isOpenJob(job.status);
                 return (
-                  <Badge className={isOpen
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-gray-100 text-gray-600 border border-gray-200'
-                  }>
-                    {isOpen ? '🟢 Đang tuyển' : '⚫ ' + job.status}
+                  <Badge className={open ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}>
+                    {open ? '🟢 Đang tuyển' : `⚫ ${job.status}`}
                   </Badge>
                 );
               })()}
-              <span className="text-xs text-gray-400">
-                {selectedJobCandidateCount} CV
-              </span>
+              <span className="text-xs text-gray-400">{selectedJobCandidateCount} CV</span>
             </div>
           )}
         </CardHeader>
 
         <CardContent className="p-3 sm:p-6 pt-0">
-
-          {/* ✅ FIX: Chip row dùng allJobsForChart */}
           {allJobsForChart.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
-              {/* Chip "Tất cả" */}
-              <button
-                onClick={() => setSelectedJobId('all')}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                  selectedJobId === 'all'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-                }`}
+              <button onClick={() => setSelectedJobId('all')}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedJobId === 'all' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'}`}
               >
                 Tất cả
-                <span className={`ml-1.5 font-semibold ${selectedJobId === 'all' ? 'text-blue-100' : 'text-gray-400'}`}>
-                  {allCandidates.length}
-                </span>
+                <span className={`ml-1.5 font-semibold ${selectedJobId === 'all' ? 'text-blue-100' : 'text-gray-400'}`}>{allCandidates.length}</span>
               </button>
-
-              {/* ✅ FIX: Chips từ allJobsForChart thay vì openJobs */}
               {allJobsForChart.map(job => {
-                const isOpen = job.status === 'Đã đăng' || job.status === 'open';
+                const open = isOpenJob(job.status);
                 const isSelected = selectedJobId === job.id;
                 return (
-                  <button
-                    key={job.id}
+                  <button key={job.id}
                     onClick={() => setSelectedJobId(prev => prev === job.id ? 'all' : job.id)}
                     className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : isOpen
-                          ? 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-                          : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                      isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : open ? 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
                     }`}
-                    title={isOpen ? 'Đang tuyển' : job.status}
+                    title={`${job.status}${open ? ' (đang tuyển)' : ''}`}
                   >
-                    {/* ✅ Chấm màu để phân biệt open/closed */}
-                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-green-400' : 'bg-gray-400'} ${isSelected ? 'bg-white opacity-70' : ''}`} />
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${open ? 'bg-green-400' : 'bg-gray-400'} ${isSelected ? 'opacity-70' : ''}`} />
                     {job.title}
-                    <span className={`ml-1.5 font-semibold ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                      {job.candidate_count}
-                    </span>
+                    <span className={`ml-1.5 font-semibold ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{job.candidate_count}</span>
                   </button>
                 );
               })}
             </div>
           )}
 
-          {/* ✅ Empty state nếu không có jobs nào */}
           {allJobsForChart.length === 0 && !loading && (
             <div className="flex flex-col items-center justify-center py-8 mb-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
               <Briefcase className="w-10 h-10 text-gray-300 mb-2" />
@@ -706,10 +794,7 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Two charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-
-            {/* Xu hướng CV */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-700">Xu hướng CV theo thời gian</h3>
@@ -720,47 +805,24 @@ export function DashboardPage() {
                   <div className="flex flex-col items-center justify-center h-full text-gray-400">
                     <Database className="w-12 h-12 mb-2" />
                     <p className="text-sm text-center">
-                      {selectedJobId !== 'all'
-                        ? 'Vị trí này chưa có CV trong khoảng thời gian này'
-                        : 'Chưa có dữ liệu trong khoảng thời gian này'}
+                      {selectedJobId !== 'all' ? 'Vị trí này chưa có CV trong khoảng thời gian này' : 'Chưa có dữ liệu trong khoảng thời gian này'}
                     </p>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <LineChart data={trendData} margin={{ top:5, right:10, left:-10, bottom:5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis
-                        dataKey="label"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                        interval="preserveStartEnd"
-                        tick={{ fill: '#6b7280' }}
-                      />
-                      <YAxis
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                        allowDecimals={false}
-                        tick={{ fill: '#6b7280' }}
-                      />
+                      <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" tick={{ fill:'#6b7280' }} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} tick={{ fill:'#6b7280' }} />
                       <Tooltip content={<TrendTooltip />} />
-                      <Line
-                        type="monotone"
-                        dataKey="count"
-                        stroke="#3b82f6"
-                        strokeWidth={2.5}
-                        dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
-                        activeDot={{ r: 6 }}
-                        name="Số CV"
-                      />
+                      <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2.5}
+                        dot={{ r:3, fill:'#3b82f6', strokeWidth:0 }} activeDot={{ r:6 }} name="Số CV" />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
               </div>
             </div>
 
-            {/* Nguồn ứng viên */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Nguồn ứng viên</h3>
               <div className="h-[260px]">
@@ -773,28 +835,17 @@ export function DashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={sourceData as any[]}
-                        dataKey="count"
-                        nameKey="source"
-                        cx="50%"
-                        cy="45%"
-                        outerRadius={80}
-                        label={false}
-                        labelLine={false}
+                      <Pie data={sourceData as any[]} dataKey="count" nameKey="source"
+                        cx="50%" cy="45%" outerRadius={80} label={false} labelLine={false}
                       >
                         {sourceData.map((_, i) => (
                           <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip content={<SourceTooltip />} />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={36}
-                        formatter={(value: any, entry: any) =>
-                          `${value} (${entry.payload.count})`
-                        }
-                        wrapperStyle={{ fontSize: '11px' }}
+                      <Legend verticalAlign="bottom" height={36}
+                        formatter={(value: any, entry: any) => `${value} (${entry.payload.count})`}
+                        wrapperStyle={{ fontSize:'11px' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>

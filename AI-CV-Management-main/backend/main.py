@@ -103,6 +103,117 @@ def get_ai_config() -> dict:
         print(f"Error fetching AI config: {e}")
     return {}
 
+def get_scoring_rubrics(job_ids: List[str]) -> dict:
+    """Fetch scoring rubrics for given job IDs"""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return {}
+    
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}"
+        }
+        # Fetch rubrics for all job_ids
+        job_ids_str = ','.join(f'"{jid}"' for jid in job_ids)
+        query = f"job_id=in.({job_ids_str})"
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_job_scoring_rubrics?select=*&{query}", headers=headers, timeout=10)
+        
+        if res.status_code == 200:
+            rubrics = res.json()
+            # Convert to dict with job_id as key
+            rubric_map = {}
+            for rubric in rubrics:
+                rubric_map[rubric['job_id']] = rubric
+            return rubric_map
+    except Exception as e:
+        print(f"Error fetching scoring rubrics: {e}")
+    return {}
+
+
+def get_rubric_level_definitions() -> dict:
+    """Fetch rubric level categories and their metadata. Use built-in defaults if DB is empty."""
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return get_default_rubric_level_definitions()
+
+    try:
+        headers = {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}"
+        }
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/cv_job_categories?select=*&type=eq.rubric_level", headers=headers, timeout=10)
+        if res.status_code == 200:
+            levels = res.json()
+            if levels:
+                return {level['value']: level for level in levels}
+    except Exception as e:
+        print(f"Error fetching rubric level definitions: {e}")
+    
+    # Fallback to built-in defaults if DB is empty or error
+    return get_default_rubric_level_definitions()
+
+
+def get_default_rubric_level_definitions() -> dict:
+    """Built-in default rubric level definitions (when not in DB)."""
+    return {
+        'required': {
+            'value': 'required',
+            'label': 'Bắt buộc',
+            'metadata': {
+                'color': '#ef4444',
+                'priority': 3,
+                'description': 'Nếu không có sẽ bị loại',
+                'default_weight': 35,
+            }
+        },
+        'important': {
+            'value': 'important',
+            'label': 'Quan trọng',
+            'metadata': {
+                'color': '#3b82f6',
+                'priority': 2,
+                'description': 'Tiêu chí quan trọng, ảnh hưởng lớn đến quyết định',
+                'default_weight': 20,
+            }
+        },
+        'nice_to_have': {
+            'value': 'nice_to_have',
+            'label': 'Cộng điểm',
+            'metadata': {
+                'color': '#10b981',
+                'priority': 1,
+                'description': 'Không bắt buộc, nếu có được cộng điểm',
+                'default_weight': 8,
+            }
+        },
+    }
+
+
+
+def format_rubric_level_label(level: str, definitions: dict) -> str:
+    item = definitions.get(level)
+    if item:
+        return item.get('label', level)
+    fallback = {'required': 'BẮT BUỘC', 'important': 'QUAN TRỌNG', 'nice_to_have': 'CỘNG ĐIỂM'}
+    return fallback.get(level, level)
+
+
+def format_rubric_level_details(level: str, definitions: dict) -> str:
+    item = definitions.get(level)
+    if not item:
+        fallback = {'required': 'Yêu cầu bắt buộc cho tiêu chí này.', 'important': 'Tiêu chí quan trọng cần ưu tiên.', 'nice_to_have': 'Tiêu chí điểm cộng.'}
+        return fallback.get(level, '')
+
+    metadata = item.get('metadata') or {}
+    details = []
+    if metadata.get('description'):
+        details.append(f"Mô tả trạng thái: {metadata['description']}")
+    if metadata.get('priority') is not None:
+        details.append(f"Ưu tiên: {metadata['priority']}")
+    if metadata.get('default_weight') is not None:
+        details.append(f"Trọng số mặc định: {metadata['default_weight']}")
+    return ' '.join(details)
+
+
 def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https://api.openai.com/v1", model: str = "gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     if not endpoint:
         endpoint = "https://api.openai.com/v1"
@@ -177,7 +288,9 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         "generationConfig": {
             "temperature": temperature,
             "maxOutputTokens": max_tokens,
-            "responseMimeType": "application/json"
+            # ❌ KHÔNG dùng responseMimeType: "application/json"
+            # → Gemini áp dụng strict JSON schema và cắt output tại ~531 chars!
+            # → Thay vào đó: yêu cầu JSON trong prompt, parse thủ công
         },
         "safetySettings": [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -187,24 +300,47 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         ]
     }
         
-    url = f"https://generativelanguage.googleapis.com/v1alpha/models/{model}:generateContent?key={api_key}"
-    try:
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
-        if response.status_code != 200:
-            error_msg = response.text
-            print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
-            try:
-                error_data = response.json()
-                error_msg = error_data.get('error', {}).get('message', error_msg)
-            except:
-                pass
-            raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {error_msg}")
-        
-        data = response.json()
-        # DEV: Log raw structure for debugging API response format
-        print("🔍 RAW GEMINI API RESPONSE:")
-        print(data)
-        
+    # ✅ v1beta + gemini-2.5-flash (stable, không bị truncation)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    
+    max_retries = 3
+    retry_delay = 2
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
+            if response.status_code != 200:
+                error_msg = response.text
+                print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
+                
+                # Retry if Google servers are overloaded (503) or rate limited (429)
+                if response.status_code in [503, 429] and attempt < max_retries - 1:
+                    print(f"⚠️ Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+                    
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', error_msg)
+                except:
+                    pass
+                raise HTTPException(status_code=response.status_code, detail=f"Gemini API error ({response.status_code}): {error_msg}")
+            
+            data = response.json()
+            # DEV: Log raw structure for debugging API response format
+            print("🔍 RAW GEMINI API RESPONSE:")
+            print(data)
+            break # Success, exit retry loop
+            
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                print(f"⚠️ Gemini API timeout. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            raise HTTPException(status_code=504, detail="Gemini API timeout")
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
         text = ""
         if "candidates" in data and len(data["candidates"]) > 0:
             parts = data["candidates"][0].get("content", {}).get("parts", [])
@@ -225,10 +361,6 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
                 }
             ]
         }
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="Gemini API timeout")
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
 
 def call_openrouter_api_internal(messages: List[dict], api_key: str, model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     try:
@@ -263,8 +395,8 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
     is_gemini = config.get("is_gemini_enabled")
     gemini_key = config.get("gemini_api_key")
     if is_gemini and gemini_key:
-        print("🤖 Route -> Gemini API (v1alpha Gemini 3.0 Document API)")
-        gemini_model = "gemini-3-flash-preview"
+        print("🤖 Route -> Gemini 2.5 Flash (v1beta, stable)")
+        gemini_model = "gemini-2.5-flash"  # ✅ stable, không bị giới hạn bởi preview quirks
         return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
         
     is_openai = config.get("is_openai_enabled")
@@ -289,35 +421,110 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
 
 import re
 
+
+def find_json_object(text: str) -> str | None:
+    start = text.find('{')
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for idx, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\':
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:idx + 1]
+    return None
+
+
+def sanitize_json_strings(content: str) -> str:
+    in_string = False
+    escape = False
+    sanitized_chars = []
+    for ch in content:
+        if escape:
+            sanitized_chars.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            sanitized_chars.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            sanitized_chars.append(ch)
+            in_string = not in_string
+            continue
+        if in_string and ch in '\r\n':
+            sanitized_chars.append('\\n')
+            continue
+        sanitized_chars.append(ch)
+    return ''.join(sanitized_chars)
+
+
 def extract_json_from_response(content: str) -> dict:
     if not content or not content.strip():
         raise HTTPException(status_code=500, detail="AI response is completely empty. Please check API limits or try again.")
-        
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError as main_e:
-        if '```json' in content:
-            extracted = content.split('```json')[1].split('```')[0].strip()
-        elif '```' in content:
-            extracted = content.split('```')[1].split('```')[0].strip()
-        else:
-            extracted = content
-            
+
+    def try_parse(text: str) -> dict | None:
         try:
-            return json.loads(extracted)
-        except json.JSONDecodeError as fallback_e:
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group(0))
-                except Exception:
-                    pass
-            
-            error_msg = str(main_e) if extracted == content else str(fallback_e)
-            print(f"❌ Failed JSON snippet: {content[:1000]}")
-            # Trả về nguyên văn 200 ký tự đầu tiên để hiển thị lên frontend
-            snippet = content[:300].replace('\n', ' ')
-            raise HTTPException(status_code=500, detail=f"Lỗi cú pháp ({error_msg}). Chuỗi: {snippet}...")
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return None
+
+    # 1) Try direct parse first
+    parsed = try_parse(content)
+    if parsed is not None:
+        return parsed
+
+    # 2) Try to extract JSON block from markdown fences or whole response
+    if '```json' in content:
+        extracted = content.split('```json')[1].split('```')[0].strip()
+    elif '```' in content:
+        extracted = content.split('```')[1].split('```')[0].strip()
+    else:
+        extracted = content
+
+    parsed = try_parse(extracted)
+    if parsed is not None:
+        return parsed
+
+    # 3) Try to pull the first balanced JSON object from response text
+    balanced = find_json_object(content)
+    if balanced:
+        parsed = try_parse(balanced)
+        if parsed is not None:
+            return parsed
+
+        sanitized = sanitize_json_strings(balanced)
+        parsed = try_parse(sanitized)
+        if parsed is not None:
+            return parsed
+
+    # 4) As a last resort, try to sanitize the original extracted content
+    sanitized = sanitize_json_strings(extracted)
+    parsed = try_parse(sanitized)
+    if parsed is not None:
+        return parsed
+
+    # 5) Report the parsing failure with a concise snippet
+    error_msg = f"Unable to decode AI JSON response."
+    print(f"❌ Failed JSON snippet: {content[:1000]}")
+    snippet = content[:300].replace('\n', ' ')
+    raise HTTPException(status_code=500, detail=f"Lỗi cú pháp. Chuỗi: {snippet}...")
 
 # ==================== ENDPOINTS ====================
 
@@ -659,7 +866,7 @@ CRITICAL REMINDERS:
             messages=messages, 
             model="openai/gpt-4o-mini", 
             temperature=0.3,  # Low temperature for consistency
-            max_tokens=2000,
+            max_tokens=4000,  # 🔥 Fixed: Increased from 2000 to 4000 to prevent MAX_TOKENS truncation
             file_content=pdf_bytes,
             mime_type=mime_type
         )
@@ -715,6 +922,33 @@ async def match_cv_jobs(request: MatchCVJobsRequest):
         if request.primary_job_id:
             print(f"⭐ Primary job: {request.primary_job_id}")
         
+        # ==================== FETCH SCORING RUBRICS ====================
+        job_ids = [job.id for job in request.jobs]
+        rubrics_map = get_scoring_rubrics(job_ids)
+        print(f"📊 Rubrics loaded: {len(rubrics_map)}/{len(job_ids)} jobs have custom rubrics")
+
+        rubric_level_defs = get_rubric_level_definitions()
+        if rubric_level_defs:
+            print(f"📌 Rubric level definitions loaded: {len(rubric_level_defs)}")
+        else:
+            print("📌 No rubric level definitions found")
+
+        rubric_level_text = ""
+        if rubric_level_defs:
+            rubric_level_text = "\nĐỊNH NGHĨA TRẠNG THÁI/THUỘC TÍNH ĐÁNH GIÁ (rubric_level):\n"
+            for value, item in rubric_level_defs.items():
+                meta = item.get('metadata') or {}
+                desc = meta.get('description', 'Không có mô tả')
+                priority = meta.get('priority')
+                default_weight = meta.get('default_weight')
+                level_label = item.get('label', value)
+                rubric_level_text += f"- {level_label} ({value}): {desc}"
+                if priority is not None:
+                    rubric_level_text += f" | Ưu tiên: {priority}"
+                if default_weight is not None:
+                    rubric_level_text += f" | Trọng số mặc định: {default_weight}"
+                rubric_level_text += "\n"
+
         # ==================== BUILD CV CONTEXT ====================
         cv_context = f"""
 📋 ỨNG VIÊN PROFILE
@@ -744,6 +978,122 @@ Bằng cấp: {request.cv_data.education or 'Không có thông tin'}
         for idx, job in enumerate(request.jobs, 1):
             is_primary = "⭐ PRIMARY (Ứng viên đã apply)" if job.id == request.primary_job_id else ""
             
+            # Get rubric for this job
+            rubric = rubrics_map.get(job.id)
+            rubric_text = ""
+            if rubric:
+                rubric_text = f"""
+
+📊 BẢNG ĐIỂM CHẤM ĐÁNH GIÁ (SCORING RUBRIC):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Điểm đạt yêu cầu tối thiểu: {rubric.get('passing_score', 70)}/100
+Ghi chú: {rubric.get('notes', 'Không có ghi chú')}
+
+Tiêu chí chấm điểm:
+"""
+                for crit in rubric.get('criteria', []):
+                    level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
+                    level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
+                    level_details_str = f"  {level_details}\n" if level_details else ""
+                    rubric_text += f"""
+• {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
+  Mô tả: {crit['description']}
+  Trạng thái/thuộc tính đánh giá: {level_label}
+{level_details_str}  Hướng dẫn chấm điểm:
+    - Xuất sắc: {crit['scoring_guide']['excellent']}
+    - Tốt: {crit['scoring_guide']['good']}
+    - Trung bình: {crit['scoring_guide']['average']}
+    - Kém: {crit['scoring_guide']['poor']}
+"""
+            else:
+                # Use default rubric criteria
+                rubric_text = f"""
+
+📊 BẢNG ĐIỂM CHẤM ĐÁNH GIÁ (SCORING RUBRIC):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Điểm đạt yêu cầu tối thiểu: 70/100
+Ghi chú: Sử dụng tiêu chí mặc định cho vị trí {job.title}
+
+Tiêu chí chấm điểm:
+"""
+                default_criteria = [
+                    {
+                        "name": "Kỹ năng kỹ thuật",
+                        "level": "required",
+                        "weight": 40,
+                        "description": "Đánh giá các kỹ năng chuyên môn, công nghệ, công cụ liên quan đến vị trí",
+                        "scoring_guide": {
+                            "excellent": "Có đầy đủ hoặc vượt yêu cầu kỹ thuật, có dự án thực tế minh chứng",
+                            "good": "Đáp ứng đa số yêu cầu kỹ thuật, có một số kinh nghiệm thực tế",
+                            "average": "Đáp ứng một phần yêu cầu, cần đào tạo thêm",
+                            "poor": "Thiếu nhiều kỹ năng cần thiết"
+                        }
+                    },
+                    {
+                        "name": "Kinh nghiệm làm việc",
+                        "level": "required", 
+                        "weight": 30,
+                        "description": "Số năm kinh nghiệm, độ phù hợp ngành nghề, sự tiến bộ trong sự nghiệp",
+                        "scoring_guide": {
+                            "excellent": "Kinh nghiệm phong phú, vượt yêu cầu, đúng lĩnh vực",
+                            "good": "Đủ kinh nghiệm, phần lớn liên quan đến vị trí",
+                            "average": "Kinh nghiệm ít hơn yêu cầu hoặc khác ngành",
+                            "poor": "Thiếu kinh nghiệm đáng kể"
+                        }
+                    },
+                    {
+                        "name": "Học vấn & Bằng cấp",
+                        "level": "important",
+                        "weight": 20,
+                        "description": "Trình độ học vấn, chuyên ngành, trường đại học, các chứng chỉ liên quan",
+                        "scoring_guide": {
+                            "excellent": "Bằng cấp đúng chuyên ngành từ trường uy tín, có chứng chỉ nổi bật",
+                            "good": "Bằng cấp phù hợp, chuyên ngành liên quan",
+                            "average": "Bằng cấp không hoàn toàn phù hợp hoặc trường ít tên tuổi",
+                            "poor": "Không đáp ứng yêu cầu học vấn tối thiểu"
+                        }
+                    },
+                    {
+                        "name": "Kỹ năng mềm",
+                        "level": "important",
+                        "weight": 10,
+                        "description": "Giao tiếp, làm việc nhóm, quản lý thời gian, tư duy giải quyết vấn đề",
+                        "scoring_guide": {
+                            "excellent": "CV thể hiện rõ kỹ năng lãnh đạo, teamwork, giao tiếp xuất sắc",
+                            "good": "Có dẫn chứng về kỹ năng mềm tốt",
+                            "average": "Ít thông tin về kỹ năng mềm",
+                            "poor": "Không có thông tin hoặc dấu hiệu kỹ năng mềm kém"
+                        }
+                    },
+                    {
+                        "name": "Điểm cộng & Thành tích",
+                        "level": "nice_to_have",
+                        "weight": 10,
+                        "description": "Giải thưởng, dự án nổi bật, đóng góp cộng đồng, chứng chỉ thêm (Tính vào Bonus Score)",
+                        "scoring_guide": {
+                            "excellent": "Có nhiều thành tích nổi bật, giải thưởng hoặc đóng góp đáng kể",
+                            "good": "Có một vài điểm cộng đáng chú ý",
+                            "average": "Ít điểm cộng",
+                            "poor": "Không có điểm cộng"
+                        }
+                    }
+                ]
+                
+                for crit in default_criteria:
+                    level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
+                    level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
+                    level_details_str = f"  {level_details}\n" if level_details else ""
+                    rubric_text += f"""
+• {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
+  Mô tả: {crit['description']}
+  Trạng thái/thuộc tính đánh giá: {level_label}
+{level_details_str}  Hướng dẫn chấm điểm:
+    - Xuất sắc: {crit['scoring_guide']['excellent']}
+    - Tốt: {crit['scoring_guide']['good']}
+    - Trung bình: {crit['scoring_guide']['average']}
+    - Kém: {crit['scoring_guide']['poor']}
+"""
+            
             jobs_text += f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 JOB #{idx}: {job.title} {is_primary}
@@ -764,167 +1114,94 @@ Hình thức: {job.work_location or 'Không xác định'}
 ✅ YÊU CẦU:
 {job.requirements or 'Không có yêu cầu cụ thể'}
 
-⚠️⚠️⚠️ YÊU CẦU BẮT BUỘC (MANDATORY):
-{job.mandatory_requirements or 'KHÔNG CÓ yêu cầu bắt buộc'}
-⚠️⚠️⚠️
-
 💰 QUYỀN LỢI:
 {job.benefits or 'Không có thông tin'}
 
+{rubric_text}
 """
         
-        # ==================== SYSTEM PROMPT (FIXED VERSION) ====================
-        system_prompt = """Bạn là chuyên gia HR và AI Matching với 15 năm kinh nghiệm tuyển dụng IT.
+        # ==================== SYSTEM PROMPT (RUBRIC-BASED VERSION) ====================
+        system_prompt = """Bạn là chuyên gia HR và AI Matching với 15 năm kinh nghiệm tuyển dụng.
 
-Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp với TỪNG job trong danh sách.
+Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp dựa trên BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC). Chú ý tách biệt Base Score (100%) và Bonus Score (Điểm cộng).
 
 ═══════════════════════════════════════════════════════════════
 📋 QUY TRÌNH CHẤM ĐIỂM CHUẨN (CHO MỖI JOB)
 ═══════════════════════════════════════════════════════════════
 
-🔴 BƯỚC 1: KIỂM TRA YÊU CẦU BẮT BUỘC MANDATORY (STRICT MATCHING - KHÔNG SUY LUẬN)
+MỖI JOB có bảng tiêu chí đánh giá gồm các yêu cầu (required/important) và điểm cộng (nice_to_have).
 
-Nếu job có "YÊU CẦU BẮT BUỘC/"MANDATORY REQUIREMENTS"" (mandatory_requirements):
+1. BASE SCORE (Tối đa ~100 điểm):
+   - Chỉ tính trên các tiêu chí thuộc level 'required' hoặc 'important'.
+   - Tính contribution = (điểm tiêu chí * trọng số) / 100
+   - Base Score = Tổng contribution của các tiêu chí này.
 
-1️ Đọc KỸ từng yêu cầu bắt buộc VÀ PHÂN TÍCH từ khóa bắt buộc:
-   VD: "Tốt nghiệp Cử Nhân Đại Học"
-   → Keywords cần tìm: ["cử nhân", "đại học"]
-   
-   VD: "3+ năm kinh nghiệm Python"
-   → Keywords cần tìm: ["python", "3 năm" hoặc "3+"]
+2. BONUS SCORE (Điểm thưởng độc lập):
+   - Chỉ tính trên các tiêu chí thuộc level 'nice_to_have' (Điểm cộng).
+   - Tính contribution = (điểm tiêu chí * trọng số) / 100
+   - Bonus Score = Tổng contribution của các tiêu chí này.
 
-2️ TÌM BẰNG CHỨNG trong CV (THEO THỨ TỰ ƯU TIÊN):
-   
-   🎯 Priority 1: Field "Bằng cấp" (education)
-   - Đây là field QUAN TRỌNG NHẤT cho yêu cầu học vấn
-   - VD: "Cử nhân Công nghệ Thông tin"
-   - VD: "Kỹ sư Điện tử"
-   
-   🎯 Priority 2: Field "Trường" (university)
-   - Chỉ chứa TÊN TRƯỜNG, thường KHÔNG chứa bằng cấp
-   - VD: "Đại học Bách Khoa Hà Nội"
-   - VD: "Học viện Công nghệ Bưu chính Viễn thông"
-   
-   🎯 Priority 3: Field "Kinh nghiệm" (experience)
-   - Dùng cho yêu cầu về số năm kinh nghiệm và skills
-   
-   🎯 Priority 4: Full CV Text (backup - tìm trong đoạn HỌC VẤN/EDUCATION)
-   - Dùng khi các field trên null hoặc thiếu thông tin
-
-3️ QUY TẮC MATCHING:
-   
-   ✅ PASS mandatory nếu:
-   - Tìm thấy TẤT CẢ keywords trong CV
-   - Có BẰNG CHỨNG CỤ THỂ (text chính xác)
-   
-   ❌ FAIL mandatory nếu:
-   - THIẾU BẤT KỲ keyword nào
-   
-   ⚠️ KHÔNG được suy luận:
-     ❌ "Có Đại học" ≠ "Có Cử nhân"
-     ❌ "Có trường top" ≠ "Có bằng"
-     ❌ "Có 1 năm exp" ≠ "Có 3 năm exp"
-     ❌ "Có Node.js" ≠ "Có Python"
-     
-KẾT LUẬN:
-- NẾU ứng viên ĐÁP ỨNG → Tiếp tục chấm trên BASE 100
-- NẾU ứng viên KHÔNG ĐÁP ỨNG → Áp dụng PENALTY -50 điểm NGAY
+3. TỔNG ĐIỂM MATCHING:
+   - match_score = Base Score + Bonus Score
+   - Nếu match_score > 100, hãy giới hạn (cap) lại thành mức tối đa 100.
 
 ═══════════════════════════════════════════════════════════════
-
-🔵 BƯỚC 2A: CHẤM ĐIỂM (NẾU PASS MANDATORY/đáp ứng trường bắt buộc hoặc KHÔNG CÓ MANDATORY)
-
-Base: 100 điểm
-
-Phân bổ điểm (Tổng = 100):
-- Kinh nghiệm phù hợp: 0-30 điểm
-- Kỹ năng kỹ thuật: 0-25 điểm
-- Học vấn phù hợp: 0-15 điểm
-- Level/Seniority match: 0-15 điểm
-- Địa điểm phù hợp: 0-10 điểm
-- Kỹ năng mềm: 0-5 điểm
-
-TỔNG: X/100
-
-Strengths: ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"]
-Weaknesses: ["Điểm yếu 1", "Điểm yếu 2"], Các điểm yếu thông thường (KHÔNG liên quan mandatory)
-Recommendation: "Đánh giá chi tiết 80-120 từ"
-
+🎯 OUTPUT FORMAT (JSON ONLY)
 ═══════════════════════════════════════════════════════════════
 
-🔴 BƯỚC 2B: CHẤM ĐIỂM (NẾU FAIL MANDATORY / không đáp ứng trường bắt buộc)
-
-🚨 ÁP DỤNG PENALTY ngay lập tức: -50 ĐIỂM
- Base điểm giảm: 100 → 50
- Điểm tối đa có thể: 50 (Base mới)
-
-SAU ĐÓ Chấm trên BASE 50 (mỗi component giảm 50%):
-
-- Kinh nghiệm phù hợp: 0-15 điểm (giảm 50%)
-- Kỹ năng kỹ thuật: 0-12 điểm (giảm 50%)
-- Học vấn: 0-8 điểm (giảm 50%)
-- Level phù hợp: 0-8 điểm (giảm 50%)
-- Địa điểm: 0-5 điểm (giảm 50%)
-- Kỹ năng mềm: 0-2 điểm (giảm 50%)
-
-TỔNG: Y/50 (tối đa 50)
-
-⚠️ LƯU Ý QUAN TRỌNG:
-- Điểm yếu: PHẢI có "Ứng viên không đáp ứng yêu cầu bắt buộc: [yêu cầu cụ thể]" + các điểm yếu khác"
-- Recommendation: "Ứng viên có [điểm mạnh] nhưng KHÔNG ĐỦ ĐIỀU KIỆN do thiếu [requirement cụ thể]"
-
-QUAN TRỌNG: Với JOB ⭐ PRIMARY (job ứng viên đã apply):
-- Đánh giá CHI TIẾT HỖN hơn
-- Đây là job ứng viên QUAN TÂM - phải đánh giá kỹ lưỡng
-
-
-═══════════════════════════════════════════════════════════════
-🎯 OUTPUT FORMAT
-═══════════════════════════════════════════════════════════════
-
-Trả về JSON với format:
+Trả về JSON với format (KHÔNG TRẢ VỀ MARKDOWN):
 
 {
   "overall_score": <điểm của best_match>,
   "best_match": {
     "job_id": "<job_id>",
     "job_title": "<job_title>",
-    "match_score": <0-100 hoặc 0-50 nếu fail mandatory>,
-    "strengths": ["...", "...", "..."],
-    "weaknesses": ["...", "..."],
-    "recommendation": "..."
+    "base_score": <0-100>,
+    "bonus_score": <0-vô cực>,
+    "match_score": <0-100, min(100, base_score + bonus_score)>,
+    "detailed_scores": {
+      "<criterion_name>": {
+        "score": <điểm số 0-100>,
+        "weight": <trọng số>,
+        "contribution": <điểm đóng góp>,
+        "reasoning": "<giải thích>"
+      },
+      ...
+    },
+    "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
+    "weaknesses": ["Điểm yếu 1"],
+    "recommendation": "Đánh giá chi tiết 100-150 từ"
   },
   "all_matches": [
     {
       "job_id": "<job_id>",
       "job_title": "<job_title>",
-      "match_score": <0-100 hoặc 0-50>,
-      "strengths": ["...", "...", "..."],
-      "weaknesses": ["...", "..."],
+      "base_score": <0-100>,
+      "bonus_score": <0-vô cực>,
+      "match_score": <0-100>,
+      "detailed_scores": {
+        "<criterion_name>": { ... }
+      },
+      "strengths": [...],
+      "weaknesses": [...],
       "recommendation": "..."
-    },
-    ...
+    }
   ]
 }
 
 ⚠️ CRITICAL RULES:
-1. Nếu FAIL mandatory → match_score PHẢI ≤ 50
-2. Weaknesses của job fail mandatory PHẢI có: "❌ Không đáp ứng yêu cầu bắt buộc: [requirement]"
-3. KHÔNG được suy luận: "Có Đại học" ≠ "Có Cử nhân"
-4. Phải tìm CHÍNH XÁC từ khóa trong CV
-5. all_matches phải được sắp xếp theo match_score giảm dần
-6. best_match = job có match_score CAO NHẤT
-7. overall_score = best_match.match_score
-
-QUAN TRỌNG: 
-- Job có ⭐ PRIMARY → Đánh giá CHI TIẾT và KỸ LƯỠNG hơn
-- Luôn trả về JSON hợp lệ, không thêm text giải thích bên ngoài"""
+1. contribution = (score * weight) / 100 cho TẤT CẢ tiêu chí.
+2. Base Score CHỈ cộng từ 'required'/'important'. Bonus Score CHỈ cộng từ 'nice_to_have'.
+3. match_score là tổng Base + Bonus (giới hạn max = 100).
+4. Sắp xếp all_matches theo match_score giảm dần.
+5. Luôn trả về JSON hợp lệ."""
 
         # ==================== USER PROMPT ====================
-        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH CHÍNH XÁC:
+        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH CHẤM ĐIỂM (BASE + BONUS TÁCH BIỆT):
 
 {cv_context}
 
+{rubric_level_text}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CÁC CÔNG VIỆC CẦN MATCHING:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -933,61 +1210,30 @@ CÁC CÔNG VIỆC CẦN MATCHING:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Hãy phân tích và chấm điểm cho TẤT CẢ {len(request.jobs)} jobs trên theo đúng quy trình:
+Hãy chấm điểm cho {len(request.jobs)} jobs theo đúng quy trình phân tách Base và Bonus:
 
-1. Với MỖI JOB: Kiểm tra mandatory TRƯỚC
-2. Nếu PASS hoặc không có mandatory → Base 100
-3. Nếu FAIL mandatory → Penalty -50 → Base 50
-4. Chấm điểm trên base tương ứng
-5. Sắp xếp all_matches theo điểm giảm dần
-6. best_match = job có điểm cao nhất
+1. Chấm điểm Từng Tiêu Chí: 
+   - Tính contribution = (score * weight) / 100
+
+2. Tách biệt Score:
+   - Base Score = Tổng contribution của các tiêu chí cốt lõi (thuộc level 'required', 'important').
+   - Bonus Score = Tổng contribution của các tiêu chí thưởng (thuộc level 'nice_to_have' như "Điểm cộng").
+
+3. Tính Match Score: 
+   - Match Score = min(100, Base Score + Bonus Score)
+
+Ví dụ thực tế:
+- Tiêu chí A (required, weight 40): Chấm 80/100 -> contribution = 32
+- Tiêu chí B (required, weight 30): Chấm 90/100 -> contribution = 27
+- Tiêu chí C (important, weight 30): Chấm 70/100 -> contribution = 21
+  => Base Score = 32 + 27 + 21 = 80
+- Tiêu chí D "Điểm cộng" (nice_to_have, weight 10): Chấm 50/100 -> contribution = 5
+  => Bonus Score = 5
+  => Match Score = min(100, 80 + 5) = 85
 
 LƯU Ý:
-- ĐỌC KỸ: Bằng cấp, Trường, Kinh nghiệm, Full text
-- KHÔNG SUY LUẬN: "Có Đại học" ≠ "Có Cử nhân"
-- STRICT MATCH: Phải tìm thấy CHÍNH XÁC từ khóa
-- Nếu mandatory là một kỹ năng bắt buộc phải có thì phải tìm được script trùng khớp trong CV
-- Nếu mandatory là số năm kinh nghiệm thì phải tìm được số năm đúng hoặc lớn hơn trong CV hoặc công các năm dựa theo các công việc đã làm trong mục kinh nghiệm
-- Fail mandatory → PHẢI có "❌ Không đáp ứng..." trong weaknesses
-- Job PRIMARY → Đánh giá kỹ hơn
-
-CHO MỖI CÔNG VIỆC, ÁP DỤNG QUY TRÌNH:
-
-VÍ DỤ MINH HỌA:
-
-Ví dụ 1: Job yêu cầu "Tốt nghiệp Đại học" + Ứng viên có "university: HUST"
-→ Bắt buộc: ĐÁP ỨNG ✅
-→ Base điểm: 100
-→ Tính: 28 (exp) + 23 (skills) + 15 (edu) + 12 (level) + 8 (loc) + 3 (soft) = 89
-→ Kết quả: 89/100
-→ Điểm yếu: ["Thiếu kinh nghiệm quản lý nhóm"]
-
-Ví dụ 2: Job yêu cầu "Tốt nghiệp Đại học" + Ứng viên university: null, education: null
-→ Bắt buộc: KHÔNG ĐÁP ỨNG ❌
-→ Penalty: -50 NGAY LẬP TỨC
-→ Base điểm mới: 50 tối đa
-→ Tính trên base 50: 12 (exp) + 10 (skills) + 0 (edu) + 6 (level) + 4 (loc) + 2 (soft) = 34
-→ Kết quả: 34/50
-→ Điểm yếu: ["Ứng viên không đáp ứng yêu cầu bắt buộc: Tốt nghiệp Đại học", "Thiếu kinh nghiệm cloud"]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ĐẶC BIỆT CHÚ Ý VỀ BEST_MATCH:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. best_match PHẢI là job có match_score CAO NHẤT trong all_matches
-2. overall_score PHẢI = best_match.match_score
-3. all_matches PHẢI được sắp xếp theo match_score giảm dần
-
-4. Khi viết recommendation cho best_match:
-   - NẾU best_match.job_id == primary_job_id (job ứng viên đã apply):
-     → Viết: "Ứng viên đã apply đúng vị trí phù hợp với hồ sơ. [Điểm mạnh chính]..."
-   
-   - NẾU best_match.job_id != primary_job_id:
-     → Viết: "Ứng viên phù hợp hơn với vị trí [best_match_title] so với vị trí đã apply [primary_job_title]. Lý do: [so sánh cụ thể]..."
-
-5. Đảm bảo recommendation dài 100-150 từ, chi tiết và có bằng chứng cụ thể
-
-Trả về ONLY valid JSON theo format đã cho."""
+- Khuyến nghị (Recommendation) dài 100-150 từ, nên giải thích vì sao ứng viên được/không được nhận điểm bonus.
+- Trả về ONLY valid JSON. Không xuất markdown code block."""
 
         # ==================== BUILD MESSAGES ====================
         messages = [

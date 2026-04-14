@@ -59,8 +59,9 @@ export const UserMenu = () => {
 
   if (isCustomAuth) {
     // Custom auth user
-    displayName = (user as any).full_name || user.email?.split('@')[0] || 'User';
+    displayName = profile?.full_name || (user as any).full_name || user.email?.split('@')[0] || 'User';
     displayEmail = user.email || 'user@example.com';
+    avatarUrl = profile?.avatar_url || (user as any).avatar_url;
   } else {
     // Supabase auth user
     displayName = profile?.full_name || 

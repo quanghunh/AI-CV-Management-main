@@ -4,7 +4,6 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileFooter } from "./MobileFooter";
-import FloatingChatbot from "@/components/FloatingChatbot";
 import { supabase } from "@/lib/supabaseClient";
 
 // Fixed UUID cho company profile (chung cho toàn hệ thống)
@@ -108,8 +107,6 @@ export function MainLayout() {
         <MobileFooter />
       </main>
 
-      {/* Floating Chatbot - Sẽ xuất hiện ở tất cả các trang */}
-      <FloatingChatbot />
     </div>
   );
 }

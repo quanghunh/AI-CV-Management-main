@@ -32,6 +32,30 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTO_LOGOUT_DELAY_MS = 5 * 60 * 1000;
+const LAST_ACTIVE_KEY = 'last_active_at';
+
+const getLastActiveAt = () => {
+  if (typeof window === 'undefined') return 0;
+  return Number(localStorage.getItem(LAST_ACTIVE_KEY) || '0');
+};
+
+const updateLastActiveAt = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+};
+
+const clearLastActiveAt = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(LAST_ACTIVE_KEY);
+};
+
+const isBrowserSessionExpired = () => {
+  const lastActiveAt = getLastActiveAt();
+  if (!lastActiveAt) return false;
+  return Date.now() - lastActiveAt > AUTO_LOGOUT_DELAY_MS;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | CustomUser | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
@@ -45,6 +69,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const update = () => updateLastActiveAt();
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+
+    events.forEach(eventName => window.addEventListener(eventName, update));
+    window.addEventListener('beforeunload', update);
+
+    return () => {
+      events.forEach(eventName => window.removeEventListener(eventName, update));
+      window.removeEventListener('beforeunload', update);
+    };
+  }, []);
 
   const fetchProfileByAuthId = async (authUserId: string) => {
     try {
@@ -150,9 +189,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     localStorage.removeItem('user_session');
     localStorage.removeItem('is_authenticated');
+    localStorage.removeItem(LAST_ACTIVE_KEY);
     sessionStorage.removeItem('tab_initialized');
     
     console.log("✅ Auth state cleared");
+  };
+
+  const clearAuthSessionWithTimeout = async () => {
+    console.log("⏰ Checking browser auto-logout timeout...");
+    if (!isBrowserSessionExpired()) return false;
+    console.log("🛑 Browser session expired after browser closed for more than 5 minutes");
+    clearAuthState();
+    try {
+      await supabase.auth.signOut();
+      console.log("✅ Supabase session cleared due to timeout");
+    } catch (err) {
+      console.warn("⚠️ Error clearing Supabase session after timeout:", err);
+    }
+    return true;
   };
 
   // 🔧 CRITICAL FIX: Improved auth initialization
@@ -181,6 +235,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isAuthenticated = localStorage.getItem('is_authenticated');
 
         if (customSession && isAuthenticated === 'true') {
+          if (isBrowserSessionExpired()) {
+            console.log('🛑 Browser auto-logout triggered before custom session restore');
+            clearAuthState();
+            setLoading(false);
+            return;
+          }
+
           try {
             const userData = JSON.parse(customSession);
             console.log('🔍 Found custom session for:', userData.email);
@@ -200,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setProfile(prof);
               userRef.current = customUser;
               authTypeRef.current = 'custom';
+              updateLastActiveAt();
               
               console.log("✅ Custom auth session restored");
               
@@ -215,6 +277,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearAuthState();
           }
         }
+
+        await clearAuthSessionWithTimeout();
         
         // STEP 2: Check Supabase Auth session
         console.log('🔍 Checking Supabase Auth session...');
@@ -242,6 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(session.user);
             userRef.current = session.user;
             authTypeRef.current = 'supabase';
+            updateLastActiveAt();
             
             // 🔧 KEY FIX: Set loading false BEFORE fetching profile
             setLoading(false);
@@ -404,6 +469,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(prof);
         userRef.current = userData;
         authTypeRef.current = 'custom';
+        updateLastActiveAt();
 
         // Save to localStorage
         localStorage.setItem('user_session', JSON.stringify(userData));
@@ -434,6 +500,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       authTypeRef.current = 'supabase';
       setUser(result.data.user);
       userRef.current = result.data.user;
+      updateLastActiveAt();
       
       // Fetch profile
       fetchProfileByAuthId(result.data.user.id)
@@ -568,20 +635,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log("📦 Merged data for upsert:", mergedData);
 
+      const matchColumn = isCustomAuthUser ? 'id' : 'auth_user_id';
+
+      // Perform a direct UPDATE instead of UPSERT to avoid constraint mismatch errors
       const { data: result, error } = await supabase
         .from("cv_profiles")
-        .upsert(
-          mergedData,
-          {
-            onConflict: isCustomAuthUser ? 'id' : 'auth_user_id',
-            ignoreDuplicates: false
-          }
-        )
+        .update({
+          email: user.email || '',
+          full_name: data.full_name !== undefined ? data.full_name : (profile?.full_name || ''),
+          phone: data.phone !== undefined ? data.phone : (profile?.phone || ''),
+          avatar_url: data.avatar_url !== undefined ? data.avatar_url : (profile?.avatar_url || '')
+        })
+        .eq(matchColumn, user.id)
         .select()
         .single();
 
       if (error) {
-        console.error("❌ Upsert error:", error);
+        console.error("❌ Update error:", error);
         throw error;
       }
 
