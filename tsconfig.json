@@ -1,7 +1,6 @@
 {
   "extends": "./AI-CV-Management-main/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "./AI-CV-Management-main",
     "paths": {
       "@/*": ["./src/*"],
       "@/supabase": ["./src/lib/supabaseClient.ts"]
