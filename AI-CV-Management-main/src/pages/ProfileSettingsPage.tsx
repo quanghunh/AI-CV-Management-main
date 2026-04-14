@@ -29,19 +29,48 @@ export function ProfileSettingsPage() {
     confirmPassword: ''
   })
 
+  const isSystemUser = user && !(user as any).isCustomAuth
+
   // Load profile data when user or profile changes
-    useEffect(() => {
+  useEffect(() => {
+    async function loadSystemProfile() {
       if (user) {
-        const metadata = (user as any)?.user_metadata || {}
-        
-        setProfileData({
-          full_name: profile?.full_name || metadata.full_name || '',
-          email: user.email || '',
-          phone: profile?.phone || metadata.phone || '',
-          avatar_url: profile?.avatar_url || metadata.avatar_url || ''
-        })
+        if (isSystemUser) {
+          console.log("Loading system profile from 'profiles' table...");
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+          if (error) {
+            console.warn("Could not fetch profile from 'profiles' table:", error.message);
+          }
+
+          const metadata = (user as any)?.user_metadata || {}
+          
+          setProfileData({
+            full_name: data?.full_name || metadata.full_name || '',
+            email: user.email || '',
+            phone: data?.phone || '',
+            avatar_url: data?.avatar_url || metadata.avatar_url || ''
+          })
+        } else {
+          // CustomAuth User (Candidate or Admin via Custom Auth)
+          setProfileData({
+            full_name: profile?.full_name || '',
+            email: user.email || '',
+            phone: profile?.phone || '',
+            avatar_url: profile?.avatar_url || ''
+          })
+        }
       }
-    }, [user, profile])
+    }
+    
+    if (user) {
+      loadSystemProfile()
+    }
+  }, [user, profile, isSystemUser])
 
   const getInitials = () => {
     if (profileData.full_name) {
@@ -54,6 +83,8 @@ export function ProfileSettingsPage() {
   }
 
   const handleProfileUpdate = async () => {
+    if (!user) return;
+    
     if (!profileData.full_name || profileData.full_name.trim() === '') {
       alert(t('profile.messages.nameRequired'))
       return
@@ -61,17 +92,32 @@ export function ProfileSettingsPage() {
 
     setLoading(true)
     try {
-      const { error } = await updateProfile({
-        full_name: profileData.full_name,
-        phone: profileData.phone
-      })
+      if (isSystemUser) {
+        // 1. Update the system profiles table
+        const { error: dbError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: profileData.full_name,
+            phone: profileData.phone
+          })
+          .eq('id', user.id);
 
-      if (error) {
-        alert(t('profile.messages.saveError'))
-        console.error('Profile update error:', error)
+        if (dbError) throw dbError;
+
+        // 2. Also keep auth meta_data in sync
+        await supabase.auth.updateUser({
+          data: { full_name: profileData.full_name }
+        });
       } else {
-        alert(t('profile.messages.saveSuccess'))
+        // 1. Update custom user via Context function
+        const { error } = await updateProfile({
+          full_name: profileData.full_name,
+          phone: profileData.phone
+        });
+        if (error) throw error;
       }
+
+      alert(t('profile.messages.saveSuccess'))
     } catch (error) {
       alert(t('profile.messages.saveError'))
       console.error('Profile update exception:', error)
@@ -81,6 +127,11 @@ export function ProfileSettingsPage() {
   }
 
   const handlePasswordChange = async () => {
+    if (!isSystemUser) {
+      alert('Tài khoản của bạn không được hỗ trợ đổi mật khẩu tại đây. Vui lòng liên hệ Admin.');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert(t('profile.messages.passwordMismatch'))
       return
@@ -117,22 +168,18 @@ export function ProfileSettingsPage() {
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0]
     if (!file) return
 
     // Validation
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file')
+      alert('Vui lòng upload định dạng hình ảnh (JPG, PNG)')
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('File size must be less than 2MB')
-      return
-    }
-
-    if (!user) {
-      alert('You must be logged in to upload avatar')
+      alert('Kích thước ảnh phải nhỏ hơn 2MB')
       return
     }
 
@@ -140,30 +187,15 @@ export function ProfileSettingsPage() {
     try {
       console.log('📤 Starting avatar upload...')
       
-      // Step 1: Generate unique filename with user ID prefix
+      // Step 1: Generate unique filename with prefix isolating system users and candidates
       const fileExt = file.name.split('.').pop()
       const timestamp = Date.now()
-      const fileName = `${user.id}/${timestamp}.${fileExt}`
+      const prefix = isSystemUser ? 'system_users' : 'candidates_avatars'
+      const fileName = `${prefix}/${user.id}/${timestamp}.${fileExt}`
       
       console.log('📁 Upload path:', fileName)
 
-      // Step 2: Delete old avatar if exists
-      if (profileData.avatar_url) {
-        try {
-          // Extract path from URL (format: .../storage/v1/object/public/avatars/USER_ID/file.ext)
-          const urlParts = profileData.avatar_url.split('/avatars/')
-          if (urlParts.length > 1) {
-            const oldPath = urlParts[1]
-            console.log('🗑️ Deleting old avatar:', oldPath)
-            await supabase.storage.from('avatars').remove([oldPath])
-          }
-        } catch (err) {
-          console.warn('⚠️ Could not delete old avatar:', err)
-          // Continue anyway
-        }
-      }
-
-      // Step 3: Upload new avatar
+      // Step 2: Upload new avatar
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
@@ -178,32 +210,43 @@ export function ProfileSettingsPage() {
 
       console.log('✅ Upload successful:', uploadData)
 
-      // Step 4: Get public URL
+      // Step 3: Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
       console.log('🔗 Public URL:', publicUrl)
 
-      // Step 5: Update profile in database
-      const { error: updateError } = await updateProfile({ 
-        avatar_url: publicUrl 
-      })
+      // Step 4: Update profile in database directly
+      if (isSystemUser) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', user.id);
 
-      if (updateError) {
-        console.error('❌ Profile update error:', updateError)
-        throw updateError
+        if (updateError) {
+          console.error('❌ Profile DB update error:', updateError)
+          throw updateError
+        }
+        
+        // Update auth meta as well
+        await supabase.auth.updateUser({
+          data: { avatar_url: publicUrl }
+        });
+      } else {
+        const { error: updateError } = await updateProfile({
+          avatar_url: publicUrl
+        });
+        if (updateError) throw updateError;
       }
 
-      // Step 6: Update local state
+      // Step 5: Update local state
       setProfileData(prev => ({ ...prev, avatar_url: publicUrl }))
-console.log('✅ Avatar updated successfully')
+      console.log('✅ Avatar updated successfully')
       alert(t('profile.messages.saveSuccess'))
       
     } catch (error) {
       console.error('❌ Avatar upload failed:', error)
-      
-      // Better error message
       if (error instanceof Error) {
         alert(`Error uploading avatar: ${error.message}`)
       } else {
@@ -211,7 +254,6 @@ console.log('✅ Avatar updated successfully')
       }
     } finally {
       setLoading(false)
-      // Reset file input
       e.target.value = ''
     }
   }

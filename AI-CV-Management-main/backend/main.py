@@ -302,23 +302,45 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         
     # ✅ v1beta + gemini-2.5-flash (stable, không bị truncation)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    try:
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
-        if response.status_code != 200:
-            error_msg = response.text
-            print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
-            try:
-                error_data = response.json()
-                error_msg = error_data.get('error', {}).get('message', error_msg)
-            except:
-                pass
-            raise HTTPException(status_code=response.status_code, detail=f"Gemini API error: {error_msg}")
-        
-        data = response.json()
-        # DEV: Log raw structure for debugging API response format
-        print("🔍 RAW GEMINI API RESPONSE:")
-        print(data)
-        
+    
+    max_retries = 3
+    retry_delay = 2
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
+            if response.status_code != 200:
+                error_msg = response.text
+                print(f"❌ Gemini API Failed [{response.status_code}]: {error_msg}")
+                
+                # Retry if Google servers are overloaded (503) or rate limited (429)
+                if response.status_code in [503, 429] and attempt < max_retries - 1:
+                    print(f"⚠️ Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+                    
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', error_msg)
+                except:
+                    pass
+                raise HTTPException(status_code=response.status_code, detail=f"Gemini API error ({response.status_code}): {error_msg}")
+            
+            data = response.json()
+            # DEV: Log raw structure for debugging API response format
+            print("🔍 RAW GEMINI API RESPONSE:")
+            print(data)
+            break # Success, exit retry loop
+            
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                print(f"⚠️ Gemini API timeout. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            raise HTTPException(status_code=504, detail="Gemini API timeout")
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
         text = ""
         if "candidates" in data and len(data["candidates"]) > 0:
             parts = data["candidates"][0].get("content", {}).get("parts", [])
@@ -339,10 +361,6 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
                 }
             ]
         }
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="Gemini API timeout")
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
 
 def call_openrouter_api_internal(messages: List[dict], api_key: str, model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     try:
@@ -848,7 +866,7 @@ CRITICAL REMINDERS:
             messages=messages, 
             model="openai/gpt-4o-mini", 
             temperature=0.3,  # Low temperature for consistency
-            max_tokens=2000,
+            max_tokens=4000,  # 🔥 Fixed: Increased from 2000 to 4000 to prevent MAX_TOKENS truncation
             file_content=pdf_bytes,
             mime_type=mime_type
         )
@@ -976,11 +994,12 @@ Tiêu chí chấm điểm:
                 for crit in rubric.get('criteria', []):
                     level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
                     level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
+                    level_details_str = f"  {level_details}\n" if level_details else ""
                     rubric_text += f"""
 • {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
   Mô tả: {crit['description']}
   Trạng thái/thuộc tính đánh giá: {level_label}
-{f'  {level_details}\n' if level_details else ''}  Hướng dẫn chấm điểm:
+{level_details_str}  Hướng dẫn chấm điểm:
     - Xuất sắc: {crit['scoring_guide']['excellent']}
     - Tốt: {crit['scoring_guide']['good']}
     - Trung bình: {crit['scoring_guide']['average']}
@@ -1001,7 +1020,7 @@ Tiêu chí chấm điểm:
                     {
                         "name": "Kỹ năng kỹ thuật",
                         "level": "required",
-                        "weight": 35,
+                        "weight": 40,
                         "description": "Đánh giá các kỹ năng chuyên môn, công nghệ, công cụ liên quan đến vị trí",
                         "scoring_guide": {
                             "excellent": "Có đầy đủ hoặc vượt yêu cầu kỹ thuật, có dự án thực tế minh chứng",
@@ -1013,7 +1032,7 @@ Tiêu chí chấm điểm:
                     {
                         "name": "Kinh nghiệm làm việc",
                         "level": "required", 
-                        "weight": 25,
+                        "weight": 30,
                         "description": "Số năm kinh nghiệm, độ phù hợp ngành nghề, sự tiến bộ trong sự nghiệp",
                         "scoring_guide": {
                             "excellent": "Kinh nghiệm phong phú, vượt yêu cầu, đúng lĩnh vực",
@@ -1037,7 +1056,7 @@ Tiêu chí chấm điểm:
                     {
                         "name": "Kỹ năng mềm",
                         "level": "important",
-                        "weight": 12,
+                        "weight": 10,
                         "description": "Giao tiếp, làm việc nhóm, quản lý thời gian, tư duy giải quyết vấn đề",
                         "scoring_guide": {
                             "excellent": "CV thể hiện rõ kỹ năng lãnh đạo, teamwork, giao tiếp xuất sắc",
@@ -1049,8 +1068,8 @@ Tiêu chí chấm điểm:
                     {
                         "name": "Điểm cộng & Thành tích",
                         "level": "nice_to_have",
-                        "weight": 8,
-                        "description": "Giải thưởng, dự án nổi bật, đóng góp cộng đồng, chứng chỉ thêm",
+                        "weight": 10,
+                        "description": "Giải thưởng, dự án nổi bật, đóng góp cộng đồng, chứng chỉ thêm (Tính vào Bonus Score)",
                         "scoring_guide": {
                             "excellent": "Có nhiều thành tích nổi bật, giải thưởng hoặc đóng góp đáng kể",
                             "good": "Có một vài điểm cộng đáng chú ý",
@@ -1063,11 +1082,12 @@ Tiêu chí chấm điểm:
                 for crit in default_criteria:
                     level_label = format_rubric_level_label(crit.get('level', 'important'), rubric_level_defs)
                     level_details = format_rubric_level_details(crit.get('level', 'important'), rubric_level_defs)
+                    level_details_str = f"  {level_details}\n" if level_details else ""
                     rubric_text += f"""
 • {crit['name']} ({level_label}) - Trọng số: {crit['weight']}%
   Mô tả: {crit['description']}
   Trạng thái/thuộc tính đánh giá: {level_label}
-{f'  {level_details}\n' if level_details else ''}  Hướng dẫn chấm điểm:
+{level_details_str}  Hướng dẫn chấm điểm:
     - Xuất sắc: {crit['scoring_guide']['excellent']}
     - Tốt: {crit['scoring_guide']['good']}
     - Trung bình: {crit['scoring_guide']['average']}
@@ -1101,114 +1121,83 @@ Hình thức: {job.work_location or 'Không xác định'}
 """
         
         # ==================== SYSTEM PROMPT (RUBRIC-BASED VERSION) ====================
-        system_prompt = """Bạn là chuyên gia HR và AI Matching với 15 năm kinh nghiệm tuyển dụng IT.
+        system_prompt = """Bạn là chuyên gia HR và AI Matching với 15 năm kinh nghiệm tuyển dụng.
 
-Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp với TỪNG job trong danh sách dựa trên BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC).
+Nhiệm vụ: Phân tích CV và chấm điểm độ phù hợp dựa trên BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC). Chú ý tách biệt Base Score (100%) và Bonus Score (Điểm cộng).
 
 ═══════════════════════════════════════════════════════════════
 📋 QUY TRÌNH CHẤM ĐIỂM CHUẨN (CHO MỖI JOB)
 ═══════════════════════════════════════════════════════════════
 
-🔵 BƯỚC 1: SỬ DỤNG BẢNG TIÊU CHÍ CHẤM ĐIỂM (SCORING RUBRIC)
+MỖI JOB có bảng tiêu chí đánh giá gồm các yêu cầu (required/important) và điểm cộng (nice_to_have).
 
-MỖI JOB có bảng tiêu chí riêng với:
-- Các tiêu chí chấm điểm (criteria)
-- Trọng số (weight) cho từng tiêu chí
-- Mô tả và hướng dẫn chấm điểm chi tiết
-- Trạng thái/thuộc tính đánh giá (rubric_level) của tiêu chí và metadata liên quan nếu có
-- Điểm đạt yêu cầu tối thiểu (passing_score)
+1. BASE SCORE (Tối đa ~100 điểm):
+   - Chỉ tính trên các tiêu chí thuộc level 'required' hoặc 'important'.
+   - Tính contribution = (điểm tiêu chí * trọng số) / 100
+   - Base Score = Tổng contribution của các tiêu chí này.
 
-QUY TRÌNH CHẤM ĐIỂM:
-1. Đọc KỸ bảng tiêu chí của từng job
-2. Chấm điểm TỪNG TIÊU CHÍ theo hướng dẫn trong rubric
-3. Tính contribution = (điểm tiêu chí * trọng số) / 100
-4. TỔNG ĐIỂM = Tổng contribution của tất cả tiêu chí
+2. BONUS SCORE (Điểm thưởng độc lập):
+   - Chỉ tính trên các tiêu chí thuộc level 'nice_to_have' (Điểm cộng).
+   - Tính contribution = (điểm tiêu chí * trọng số) / 100
+   - Bonus Score = Tổng contribution của các tiêu chí này.
 
-═══════════════════════════════════════════════════════════════
-
-🔵 BƯỚC 2: PHÂN TÍCH CHI TIẾT
-
-CHO MỖI JOB:
-- Tìm bằng chứng trong CV cho từng tiêu chí
-- Chấm điểm dựa trên hướng dẫn "excellent/good/average/poor"
-- Tính toán điểm số chính xác
-- Xác định điểm mạnh, điểm yếu
-- Đưa ra gợi ý và khuyến nghị
+3. TỔNG ĐIỂM MATCHING:
+   - match_score = Base Score + Bonus Score
+   - Nếu match_score > 100, hãy giới hạn (cap) lại thành mức tối đa 100.
 
 ═══════════════════════════════════════════════════════════════
-
-🔵 BƯỚC 3: XÁC ĐỊNH BEST MATCH & GỠI Ý
-
-- best_match = job có match_score CAO NHẤT
-- overall_score = best_match.match_score
-- all_matches sắp xếp theo điểm giảm dần
-
-GỠI Ý CÔNG VIỆC PHÙ HỢP HƠN:
-- Nếu best_match == primary_job (job đã apply): Khuyến khích tiếp tục
-- Nếu best_match != primary_job: Gợi ý chuyển sang vị trí phù hợp hơn với lý do cụ thể
-
-═══════════════════════════════════════════════════════════════
-🎯 OUTPUT FORMAT
+🎯 OUTPUT FORMAT (JSON ONLY)
 ═══════════════════════════════════════════════════════════════
 
-Trả về JSON với format:
+Trả về JSON với format (KHÔNG TRẢ VỀ MARKDOWN):
 
 {
   "overall_score": <điểm của best_match>,
   "best_match": {
     "job_id": "<job_id>",
     "job_title": "<job_title>",
-    "match_score": <0-100>,
+    "base_score": <0-100>,
+    "bonus_score": <0-vô cực>,
+    "match_score": <0-100, min(100, base_score + bonus_score)>,
     "detailed_scores": {
       "<criterion_name>": {
         "score": <điểm số 0-100>,
         "weight": <trọng số>,
         "contribution": <điểm đóng góp>,
-        "reasoning": "<giải thích ngắn gọn>"
+        "reasoning": "<giải thích>"
       },
       ...
     },
-    "strengths": ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"],
-    "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
-    "recommendation": "Đánh giá chi tiết 100-150 từ về độ phù hợp và gợi ý công việc khác nếu phù hợp hơn"
+    "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
+    "weaknesses": ["Điểm yếu 1"],
+    "recommendation": "Đánh giá chi tiết 100-150 từ"
   },
   "all_matches": [
     {
       "job_id": "<job_id>",
       "job_title": "<job_title>",
+      "base_score": <0-100>,
+      "bonus_score": <0-vô cực>,
       "match_score": <0-100>,
       "detailed_scores": {
-        "<criterion_name>": {
-          "score": <điểm số 0-100>,
-          "weight": <trọng số>,
-          "contribution": <điểm đóng góp>,
-          "reasoning": "<giải thích ngắn gọn>"
-        },
-        ...
+        "<criterion_name>": { ... }
       },
-      "strengths": ["Điểm mạnh 1", "Điểm mạnh 2", "Điểm mạnh 3"],
-      "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
-      "recommendation": "Đánh giá chi tiết 100-150 từ về độ phù hợp và gợi ý công việc khác nếu phù hợp hơn"
-    },
-    ...
+      "strengths": [...],
+      "weaknesses": [...],
+      "recommendation": "..."
+    }
   ]
 }
 
 ⚠️ CRITICAL RULES:
-1. match_score = tổng contribution của tất cả tiêu chí trong rubric
-2. detailed_scores PHẢI có cho MỖI tiêu chí trong rubric của job
-3. strengths/weaknesses dựa trên phân tích rubric
-4. recommendation PHẢI bao gồm gợi ý công việc phù hợp hơn nếu best_match != primary_job
-5. all_matches sắp xếp theo match_score giảm dần
-6. best_match = job có match_score cao nhất
-7. overall_score = best_match.match_score
-
-QUAN TRỌNG: 
-- Job có ⭐ PRIMARY → Đánh giá CHI TIẾT và KỸ LƯỠNG hơn
-- Luôn trả về JSON hợp lệ, không thêm text giải thích bên ngoài"""
+1. contribution = (score * weight) / 100 cho TẤT CẢ tiêu chí.
+2. Base Score CHỈ cộng từ 'required'/'important'. Bonus Score CHỈ cộng từ 'nice_to_have'.
+3. match_score là tổng Base + Bonus (giới hạn max = 100).
+4. Sắp xếp all_matches theo match_score giảm dần.
+5. Luôn trả về JSON hợp lệ."""
 
         # ==================== USER PROMPT ====================
-        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH RUBRIC-BASED:
+        user_prompt = f"""Phân tích CV và matching với các công việc theo QUY TRÌNH CHẤM ĐIỂM (BASE + BONUS TÁCH BIỆT):
 
 {cv_context}
 
@@ -1221,42 +1210,30 @@ CÁC CÔNG VIỆC CẦN MATCHING:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Hãy phân tích và chấm điểm cho TẤT CẢ {len(request.jobs)} jobs trên theo đúng quy trình RUBRIC-BASED:
+Hãy chấm điểm cho {len(request.jobs)} jobs theo đúng quy trình phân tách Base và Bonus:
 
-1. Với MỖI JOB: Đọc KỸ bảng tiêu chí chấm điểm (SCORING RUBRIC)
-2. Chấm điểm TỪNG TIÊU CHÍ theo hướng dẫn trong rubric
-3. Tính contribution = (score * weight) / 100 cho mỗi tiêu chí
-4. TỔNG match_score = tổng contribution của tất cả tiêu chí
-5. Xác định strengths, weaknesses dựa trên phân tích rubric
-6. Viết recommendation chi tiết với gợi ý công việc phù hợp hơn nếu cần
+1. Chấm điểm Từng Tiêu Chí: 
+   - Tính contribution = (score * weight) / 100
 
-CHI TIẾT VỀ CHẤM ĐIỂM THEO RUBRIC:
+2. Tách biệt Score:
+   - Base Score = Tổng contribution của các tiêu chí cốt lõi (thuộc level 'required', 'important').
+   - Bonus Score = Tổng contribution của các tiêu chí thưởng (thuộc level 'nice_to_have' như "Điểm cộng").
 
-Ví dụ với job CÓ RUBRIC tùy chỉnh:
-- Tiêu chí "Kỹ năng kỹ thuật" (35%): Đánh giá dựa trên hướng dẫn excellent/good/average/poor
-  → Score 85/100 → contribution = 85 * 35 / 100 = 29.75
-- Tiêu chí "Kinh nghiệm" (25%): Đánh giá dựa trên kinh nghiệm thực tế
-  → Score 70/100 → contribution = 70 * 25 / 100 = 17.5
-- Tiêu chí "Học vấn" (20%): Đánh giá bằng cấp và chuyên ngành
-  → Score 90/100 → contribution = 90 * 20 / 100 = 18
-- TỔNG: 29.75 + 17.5 + 18 = 65.25/100
+3. Tính Match Score: 
+   - Match Score = min(100, Base Score + Bonus Score)
 
-LƯU Ý QUAN TRỌNG:
-- ĐỌC KỸ mô tả và hướng dẫn chấm điểm của từng tiêu chí trong rubric
-- Tìm bằng chứng CỤ THỂ trong CV cho từng tiêu chí
-- Tính toán contribution chính xác
-- Job PRIMARY (⭐) → Đánh giá chi tiết và kỹ lưỡng hơn
+Ví dụ thực tế:
+- Tiêu chí A (required, weight 40): Chấm 80/100 -> contribution = 32
+- Tiêu chí B (required, weight 30): Chấm 90/100 -> contribution = 27
+- Tiêu chí C (important, weight 30): Chấm 70/100 -> contribution = 21
+  => Base Score = 32 + 27 + 21 = 80
+- Tiêu chí D "Điểm cộng" (nice_to_have, weight 10): Chấm 50/100 -> contribution = 5
+  => Bonus Score = 5
+  => Match Score = min(100, 80 + 5) = 85
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ĐẶC BIỆT CHÚ Ý VỀ RECOMMENDATION:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Recommendation PHẢI dài 100-150 từ
-2. Bao gồm phân tích chi tiết về độ phù hợp
-3. Nếu best_match != primary_job: Gợi ý chuyển sang vị trí phù hợp hơn với lý do cụ thể
-4. Nếu best_match == primary_job: Khuyến khích tiếp tục với vị trí đã apply
-
-Trả về ONLY valid JSON theo format đã cho."""
+LƯU Ý:
+- Khuyến nghị (Recommendation) dài 100-150 từ, nên giải thích vì sao ứng viên được/không được nhận điểm bonus.
+- Trả về ONLY valid JSON. Không xuất markdown code block."""
 
         # ==================== BUILD MESSAGES ====================
         messages = [

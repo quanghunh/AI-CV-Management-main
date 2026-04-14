@@ -635,20 +635,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log("📦 Merged data for upsert:", mergedData);
 
+      const matchColumn = isCustomAuthUser ? 'id' : 'auth_user_id';
+
+      // Perform a direct UPDATE instead of UPSERT to avoid constraint mismatch errors
       const { data: result, error } = await supabase
         .from("cv_profiles")
-        .upsert(
-          mergedData,
-          {
-            onConflict: isCustomAuthUser ? 'id' : 'auth_user_id',
-            ignoreDuplicates: false
-          }
-        )
+        .update({
+          email: user.email || '',
+          full_name: data.full_name !== undefined ? data.full_name : (profile?.full_name || ''),
+          phone: data.phone !== undefined ? data.phone : (profile?.phone || ''),
+          avatar_url: data.avatar_url !== undefined ? data.avatar_url : (profile?.avatar_url || '')
+        })
+        .eq(matchColumn, user.id)
         .select()
         .single();
 
       if (error) {
-        console.error("❌ Upsert error:", error);
+        console.error("❌ Update error:", error);
         throw error;
       }
 

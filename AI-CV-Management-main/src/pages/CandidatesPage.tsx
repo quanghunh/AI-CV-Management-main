@@ -320,7 +320,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     }
     // 2. email anywhere in filename
     const emailBase = row.email.replace(/[@.]/g, '').toLowerCase()
-    for (const [key, file] of map) {
+    for (const [key, file] of Array.from(map.entries())) {
       if (key.toLowerCase().includes(row.email.toLowerCase()) ||
           key.toLowerCase().replace(/[^a-z0-9]/g,'').includes(emailBase)) {
         return file
@@ -329,7 +329,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     // 3. name (last word = surname in Vietnamese) anywhere in filename
     const lastName = row.full_name.trim().split(/\s+/).pop()?.toLowerCase() || ''
     const firstName = row.full_name.trim().split(/\s+/)[0]?.toLowerCase() || ''
-    for (const [key, file] of map) {
+    for (const [key, file] of Array.from(map.entries())) {
       const kl = key.toLowerCase()
       if (lastName.length > 1 && kl.includes(lastName) && kl.includes(firstName)) {
         return file
@@ -490,7 +490,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
 
         {/* Header */}
-        <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
+        <div className="px-6 py-4 border-b bg-linear-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
               <Upload className="h-5 w-5 text-blue-600" />
@@ -890,7 +890,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                                       type="file"
                                       accept=".pdf,.docx,.doc,.txt"
                                       className="hidden"
-                                      onChange={e => {
+                                      onChange={(e: any) => {
                                         const f = e.target.files?.[0]
                                         if (f) setCsvRows(prev => prev.map(r =>
                                           r._rowIndex === row._rowIndex ? { ...r, _cvFile: f } : r
@@ -1136,7 +1136,7 @@ export function CandidatesPage() {
     supabase.from('cv_jobs')
       .select('id, title, level, department, description, requirements, benefits, job_type, work_location, location')
       .order('title')
-      .then(({ data }) => { if (data) setJobs(data) })
+      .then(({ data }: any) => { if (data) setJobs(data) })
   }, [])
 
   useEffect(() => {
@@ -1418,15 +1418,15 @@ export function CandidatesPage() {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Họ và tên <span className="text-red-500">*</span></label>
-                    <Input placeholder="Nhập họ tên đầy đủ" value={formData.full_name} onChange={e => handleInputChange('full_name', e.target.value)} /></div>
+                    <Input placeholder="Nhập họ tên đầy đủ" value={formData.full_name} onChange={(e: any) => handleInputChange('full_name', e.target.value)} /></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Email <span className="text-red-500">*</span></label>
-                    <Input type="email" placeholder="example@email.com" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} /></div>
+                    <Input type="email" placeholder="example@email.com" value={formData.email} onChange={(e: any) => handleInputChange('email', e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Số điện thoại</label>
-                    <Input placeholder="0123456789" value={formData.phone_number} onChange={e => handleInputChange('phone_number', e.target.value)} /></div>
+                    <Input placeholder="0123456789" value={formData.phone_number} onChange={(e: any) => handleInputChange('phone_number', e.target.value)} /></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Vị trí ứng tuyển <span className="text-red-500">*</span></label>
-                    <Select value={formData.job_id} onValueChange={v => handleInputChange('job_id', v)}>
+                    <Select value={formData.job_id} onValueChange={(v: any) => handleInputChange('job_id', v)}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Chọn vị trí" /></SelectTrigger>
                       <SelectContent className="bg-white z-[60] shadow-lg border border-gray-200 max-h-[300px]">
                         {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.title} - {j.level}</SelectItem>)}
@@ -1434,14 +1434,14 @@ export function CandidatesPage() {
                     </Select></div>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Địa chỉ</label>
-                  <Input placeholder="Nhập địa chỉ" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} /></div>
+                  <Input placeholder="Nhập địa chỉ" value={formData.address} onChange={(e: any) => handleInputChange('address', e.target.value)} /></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Trường học</label>
-                  <Input placeholder="VD: Đại học Bách Khoa TP.HCM" value={formData.university} onChange={e => handleInputChange('university', e.target.value)} /></div>
+                  <Input placeholder="VD: Đại học Bách Khoa TP.HCM" value={formData.university} onChange={(e: any) => handleInputChange('university', e.target.value)} /></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Kinh nghiệm</label>
-                    <Textarea className="min-h-20 resize-none" value={formData.experience} onChange={e => handleInputChange('experience', e.target.value)} /></div>
+                    <Textarea className="min-h-20 resize-none" value={formData.experience} onChange={(e: any) => handleInputChange('experience', e.target.value)} /></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Học vấn</label>
-                    <Textarea className="min-h-20 resize-none" value={formData.education} onChange={e => handleInputChange('education', e.target.value)} /></div>
+                    <Textarea className="min-h-20 resize-none" value={formData.education} onChange={(e: any) => handleInputChange('education', e.target.value)} /></div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1450,13 +1450,13 @@ export function CandidatesPage() {
                       <Tag className="w-3 h-3" />Quản lý nguồn
                     </button>
                   </div>
-                  <Select value={formData.source} onValueChange={v => handleInputChange('source', v)}>
+                  <Select value={formData.source} onValueChange={(v: any) => handleInputChange('source', v)}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Chọn nguồn" /></SelectTrigger>
                     <SelectContent className="bg-white z-50 shadow-lg border border-gray-200">{renderSourceItems()}</SelectContent>
                   </Select>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Kỹ năng</label>
-                  <SkillsInput value={formData.skills} onChange={v => handleInputChange('skills', v)} placeholder="Nhập kỹ năng và nhấn Enter" /></div>
+                  <SkillsInput value={formData.skills} onChange={(v: any) => handleInputChange('skills', v)} placeholder="Nhập kỹ năng và nhấn Enter" /></div>
               </>
             )}
 
@@ -1559,34 +1559,34 @@ export function CandidatesPage() {
           <div className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-sm font-medium mb-1.5">Họ và tên *</label>
-                <Input value={formData.full_name} onChange={e => handleInputChange('full_name', e.target.value)} /></div>
+                <Input value={formData.full_name} onChange={(e: any) => handleInputChange('full_name', e.target.value)} /></div>
               <div><label className="block text-sm font-medium mb-1.5">Email *</label>
-                <Input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} /></div>
+                <Input type="email" value={formData.email} onChange={(e: any) => handleInputChange('email', e.target.value)} /></div>
               <div><label className="block text-sm font-medium mb-1.5">Số điện thoại</label>
-                <Input value={formData.phone_number} onChange={e => handleInputChange('phone_number', e.target.value)} /></div>
+                <Input value={formData.phone_number} onChange={(e: any) => handleInputChange('phone_number', e.target.value)} /></div>
               <div><label className="block text-sm font-medium mb-1.5">Địa chỉ</label>
-                <Input value={formData.address} onChange={e => handleInputChange('address', e.target.value)} /></div>
+                <Input value={formData.address} onChange={(e: any) => handleInputChange('address', e.target.value)} /></div>
             </div>
             <div><label className="block text-sm font-medium mb-1.5">Trường học</label>
-              <Input value={formData.university} onChange={e => handleInputChange('university', e.target.value)} /></div>
+              <Input value={formData.university} onChange={(e: any) => handleInputChange('university', e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-sm font-medium mb-1.5">Kinh nghiệm</label>
-                <Textarea className="min-h-20 resize-none" value={formData.experience} onChange={e => handleInputChange('experience', e.target.value)} /></div>
+                <Textarea className="min-h-20 resize-none" value={formData.experience} onChange={(e: any) => handleInputChange('experience', e.target.value)} /></div>
               <div><label className="block text-sm font-medium mb-1.5">Học vấn</label>
-                <Textarea className="min-h-20 resize-none" value={formData.education} onChange={e => handleInputChange('education', e.target.value)} /></div>
+                <Textarea className="min-h-20 resize-none" value={formData.education} onChange={(e: any) => handleInputChange('education', e.target.value)} /></div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium">Nguồn</label>
                 <button type="button" className="text-xs text-blue-600 hover:underline" onClick={() => setIsCategoryDialogOpen(true)}>Quản lý</button>
               </div>
-              <Select value={formData.source} onValueChange={v => handleInputChange('source', v)}>
+              <Select value={formData.source} onValueChange={(v: any) => handleInputChange('source', v)}>
                 <SelectTrigger><SelectValue placeholder="Chọn nguồn" /></SelectTrigger>
                 <SelectContent className="bg-white z-50 border border-gray-200">{renderSourceItems()}</SelectContent>
               </Select>
             </div>
             <div><label className="block text-sm font-medium mb-1.5">Kỹ năng</label>
-              <SkillsInput value={formData.skills} onChange={v => handleInputChange('skills', v)} placeholder="Nhập kỹ năng và nhấn Enter" /></div>
+              <SkillsInput value={formData.skills} onChange={(v: any) => handleInputChange('skills', v)} placeholder="Nhập kỹ năng và nhấn Enter" /></div>
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => { setEditCandidate(null); resetForm() }}>Hủy</Button>
               <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleUpdateCandidate} disabled={isSaving}>
@@ -1752,7 +1752,7 @@ export function CandidatesPage() {
         <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
           <div className="relative min-w-[180px] sm:min-w-[200px] flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input className="pl-9" placeholder="Tìm theo tên, email, vị trí..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <Input className="pl-9" placeholder="Tìm theo tên, email, vị trí..." value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} />
           </div>
           <Button variant="outline" size="sm" onClick={() => setIsFilterOpen(true)}>
             <Filter className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Bộ lọc nâng cao</span>
