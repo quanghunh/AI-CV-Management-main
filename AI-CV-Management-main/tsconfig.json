@@ -6,7 +6,6 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@/supabase": ["./src/lib/supabaseClient.ts"]

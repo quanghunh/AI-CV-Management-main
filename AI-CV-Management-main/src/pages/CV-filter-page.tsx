@@ -46,7 +46,7 @@ async function analyzeWithGPT4o(
   cvData: any,
   jobs: any[],
   primaryJobId?: string,
-  rubricMap?: Map<string, any>   // job_id → rubric data from cv_job_scoring_rubrics
+  rubricMap?: Map<string, any>
 ): Promise<CVAnalysisResult> {
   const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'
   const response = await fetch(`${API_URL}/api/match-cv-jobs`, {
@@ -97,7 +97,6 @@ const getScoreBarColor = (score: number) => {
   return "bg-red-400"
 }
 
-// ── Đồng bộ getStatusLabel với CandidatesPage (dùng source badge) ──
 const getStatusLabel = (status: string) => {
   const map: Record<string, { label: string; className: string }> = {
     'Mới':       { label: 'Mới',       className: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -109,7 +108,6 @@ const getStatusLabel = (status: string) => {
   return map[status] || { label: status, className: 'bg-gray-100 text-gray-700' }
 }
 
-// Medal component for top 3
 function RankMedal({ rank }: { rank: number }) {
   if (rank === 1) return (
     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 border-2 border-yellow-400 flex-shrink-0">
@@ -133,7 +131,6 @@ function RankMedal({ rank }: { rank: number }) {
   )
 }
 
-// ── Badge bảng tiêu chí (đồng bộ với JobsPage rubric) ──
 function RubricBadge({ hasRubric, passingScore }: { hasRubric: boolean; passingScore?: number }) {
   if (!hasRubric) return null
   return (
@@ -144,13 +141,14 @@ function RubricBadge({ hasRubric, passingScore }: { hasRubric: boolean; passingS
 }
 
 // ==================== RANKING TABLE COMPONENT ====================
+// NOTE: candidates prop ở đây chỉ nhận ứng viên ĐÃ được phân tích (analysis_result != null)
 type SortKey = 'rank' | 'name' | 'score' | 'job' | 'status'
 type SortDir = 'asc' | 'desc'
 
 interface RankingTableProps {
   candidates: any[]
   jobs: any[]
-  rubricMap: Map<string, any>   // job_id → rubric data (đồng bộ JobsPage)
+  rubricMap: Map<string, any>
   onViewDetail: (c: any) => void
   onCreateInterview: (c: any) => void
   onReanalyze: (c: any) => void
@@ -166,24 +164,22 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
   const [statusFilter, setStatusFilter] = React.useState('all')
   const [scoreMin, setScoreMin] = React.useState(0)
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
-  const [sourceFilter, setSourceFilter] = React.useState('all')   // đồng bộ CandidatesPage
+  const [sourceFilter, setSourceFilter] = React.useState('all')
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir(key === 'score' ? 'desc' : 'asc') }
   }
 
-  const analyzed = React.useMemo(() =>
-    candidates.filter(c => c.analysis_result).sort((a, b) => b.overall_score - a.overall_score),
-    [candidates]
-  )
+  // candidates đã được lọc chỉ còn analyzed từ bên ngoài,
+  // rankMap tính thẳng từ candidates đã sort theo score
   const rankMap = React.useMemo(() => {
+    const sorted = [...candidates].sort((a, b) => b.overall_score - a.overall_score)
     const m = new Map<string, number>()
-    analyzed.forEach((c, i) => m.set(c.id, i + 1))
+    sorted.forEach((c, i) => m.set(c.id, i + 1))
     return m
-  }, [analyzed])
+  }, [candidates])
 
-  // Lấy unique sources từ candidates (đồng bộ với CandidatesPage)
   const uniqueSources = React.useMemo(() =>
     Array.from(new Set(candidates.map(c => c.source).filter(Boolean))),
     [candidates]
@@ -261,7 +257,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
             {uniqueStatuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        {/* Lọc theo nguồn — đồng bộ CandidatesPage */}
         {uniqueSources.length > 0 && (
           <div className="flex-1 min-w-[130px]">
             <label className="block text-xs font-medium text-gray-600 mb-1">Nguồn</label>
@@ -286,16 +281,14 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
       {/* Summary badges */}
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-blue-700 font-medium">
-          {filtered.length} ứng viên
+          {filtered.length} ứng viên đã đánh giá
         </span>
         <span className="px-3 py-1.5 bg-green-50 border border-green-200 rounded-full text-green-700 font-medium">
           {filtered.filter(c => c.overall_score >= 85).length} xuất sắc (≥85)
         </span>
-        <span className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-yellow-700 font-medium">
-          {filtered.filter(c => c.analysis_result).length} đã phân tích
+        <span className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-full text-purple-700 font-medium">
+          {candidates.length} tổng đã phân tích
         </span>
-        {/* Đồng bộ CandidatesPage: đáp ứng yêu cầu bắt buộc */}
-
       </div>
 
       {/* Table */}
@@ -330,7 +323,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                   </button>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Khớp tốt nhất</th>
-                {/* Cột nguồn — đồng bộ CandidatesPage */}
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Nguồn</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Hành động</th>
               </tr>
@@ -360,7 +352,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 truncate max-w-[150px]">{c.full_name}</p>
                             <p className="text-xs text-gray-400 truncate max-w-[150px]">{c.email}</p>
-
                           </div>
                         </div>
                       </td>
@@ -368,33 +359,27 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                       <td className="px-4 py-3">
                         <p className="text-gray-800 text-sm truncate max-w-[140px]">{c.cv_jobs?.title || '—'}</p>
                         {c.cv_jobs?.level && <p className="text-xs text-gray-400">{c.cv_jobs.level}</p>}
-                        {/* Đồng bộ JobsPage: hiển thị rubric nếu vị trí có bảng tiêu chí */}
                         {jobRubric && (
                           <RubricBadge hasRubric={true} passingScore={jobRubric.passing_score} />
                         )}
                       </td>
                       {/* Score bar */}
                       <td className="px-4 py-3">
-                        {c.analysis_result ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className={`text-base font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
-                              <span className="text-[10px] text-gray-400">/100</span>
-                            </div>
-                            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all ${getScoreBarColor(c.overall_score)}`}
-                                style={{ width: `${c.overall_score}%` }} />
-                            </div>
-                            {/* Đồng bộ JobsPage: cảnh báo nếu điểm dưới passing_score */}
-                            {jobRubric && c.overall_score < jobRubric.passing_score && (
-                              <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                                <AlertTriangle className="h-3 w-3" />Dưới mức đạt ({jobRubric.passing_score})
-                              </p>
-                            )}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-base font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
+                            <span className="text-[10px] text-gray-400">/100</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-gray-400 italic">Chưa phân tích</span>
-                        )}
+                          <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${getScoreBarColor(c.overall_score)}`}
+                              style={{ width: `${c.overall_score}%` }} />
+                          </div>
+                          {jobRubric && c.overall_score < jobRubric.passing_score && (
+                            <p className="text-[10px] text-red-500 flex items-center gap-0.5">
+                              <AlertTriangle className="h-3 w-3" />Dưới mức đạt ({jobRubric.passing_score})
+                            </p>
+                          )}
+                        </div>
                       </td>
                       {/* Status */}
                       <td className="px-4 py-3">
@@ -417,7 +402,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                           </div>
                         ) : <span className="text-xs text-gray-300">—</span>}
                       </td>
-                      {/* Nguồn — đồng bộ CandidatesPage */}
+                      {/* Nguồn */}
                       <td className="px-4 py-3">
                         {c.source
                           ? <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{c.source}</span>
@@ -427,31 +412,22 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                       {/* Actions */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 justify-end">
-                          {c.analysis_result ? (
-                            <>
-                              <button onClick={() => onViewDetail(c)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Xem chi tiết">
-                                <Eye className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Điểm mạnh/yếu">
-                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
-                              </button>
-                              <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors" title="Phân tích lại">
-                                <RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} />
-                              </button>
-                              <button onClick={() => onCreateInterview(c)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Tạo lịch phỏng vấn">
-                                <Calendar className="h-4 w-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <button onClick={() => onAnalyzeOne(c)} disabled={analyzing}
-                              className="px-2.5 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center gap-1">
-                              <Brain className="h-3.5 w-3.5" />Phân tích
-                            </button>
-                          )}
+                          <button onClick={() => onViewDetail(c)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Xem chi tiết">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Điểm mạnh/yếu">
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
+                          </button>
+                          <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors" title="Phân tích lại">
+                            <RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} />
+                          </button>
+                          <button onClick={() => onCreateInterview(c)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Tạo lịch phỏng vấn">
+                            <Calendar className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -493,7 +469,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                               </p>
                             </div>
                           )}
-
                         </td>
                       </tr>
                     )}
@@ -501,7 +476,11 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                 )
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm">Không có ứng viên nào phù hợp với bộ lọc</td></tr>
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm">
+                    Không có ứng viên nào phù hợp với bộ lọc
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -515,7 +494,7 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
 interface ByJobViewProps {
   candidates: any[]
   jobs: any[]
-  rubricMap: Map<string, any>   // đồng bộ JobsPage
+  rubricMap: Map<string, any>
   onViewDetail: (c: any) => void
   onCreateInterview: (c: any) => void
   onReanalyze: (c: any) => void
@@ -561,7 +540,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
     if (showOnlyAnalyzed) res = res.filter(c => c.analysis_result)
     if (scoreThreshold > 0) res = res.filter(c => c.overall_score >= scoreThreshold)
     if (statusFilter !== 'all') res = res.filter(c => c.status === statusFilter)
-    // Đồng bộ CandidatesPage: lọc theo yêu cầu bắt buộc
     return res
   }
 
@@ -617,7 +595,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
             onChange={e => setShowOnlyAnalyzed(e.target.checked)} className="accent-blue-600" />
           <label htmlFor="only-analyzed" className="text-xs text-gray-600 cursor-pointer whitespace-nowrap">Chỉ đã phân tích</label>
         </div>
-
         <Button variant="outline" size="sm" onClick={exportByJob} className="flex-shrink-0 gap-1.5">
           <Download className="h-4 w-4" />Xuất CSV
         </Button>
@@ -633,7 +610,7 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
             ? Math.round(cands.filter(c => c.analysis_result).reduce((s, c) => s + c.overall_score, 0) / analyzed)
             : 0
           const perfectMatches = cands.filter(c => c.analysis_result?.best_match?.job_id === c.job_id).length
-          const jobRubric = rubricMap.get(job.id)  // đồng bộ JobsPage
+          const jobRubric = rubricMap.get(job.id)
 
           return (
             <div key={job.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -656,7 +633,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                     <Badge variant="outline" className={`text-[10px] ${isOpen ? 'border-white/40 text-white/80' : 'border-gray-200 text-gray-500'}`}>
                       {job.department}
                     </Badge>
-                    {/* Đồng bộ JobsPage: badge bảng tiêu chí */}
                     {jobRubric && (
                       <Badge variant="outline" className={`text-[10px] flex items-center gap-1 ${isOpen ? 'border-white/40 text-white/80' : 'border-indigo-200 text-indigo-600'}`}>
                         <BarChart2 className="h-2.5 w-2.5" />Có bảng tiêu chí (≥{jobRubric.passing_score})
@@ -699,16 +675,13 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                     return (
                       <div key={c.id} className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors
                         ${rank <= 3 ? 'bg-gradient-to-r from-amber-50/30 to-transparent' : ''}`}>
-                        {/* Rank within job */}
                         <div className="flex-shrink-0">
                           <RankMedal rank={rank} />
                         </div>
-                        {/* Avatar */}
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0
                           ${c.overall_score >= 85 ? 'bg-green-500' : c.overall_score >= 70 ? 'bg-blue-500' : c.overall_score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'}`}>
                           {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-                        {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm text-gray-900 truncate">{c.full_name}</span>
@@ -723,14 +696,12 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                                 → {c.analysis_result.best_match.job_title}
                               </Badge>
                             )}
-
                           </div>
                           <p className="text-xs text-gray-400 truncate">
                             {c.email}
                             {c.source && <span className="ml-2 text-gray-300">· {c.source}</span>}
                           </p>
                         </div>
-                        {/* Score */}
                         <div className="flex-shrink-0 text-right mr-2">
                           {c.analysis_result ? (
                             <div>
@@ -738,7 +709,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                               <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
                                 <div className={`h-full rounded-full ${getScoreBarColor(c.overall_score)}`} style={{ width: `${c.overall_score}%` }} />
                               </div>
-                              {/* Cảnh báo điểm dưới passing_score của rubric */}
                               {jobRubric && c.overall_score < jobRubric.passing_score && (
                                 <p className="text-[10px] text-red-400 mt-0.5">↓ Dưới mức đạt</p>
                               )}
@@ -747,7 +717,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
                             <span className="text-xs text-gray-300 italic">—</span>
                           )}
                         </div>
-                        {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {c.analysis_result ? (
                             <>
@@ -810,7 +779,6 @@ function UnanalyzedCandidatesView({
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc')
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
 
-  // Lọc ứng viên chưa được phân tích (tất cả ứng viên không có analysis_result)
   const unanalyzed = React.useMemo(
     () => candidates.filter(c => !c.analysis_result),
     [candidates]
@@ -824,18 +792,9 @@ function UnanalyzedCandidatesView({
     list.sort((a, b) => {
       let av: any, bv: any
       switch (sortKey) {
-        case 'name':
-          av = a.full_name
-          bv = b.full_name
-          break
-        case 'job':
-          av = a.cv_jobs?.title || ''
-          bv = b.cv_jobs?.title || ''
-          break
-        case 'date':
-          av = new Date(a.created_at).getTime()
-          bv = new Date(b.created_at).getTime()
-          break
+        case 'name': av = a.full_name; bv = b.full_name; break
+        case 'job':  av = a.cv_jobs?.title || ''; bv = b.cv_jobs?.title || ''; break
+        case 'date': av = new Date(a.created_at).getTime(); bv = new Date(b.created_at).getTime(); break
       }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return sortDir === 'asc' ? cmp : -cmp
@@ -845,10 +804,7 @@ function UnanalyzedCandidatesView({
 
   const handleSort = (key: 'name' | 'job' | 'date') => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortKey(key)
-      setSortDir('asc')
-    }
+    else { setSortKey(key); setSortDir('asc') }
   }
 
   const SortIcon = ({ col }: { col: 'name' | 'job' | 'date' }) => {
@@ -868,30 +824,20 @@ function UnanalyzedCandidatesView({
           <label className="block text-xs font-medium text-gray-600 mb-1">Vị trí</label>
           <select
             className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-blue-500"
-            value={jobFilter}
-            onChange={e => setJobFilter(e.target.value)}
+            value={jobFilter} onChange={e => setJobFilter(e.target.value)}
           >
             <option value="all">Tất cả vị trí</option>
-            {jobs.map(j => (
-              <option key={j.id} value={j.id}>
-                {j.title}
-              </option>
-            ))}
+            {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[130px]">
           <label className="block text-xs font-medium text-gray-600 mb-1">Trạng thái</label>
           <select
             className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-blue-500"
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
+            value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           >
             <option value="all">Tất cả trạng thái</option>
-            {uniqueStatuses.map(st => (
-              <option key={st} value={st}>
-                {st}
-              </option>
-            ))}
+            {uniqueStatuses.map(st => <option key={st} value={st}>{st}</option>)}
           </select>
         </div>
         <Button onClick={onAnalyzeAll} disabled={analyzing || filtered.length === 0} size="sm" className="flex-shrink-0 gap-1.5">
@@ -942,12 +888,7 @@ function UnanalyzedCandidatesView({
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
                             <span className="text-xs font-bold text-white">
-                              {c.full_name
-                                .split(' ')
-                                .map((n: string) => n[0])
-                                .join('')
-                                .slice(0, 2)
-                                .toUpperCase()}
+                              {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                             </span>
                           </div>
                           <span className="font-medium text-gray-900">{c.full_name}</span>
@@ -968,22 +909,10 @@ function UnanalyzedCandidatesView({
                       </td>
                       <td className="px-5 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onAnalyzeOne(c)}
-                            disabled={analyzing}
-                            className="gap-1"
-                          >
-                            <Brain className="h-3.5 w-3.5" />
-                            Phân tích
+                          <Button size="sm" variant="outline" onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="gap-1">
+                            <Brain className="h-3.5 w-3.5" />Phân tích
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                            className="gap-1"
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : c.id)} className="gap-1">
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -1015,16 +944,10 @@ function UnanalyzedCandidatesView({
                             </div>
                             <div className="flex items-end gap-2">
                               <Button size="sm" onClick={() => onViewDetail(c)} variant="outline" className="gap-1">
-                                <Eye className="h-3.5 w-3.5" />
-                                Xem đầy đủ
+                                <Eye className="h-3.5 w-3.5" />Xem đầy đủ
                               </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => onCreateInterview(c)}
-                                className="gap-1 bg-blue-600 hover:bg-blue-700"
-                              >
-                                <Calendar className="h-3.5 w-3.5" />
-                                Phỏng vấn
+                              <Button size="sm" onClick={() => onCreateInterview(c)} className="gap-1 bg-blue-600 hover:bg-blue-700">
+                                <Calendar className="h-3.5 w-3.5" />Phỏng vấn
                               </Button>
                             </div>
                           </div>
@@ -1058,7 +981,7 @@ export default function PotentialCandidatesPage() {
   const [loading,       setLoading]       = React.useState(true)
   const [analyzing,     setAnalyzing]     = React.useState(false)
   const [reanalyzingId, setReanalyzingId] = React.useState<string | null>(null)
-  const [analyzingId,   setAnalyzingId]   = React.useState<string | null>(null)  // per-candidate analyze
+  const [analyzingId,   setAnalyzingId]   = React.useState<string | null>(null)
   const [candidates,    setCandidates]    = React.useState<any[]>([])
   const [jobs,          setJobs]          = React.useState<any[]>([])
   const [selectedJob,   setSelectedJob]   = React.useState<string>("all")
@@ -1066,8 +989,6 @@ export default function PotentialCandidatesPage() {
   const [showDetail,    setShowDetail]    = React.useState(false)
   const [selectedCandidate, setSelectedCandidate] = React.useState<any>(null)
   const [mainTab, setMainTab] = React.useState<'cards' | 'ranking' | 'byjob' | 'unanalyzed'>('cards')
-
-  // ── Đồng bộ JobsPage: rubric map (job_id → rubric) ──
   const [rubricMap, setRubricMap] = React.useState<Map<string, any>>(new Map())
 
   React.useEffect(() => { fetchData() }, [])
@@ -1076,12 +997,10 @@ export default function PotentialCandidatesPage() {
     try {
       setLoading(true)
 
-      // Fetch jobs
       const { data: jobsData, error: jobsError } = await supabase.from("cv_jobs").select("*").order("title")
       if (jobsError) throw jobsError
       setJobs(jobsData || [])
 
-      // ── Đồng bộ JobsPage: fetch rubrics ──
       const { data: rubricData } = await supabase
         .from('cv_job_scoring_rubrics')
         .select('job_id, criteria, passing_score, notes, total_weight')
@@ -1091,7 +1010,6 @@ export default function PotentialCandidatesPage() {
         setRubricMap(map)
       }
 
-      // ── Đồng bộ CandidatesPage: lấy tất cả ứng viên (kể cả chưa phân tích) ──
       const { data: candidatesData, error: candidatesError } = await supabase
         .from("cv_candidates")
         .select(`
@@ -1104,7 +1022,6 @@ export default function PotentialCandidatesPage() {
 
       const parsedCandidates = (candidatesData || []).map((c: any) => {
         const analysisResult = c.cv_parsed_data?.analysis_result || null
-        // overall_score = điểm match với job đã apply (giữ nguyên logic cũ)
         let appliedJobScore = 0
         if (analysisResult?.all_matches && c.job_id) {
           const match = analysisResult.all_matches.find((m: any) => m.job_id === c.job_id)
@@ -1126,104 +1043,72 @@ export default function PotentialCandidatesPage() {
   const handleAnalyzeAll = async () => {
     try {
       setAnalyzing(true)
-      
-      // ── NEW: Chỉ phân tích cho job được chọn ──
+
       if (selectedJob === 'all') {
         toast({ title: "Thông báo", description: "Vui lòng chọn một vị trí công việc cụ thể để phân tích hàng loạt", duration: 3000 })
         return
       }
-      
+
       const selectedJobData = jobs.find(j => j.id === selectedJob)
       if (!selectedJobData) {
         toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc", duration: 3000 })
         return
       }
-      
-      // ── Kiểm tra bảng tiêu chí đánh giá ──
+
       if (!rubricMap.has(selectedJob)) {
         toast({ title: "Không thể chấm điểm", description: `Vị trí "${selectedJobData.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
         return
       }
-      
-      // Chỉ lấy CV của job được chọn và chưa được phân tích
-      const toAnalyze = candidates.filter(c => 
-        c.job_id === selectedJob && 
-        !c.analysis_result
-      )
-      
-      if (!toAnalyze.length) { 
+
+      const toAnalyze = candidates.filter(c => c.job_id === selectedJob && !c.analysis_result)
+
+      if (!toAnalyze.length) {
         toast({ title: "Thông báo", description: `Tất cả CV của vị trí "${selectedJobData.title}" đã được phân tích`, duration: 3000 })
-        return 
+        return
       }
-      
+
       let success = 0
       for (const candidate of toAnalyze) {
         try {
-          // ── NEW: Chỉ analyze với job được chọn ──
           const result = await analyzeWithGPT4o(
             candidate.cv_parsed_data?.fullText || '',
-            { 
-              full_name: candidate.full_name, 
-              email: candidate.email, 
-              phone_number: candidate.phone_number, 
-              address: candidate.address, 
-              university: candidate.university, 
-              education: candidate.education, 
-              experience: candidate.experience 
-            },
-            [selectedJobData], // Chỉ pass job được chọn
+            { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
+            [selectedJobData],
             candidate.job_id
           )
-          
-          // ── Đồng bộ CandidatesPage: status flow Mới → Sàng lọc ──
           const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
           await supabase.from("cv_candidates").update({
             cv_parsed_data: { ...candidate.cv_parsed_data, analysis_result: result },
             status: newStatus,
           }).eq("id", candidate.id)
           success++
-        } catch (e) { 
-          console.error(`Error analyzing candidate ${candidate.id}:`, e) 
-        }
+        } catch (e) { console.error(`Error analyzing candidate ${candidate.id}:`, e) }
       }
-      
-      toast({ 
-        title: "Hoàn thành", 
-        description: `Phân tích ${success}/${toAnalyze.length} CV cho vị trí "${selectedJobData.title}" thành công`, 
-        duration: 3000 
-      })
+
+      toast({ title: "Hoàn thành", description: `Phân tích ${success}/${toAnalyze.length} CV cho vị trí "${selectedJobData.title}" thành công`, duration: 3000 })
       await fetchData()
-    } catch (e) { 
+    } catch (e) {
       console.error(e)
-      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi phân tích", duration: 3000 }) 
-    }
-    finally { 
-      setAnalyzing(false) 
-    }
+      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi phân tích", duration: 3000 })
+    } finally { setAnalyzing(false) }
   }
 
   const handleAnalyzeOne = async (candidate: any) => {
-    // NOTE: csv-imported candidates may have cv_parsed_data = null — still proceed
-    // using structured fields (name, university, education, experience)
-    setAnalyzingId(candidate.id)   // only flag THIS candidate
+    setAnalyzingId(candidate.id)
     try {
-      // ── NEW: Chỉ analyze với job của candidate ──
       const candidateJob = jobs.find(j => j.id === candidate.job_id)
       if (!candidateJob) {
         toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
         return
       }
-      
-      // ── Kiểm tra bảng tiêu chí đánh giá ──
       if (!rubricMap.has(candidate.job_id)) {
         toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
         return
       }
-      
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
-        [candidateJob], // Chỉ pass job của candidate
+        [candidateJob],
         candidate.job_id
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
@@ -1238,26 +1123,21 @@ export default function PotentialCandidatesPage() {
   }
 
   const handleReanalyze = async (candidate: any) => {
-    // NOTE: csv-imported candidates may have cv_parsed_data = null — still proceed
     setReanalyzingId(candidate.id)
     try {
-      // ── NEW: Chỉ analyze với job của candidate ──
       const candidateJob = jobs.find(j => j.id === candidate.job_id)
       if (!candidateJob) {
         toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
         return
       }
-      
-      // ── Kiểm tra bảng tiêu chí đánh giá ──
       if (!rubricMap.has(candidate.job_id)) {
         toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
         return
       }
-      
       const result = await analyzeWithGPT4o(
         candidate.cv_parsed_data?.fullText || '',
         { full_name: candidate.full_name, email: candidate.email, phone_number: candidate.phone_number, address: candidate.address, university: candidate.university, education: candidate.education, experience: candidate.experience },
-        [candidateJob], // Chỉ pass job của candidate
+        [candidateJob],
         candidate.job_id
       )
       const newStatus = candidate.status === 'Mới' ? 'Sàng lọc' : candidate.status
@@ -1274,14 +1154,12 @@ export default function PotentialCandidatesPage() {
   const handleViewDetail = (candidate: any) => { setSelectedCandidate(candidate); setShowDetail(true) }
   const handleCreateInterview = (candidate: any) => { navigate(`/phong-van?create=true&candidateId=${candidate.id}`) }
 
-  // ── Cards tab filter (giữ nguyên logic cũ + thêm source) ──
   const filteredCandidates = React.useMemo(() => {
     return candidates.filter(c => {
       if (selectedJob !== "all" && c.job_id !== selectedJob) return false
       if (matchFilter === "perfect") return c.analysis_result?.best_match?.job_id === c.cv_jobs?.id
       if (matchFilter === "mismatch") return c.analysis_result && c.analysis_result.best_match?.job_id !== c.cv_jobs?.id
       if (matchFilter === "not-analyzed") return !c.analysis_result
-      // Đồng bộ CandidatesPage: lọc đáp ứng yêu cầu bắt buộc
       return true
     })
   }, [candidates, selectedJob, matchFilter])
@@ -1293,11 +1171,26 @@ export default function PotentialCandidatesPage() {
     const excellent = filteredCandidates.filter(c => c.overall_score >= 85).length
     const perfectMatch = filteredCandidates.filter(c => c.analysis_result?.best_match?.job_id === c.cv_jobs?.id).length
     const avgScore = analyzed > 0 ? Math.round(filteredCandidates.filter(c => c.analysis_result).reduce((s, c) => s + c.overall_score, 0) / analyzed) : 0
-    // Đồng bộ CandidatesPage
-    // Đồng bộ JobsPage
     const withRubric = new Set(candidates.map(c => c.job_id).filter(id => id && rubricMap.has(id))).size
     return { total, analyzed, unanalyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, withRubric }
   }, [filteredCandidates, candidates, rubricMap])
+
+  // ── CHỈ truyền ứng viên ĐÃ phân tích vào RankingTable ──
+  const analyzedCandidates = React.useMemo(
+    () => candidates.filter(c => c.analysis_result),
+    [candidates]
+  )
+
+  // Shared props cho ByJobView và UnanalyzedCandidatesView (vẫn dùng toàn bộ candidates)
+  const sharedProps = {
+    candidates, jobs, rubricMap,
+    onViewDetail: handleViewDetail,
+    onCreateInterview: handleCreateInterview,
+    onReanalyze: handleReanalyze,
+    reanalyzingId, analyzing,
+    analyzingId,
+    onAnalyzeOne: handleAnalyzeOne,
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -1307,17 +1200,6 @@ export default function PotentialCandidatesPage() {
       </div>
     </div>
   )
-
-  // Shared props for sub-components
-  const sharedProps = {
-    candidates, jobs, rubricMap,
-    onViewDetail: handleViewDetail,
-    onCreateInterview: handleCreateInterview,
-    onReanalyze: handleReanalyze,
-    reanalyzingId, analyzing,
-    analyzingId,              // per-candidate analyze state
-    onAnalyzeOne: handleAnalyzeOne,
-  }
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -1341,23 +1223,22 @@ export default function PotentialCandidatesPage() {
           <Button onClick={handleAnalyzeAll} disabled={analyzing || selectedJob === 'all'} size="sm">
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
             <span className="hidden sm:inline">
-              {analyzing ? "Đang phân tích..." : 
-               selectedJob === 'all' ? "Chọn vị trí để phân tích hàng loạt" : 
+              {analyzing ? "Đang phân tích..." :
+               selectedJob === 'all' ? "Chọn vị trí để phân tích hàng loạt" :
                `Phân tích ${stats.unanalyzed} CV chưa đánh giá`}
             </span>
           </Button>
         </div>
       </div>
 
-      {/* Stats — đồng bộ thêm mandatoryMet, withRubric, và unanalyzed */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3 sm:gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
         {[
           { label: 'Tổng số CV',         value: stats.total,              color: 'text-blue-600',   border: 'border-blue-100' },
           { label: 'Đã phân tích',       value: stats.analyzed,           color: 'text-green-600',  border: 'border-green-100' },
           { label: 'Chưa phân tích',     value: stats.unanalyzed,         color: 'text-amber-600',  border: 'border-amber-100' },
           { label: 'Điểm TB',            value: stats.avgScore,           color: 'text-yellow-600', border: 'border-yellow-100' },
           { label: 'Xuất sắc (≥85)',     value: stats.excellent,          color: 'text-purple-600', border: 'border-purple-100' },
-
           { label: 'Apply đúng vị trí',  value: `${stats.perfectMatchRate}%`, color: 'text-rose-600', border: 'border-rose-100', sub: `(${stats.perfectMatch}/${stats.analyzed})` },
         ].map(s => (
           <Card key={s.label} className={`border-2 ${s.border}`}>
@@ -1378,9 +1259,9 @@ export default function PotentialCandidatesPage() {
       <div className="border-b border-gray-200">
         <div className="flex gap-1 flex-wrap">
           {[
-            { id: 'cards'   as const, label: 'Thẻ ứng viên',  icon: <LayoutGrid className="h-4 w-4" /> },
-            { id: 'ranking' as const, label: 'Xếp hạng',      icon: <Trophy className="h-4 w-4" /> },
-            { id: 'byjob'   as const, label: 'Theo vị trí',   icon: <Layers className="h-4 w-4" /> },
+            { id: 'cards'      as const, label: 'Thẻ ứng viên',  icon: <LayoutGrid className="h-4 w-4" /> },
+            { id: 'ranking'    as const, label: 'Xếp hạng',      icon: <Trophy className="h-4 w-4" /> },
+            { id: 'byjob'      as const, label: 'Theo vị trí',   icon: <Layers className="h-4 w-4" /> },
             { id: 'unanalyzed' as const, label: 'Chưa đánh giá', icon: <Brain className="h-4 w-4" /> },
           ].map(tab => (
             <button key={tab.id} onClick={() => setMainTab(tab.id)}
@@ -1389,9 +1270,9 @@ export default function PotentialCandidatesPage() {
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'}`}>
               {tab.icon}{tab.label}
-              {tab.id === 'ranking' && candidates.filter(c => c.analysis_result).length > 0 && (
+              {tab.id === 'ranking' && analyzedCandidates.length > 0 && (
                 <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
-                  {candidates.filter(c => c.analysis_result).length}
+                  {analyzedCandidates.length}
                 </span>
               )}
               {tab.id === 'byjob' && (
@@ -1435,7 +1316,6 @@ export default function PotentialCandidatesPage() {
                     <option value="perfect">✅ Apply đúng vị trí phù hợp nhất</option>
                     <option value="mismatch">⚠️ Nên chuyển vị trí khác</option>
                     <option value="not-analyzed">⏳ Chưa phân tích</option>
-
                   </select>
                 </div>
               </div>
@@ -1467,7 +1347,6 @@ export default function PotentialCandidatesPage() {
                           <span className={`text-xl sm:text-2xl font-bold ${getScoreColor(candidate.overall_score)}`}>
                             {candidate.overall_score}
                           </span>
-                          {/* Cảnh báo dưới passing_score */}
                           {jobRubric && candidate.overall_score < jobRubric.passing_score && (
                             <p className="text-[10px] text-red-500 flex items-center gap-0.5 justify-end mt-0.5">
                               <AlertTriangle className="h-3 w-3" />Dưới {jobRubric.passing_score}
@@ -1563,8 +1442,13 @@ export default function PotentialCandidatesPage() {
         </>
       )}
 
-      {/* ── Ranking tab ── */}
-      {mainTab === 'ranking' && <RankingTable {...sharedProps} />}
+      {/* ── Ranking tab: chỉ truyền analyzedCandidates ── */}
+      {mainTab === 'ranking' && (
+        <RankingTable
+          {...sharedProps}
+          candidates={analyzedCandidates}
+        />
+      )}
 
       {/* ── By-Job tab ── */}
       {mainTab === 'byjob' && <ByJobView {...sharedProps} />}
@@ -1582,7 +1466,7 @@ export default function PotentialCandidatesPage() {
         />
       )}
 
-      {/* ── Detail Dialog (giữ nguyên + bổ sung mandatory & rubric info) ── */}
+      {/* ── Detail Dialog ── */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
         <DialogContent className="max-w-[95vw] w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
@@ -1601,7 +1485,6 @@ export default function PotentialCandidatesPage() {
                       <Target className="h-4 w-4 sm:h-5 sm:w-5" />Điểm phù hợp vị trí đã apply
                     </h4>
                     <p className="text-xs sm:text-sm text-blue-700 mt-1">{selectedCandidate?.cv_jobs?.title}</p>
-                    {/* Đồng bộ JobsPage: hiển thị passing score nếu có rubric */}
                     {selectedCandidate?.job_id && rubricMap.has(selectedCandidate.job_id) && (
                       <p className="text-xs text-indigo-600 mt-0.5 flex items-center gap-1">
                         <BarChart2 className="h-3.5 w-3.5" />
@@ -1776,15 +1659,15 @@ export default function PotentialCandidatesPage() {
                 </Tabs>
               )}
 
-              {/* Info grid — đồng bộ CandidatesPage: thêm source */}
+              {/* Info grid */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 bg-gray-50 rounded-xl border border-gray-200">
                 {[
                   ['Trường', selectedCandidate.university],
                   ['Học vấn', selectedCandidate.education],
                   ['Kinh nghiệm', selectedCandidate.experience],
                   ['Địa chỉ', selectedCandidate.address],
-                  ['Nguồn ứng tuyển', selectedCandidate.source],       // đồng bộ CandidatesPage
-                  ['Số điện thoại', selectedCandidate.phone_number],    // đồng bộ CandidatesPage
+                  ['Nguồn ứng tuyển', selectedCandidate.source],
+                  ['Số điện thoại', selectedCandidate.phone_number],
                 ].map(([l, v]) => (
                   <div key={l}><p className="text-[10px] sm:text-xs text-gray-500 mb-1">{l}</p><p className="text-xs sm:text-sm font-medium text-gray-900">{v || 'N/A'}</p></div>
                 ))}

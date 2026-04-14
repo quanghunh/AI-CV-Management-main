@@ -311,7 +311,7 @@ export function EmailManagementPage() {
   const [templates,   setTemplates]   = useState<EmailTemplate[]>([])
   const [categories,  setCategories]  = useState<EmailCategory[]>([])
   const [loading,     setLoading]     = useState(true)
-  const [currentTab,  setCurrentTab]  = useState<'templates' | 'history' | 'statistical' | 'campaigns'>('templates')
+  const [currentTab,  setCurrentTab]  = useState<'templates' | 'history' | 'campaigns'>('templates')
   const [stats, setStats] = useState({ totalSent: 0, openRate: '0.0', waitingToSend: 0, totalTemplates: 0 })
 
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false)
@@ -701,7 +701,7 @@ export function EmailManagementPage() {
 
           {/* Tabs */}
           <div className="flex items-center gap-6 border-b">
-            {(['templates','history','statistical'] as const).map(tab => (
+            {(['templates','history'] as const).map(tab => (
               <button key={tab}
                 className={`pb-3 px-1 text-sm font-medium transition-colors relative ${currentTab===tab?'text-blue-600':'text-gray-600 hover:text-gray-900'}`}
                 onClick={()=>setCurrentTab(tab)}>
@@ -781,8 +781,6 @@ export function EmailManagementPage() {
               </table>
             </div>
           )}
-
-          {currentTab==='statistical'&&<div className="text-center py-12"><p className="text-gray-500">Thống kê - Đang phát triển</p></div>}
 
           {/* Campaigns */}
           {currentTab==='campaigns'&&(
