@@ -291,8 +291,8 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
         </span>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* Desktop Table */}
+      <div className="hidden sm:block rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -337,11 +337,9 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                 return (
                   <React.Fragment key={c.id}>
                     <tr className={`hover:bg-gray-50 transition-colors ${rank && rank <= 3 ? 'bg-gradient-to-r from-amber-50/40 to-transparent' : ''}`}>
-                      {/* Rank */}
                       <td className="px-4 py-3">
                         {rank ? <RankMedal rank={rank} /> : <span className="text-gray-300 text-xs">—</span>}
                       </td>
-                      {/* Candidate */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${
@@ -355,15 +353,11 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                           </div>
                         </div>
                       </td>
-                      {/* Job */}
                       <td className="px-4 py-3">
                         <p className="text-gray-800 text-sm truncate max-w-[140px]">{c.cv_jobs?.title || '—'}</p>
                         {c.cv_jobs?.level && <p className="text-xs text-gray-400">{c.cv_jobs.level}</p>}
-                        {jobRubric && (
-                          <RubricBadge hasRubric={true} passingScore={jobRubric.passing_score} />
-                        )}
+                        {jobRubric && <RubricBadge hasRubric={true} passingScore={jobRubric.passing_score} />}
                       </td>
-                      {/* Score bar */}
                       <td className="px-4 py-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
@@ -381,11 +375,9 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                           )}
                         </div>
                       </td>
-                      {/* Status */}
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={`text-xs ${st.className}`}>{st.label}</Badge>
                       </td>
-                      {/* Best match */}
                       <td className="px-4 py-3">
                         {c.analysis_result?.best_match ? (
                           <div className="flex items-center gap-1.5">
@@ -393,80 +385,43 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                               ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                               : <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                             }
-                            <span className="text-xs text-gray-700 truncate max-w-[120px]">
-                              {c.analysis_result.best_match.job_title}
-                            </span>
+                            <span className="text-xs text-gray-700 truncate max-w-[120px]">{c.analysis_result.best_match.job_title}</span>
                             <span className={`text-[10px] font-bold flex-shrink-0 ${getScoreColor(c.analysis_result.best_match.match_score)}`}>
                               {c.analysis_result.best_match.match_score}%
                             </span>
                           </div>
                         ) : <span className="text-xs text-gray-300">—</span>}
                       </td>
-                      {/* Nguồn */}
                       <td className="px-4 py-3">
                         {c.source
                           ? <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{c.source}</span>
-                          : <span className="text-xs text-gray-300">—</span>
-                        }
+                          : <span className="text-xs text-gray-300">—</span>}
                       </td>
-                      {/* Actions */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 justify-end">
-                          <button onClick={() => onViewDetail(c)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Xem chi tiết">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Điểm mạnh/yếu">
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
-                          </button>
-                          <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors" title="Phân tích lại">
-                            <RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} />
-                          </button>
-                          <button onClick={() => onCreateInterview(c)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Tạo lịch phỏng vấn">
-                            <Calendar className="h-4 w-4" />
-                          </button>
+                          <button onClick={() => onViewDetail(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Xem chi tiết"><Eye className="h-4 w-4" /></button>
+                          <button onClick={() => setExpandedId(isExpanded ? null : c.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Điểm mạnh/yếu">{isExpanded ? <ChevronUp className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}</button>
+                          <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id} className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors" title="Phân tích lại"><RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} /></button>
+                          <button onClick={() => onCreateInterview(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Tạo lịch phỏng vấn"><Calendar className="h-4 w-4" /></button>
                         </div>
                       </td>
                     </tr>
-                    {/* Expanded row: strengths & weaknesses inline */}
                     {isExpanded && c.analysis_result?.best_match && (
                       <tr className="bg-purple-50/40">
                         <td colSpan={8} className="px-6 py-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5" />Điểm mạnh
-                              </p>
-                              <ul className="space-y-1">
-                                {(c.analysis_result.best_match.strengths || []).slice(0, 4).map((s: string, i: number) => (
-                                  <li key={i} className="text-xs text-gray-700 flex items-start gap-1.5">
-                                    <span className="text-emerald-400 mt-0.5">•</span>{s}
-                                  </li>
-                                ))}
-                              </ul>
+                              <p className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5" />Điểm mạnh</p>
+                              <ul className="space-y-1">{(c.analysis_result.best_match.strengths || []).slice(0, 4).map((s: string, i: number) => (<li key={i} className="text-xs text-gray-700 flex items-start gap-1.5"><span className="text-emerald-400 mt-0.5">•</span>{s}</li>))}</ul>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
-                                <AlertCircle className="h-3.5 w-3.5" />Điểm yếu
-                              </p>
-                              <ul className="space-y-1">
-                                {(c.analysis_result.best_match.weaknesses || []).slice(0, 4).map((w: string, i: number) => (
-                                  <li key={i} className="text-xs text-gray-700 flex items-start gap-1.5">
-                                    <span className="text-amber-400 mt-0.5">•</span>{w}
-                                  </li>
-                                ))}
-                              </ul>
+                              <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" />Điểm yếu</p>
+                              <ul className="space-y-1">{(c.analysis_result.best_match.weaknesses || []).slice(0, 4).map((w: string, i: number) => (<li key={i} className="text-xs text-gray-700 flex items-start gap-1.5"><span className="text-amber-400 mt-0.5">•</span>{w}</li>))}</ul>
                             </div>
                           </div>
                           {c.analysis_result.best_match.recommendation && (
                             <div className="mt-3 p-2.5 bg-white border border-purple-100 rounded-lg">
-                              <p className="text-xs text-gray-600 flex items-start gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5 text-purple-500 mt-0.5 flex-shrink-0" />
-                                {c.analysis_result.best_match.recommendation}
-                              </p>
+                              <p className="text-xs text-gray-600 flex items-start gap-1.5"><Sparkles className="h-3.5 w-3.5 text-purple-500 mt-0.5 flex-shrink-0" />{c.analysis_result.best_match.recommendation}</p>
                             </div>
                           )}
                         </td>
@@ -476,15 +431,104 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
                 )
               })}
               {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm">
-                    Không có ứng viên nào phù hợp với bộ lọc
-                  </td>
-                </tr>
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-400 text-sm">Không có ứng viên nào phù hợp với bộ lọc</td></tr>
               )}
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm">Không có ứng viên nào phù hợp với bộ lọc</div>
+        ) : filtered.map((c) => {
+          const rank = rankMap.get(c.id)
+          const st = getStatusLabel(c.status)
+          const isPerfectMatch = c.analysis_result?.best_match?.job_id === c.cv_jobs?.id
+          const jobRubric = c.job_id ? rubricMap.get(c.job_id) : null
+          const isExpanded = expandedId === c.id
+          return (
+            <div key={c.id} className={`bg-white rounded-xl border shadow-sm p-4 ${
+              rank && rank <= 3 ? 'border-amber-200 bg-gradient-to-br from-amber-50/50 to-white' : 'border-gray-200'
+            }`}>
+              {/* Header: rank + name + score */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {rank && <RankMedal rank={rank} />}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${
+                    c.overall_score >= 85 ? 'bg-green-500' : c.overall_score >= 70 ? 'bg-blue-500' : c.overall_score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'
+                  }`}>
+                    {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{c.full_name}</p>
+                    <p className="text-xs text-gray-400 truncate">{c.cv_jobs?.title || '—'}</p>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 text-right">
+                  <span className={`text-xl font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
+                  <p className="text-[10px] text-gray-400">/100</p>
+                </div>
+              </div>
+
+              {/* Score bar */}
+              <div className="mb-3">
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${getScoreBarColor(c.overall_score)}`} style={{ width: `${c.overall_score}%` }} />
+                </div>
+                {jobRubric && c.overall_score < jobRubric.passing_score && (
+                  <p className="text-[10px] text-red-500 flex items-center gap-0.5 mt-1"><AlertTriangle className="h-3 w-3" />Dưới mức đạt ({jobRubric.passing_score})</p>
+                )}
+              </div>
+
+              {/* Tags row */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${st.className}`}>{st.label}</Badge>
+                {c.analysis_result?.best_match && (
+                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 flex items-center gap-1 ${
+                    isPerfectMatch ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {isPerfectMatch ? <CheckCircle className="h-2.5 w-2.5" /> : <AlertCircle className="h-2.5 w-2.5" />}
+                    {c.analysis_result.best_match.job_title} ({c.analysis_result.best_match.match_score}%)
+                  </Badge>
+                )}
+                {c.source && <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">{c.source}</span>}
+              </div>
+
+              {/* Expanded strengths/weaknesses */}
+              {isExpanded && c.analysis_result?.best_match && (
+                <div className="mt-2 mb-3 p-3 bg-purple-50/50 rounded-lg border border-purple-100 space-y-2">
+                  <div>
+                    <p className="text-[10px] font-semibold text-emerald-700 mb-1">Điểm mạnh</p>
+                    <ul className="space-y-0.5">{(c.analysis_result.best_match.strengths || []).slice(0, 3).map((s: string, i: number) => (<li key={i} className="text-[10px] text-gray-700 flex items-start gap-1"><span className="text-emerald-400">•</span>{s}</li>))}</ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-amber-700 mb-1">Điểm yếu</p>
+                    <ul className="space-y-0.5">{(c.analysis_result.best_match.weaknesses || []).slice(0, 3).map((w: string, i: number) => (<li key={i} className="text-[10px] text-gray-700 flex items-start gap-1"><span className="text-amber-400">•</span>{w}</li>))}</ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors">
+                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
+                </button>
+                <button onClick={() => onViewDetail(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                  <Eye className="h-4 w-4" />
+                </button>
+                <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id} className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
+                  <RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} />
+                </button>
+                <button onClick={() => onCreateInterview(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                  <Calendar className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -663,86 +707,108 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
 
               {/* Candidate list */}
               {isOpen && (
-                <div className="divide-y divide-gray-100 bg-white">
+                <div className="bg-white">
                   {cands.length === 0 ? (
-                    <div className="px-6 py-8 text-center text-sm text-gray-400">
-                      Không có ứng viên nào khớp với bộ lọc
-                    </div>
-                  ) : cands.map((c, idx) => {
-                    const rank = idx + 1
-                    const st = getStatusLabel(c.status)
-                    const isPerfect = c.analysis_result?.best_match?.job_id === c.job_id
-                    return (
-                      <div key={c.id} className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors
-                        ${rank <= 3 ? 'bg-gradient-to-r from-amber-50/30 to-transparent' : ''}`}>
-                        <div className="flex-shrink-0">
-                          <RankMedal rank={rank} />
-                        </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0
-                          ${c.overall_score >= 85 ? 'bg-green-500' : c.overall_score >= 70 ? 'bg-blue-500' : c.overall_score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'}`}>
-                          {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm text-gray-900 truncate">{c.full_name}</span>
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${st.className}`}>{st.label}</Badge>
-                            {isPerfect && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">
-                                ✓ Đúng vị trí
-                              </Badge>
-                            )}
-                            {!isPerfect && c.analysis_result?.best_match && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
-                                → {c.analysis_result.best_match.job_title}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 truncate">
-                            {c.email}
-                            {c.source && <span className="ml-2 text-gray-300">· {c.source}</span>}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 text-right mr-2">
-                          {c.analysis_result ? (
-                            <div>
-                              <span className={`text-lg font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
-                              <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
-                                <div className={`h-full rounded-full ${getScoreBarColor(c.overall_score)}`} style={{ width: `${c.overall_score}%` }} />
+                    <div className="px-6 py-8 text-center text-sm text-gray-400">Không có ứng viên nào khớp với bộ lọc</div>
+                  ) : (
+                    <>
+                      {/* Desktop rows */}
+                      <div className="hidden sm:block divide-y divide-gray-100">
+                        {cands.map((c, idx) => {
+                          const rank = idx + 1
+                          const st = getStatusLabel(c.status)
+                          const isPerfect = c.analysis_result?.best_match?.job_id === c.job_id
+                          return (
+                            <div key={c.id} className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors ${rank <= 3 ? 'bg-gradient-to-r from-amber-50/30 to-transparent' : ''}`}>
+                              <div className="flex-shrink-0"><RankMedal rank={rank} /></div>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${c.overall_score >= 85 ? 'bg-green-500' : c.overall_score >= 70 ? 'bg-blue-500' : c.overall_score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'}`}>
+                                {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </div>
-                              {jobRubric && c.overall_score < jobRubric.passing_score && (
-                                <p className="text-[10px] text-red-400 mt-0.5">↓ Dưới mức đạt</p>
-                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-sm text-gray-900 truncate">{c.full_name}</span>
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${st.className}`}>{st.label}</Badge>
+                                  {isPerfect && <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">✓ Đúng vị trí</Badge>}
+                                  {!isPerfect && c.analysis_result?.best_match && <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">→ {c.analysis_result.best_match.job_title}</Badge>}
+                                </div>
+                                <p className="text-xs text-gray-400 truncate">{c.email}{c.source && <span className="ml-2 text-gray-300">· {c.source}</span>}</p>
+                              </div>
+                              <div className="flex-shrink-0 text-right mr-2">
+                                {c.analysis_result ? (
+                                  <div>
+                                    <span className={`text-lg font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
+                                    <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1"><div className={`h-full rounded-full ${getScoreBarColor(c.overall_score)}`} style={{ width: `${c.overall_score}%` }} /></div>
+                                    {jobRubric && c.overall_score < jobRubric.passing_score && <p className="text-[10px] text-red-400 mt-0.5">↓ Dưới mức đạt</p>}
+                                  </div>
+                                ) : <span className="text-xs text-gray-300 italic">—</span>}
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {c.analysis_result ? (
+                                  <>
+                                    <button onClick={() => onViewDetail(c)} title="Chi tiết" className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Eye className="h-4 w-4" /></button>
+                                    <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id} title="Phân tích lại" className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"><RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} /></button>
+                                    <button onClick={() => onCreateInterview(c)} title="Tạo lịch phỏng vấn" className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"><Calendar className="h-4 w-4" /></button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="px-2.5 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center gap-1"><Brain className="h-3.5 w-3.5" />Phân tích</button>
+                                )}
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-xs text-gray-300 italic">—</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {c.analysis_result ? (
-                            <>
-                              <button onClick={() => onViewDetail(c)} title="Chi tiết"
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                                <Eye className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id} title="Phân tích lại"
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
-                                <RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} />
-                              </button>
-                              <button onClick={() => onCreateInterview(c)} title="Tạo lịch phỏng vấn"
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
-                                <Calendar className="h-4 w-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <button onClick={() => onAnalyzeOne(c)} disabled={analyzing}
-                              className="px-2.5 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center gap-1">
-                              <Brain className="h-3.5 w-3.5" />Phân tích
-                            </button>
-                          )}
-                        </div>
+                          )
+                        })}
                       </div>
-                    )
-                  })}
+
+                      {/* Mobile cards */}
+                      <div className="sm:hidden divide-y divide-gray-100">
+                        {cands.map((c, idx) => {
+                          const rank = idx + 1
+                          const st = getStatusLabel(c.status)
+                          const isPerfect = c.analysis_result?.best_match?.job_id === c.job_id
+                          return (
+                            <div key={c.id} className={`p-4 ${rank <= 3 ? 'bg-gradient-to-r from-amber-50/30 to-white' : 'bg-white'}`}>
+                              <div className="flex items-start gap-2 mb-2">
+                                <RankMedal rank={rank} />
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${c.overall_score >= 85 ? 'bg-green-500' : c.overall_score >= 70 ? 'bg-blue-500' : c.overall_score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'}`}>
+                                  {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-gray-900 truncate">{c.full_name}</p>
+                                  <p className="text-xs text-gray-400 truncate">{c.email}</p>
+                                </div>
+                                {c.analysis_result ? (
+                                  <div className="text-right flex-shrink-0">
+                                    <span className={`text-lg font-bold ${getScoreColor(c.overall_score)}`}>{c.overall_score}</span>
+                                    <p className="text-[10px] text-gray-400">/100</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                              {c.analysis_result && (
+                                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+                                  <div className={`h-full rounded-full ${getScoreBarColor(c.overall_score)}`} style={{ width: `${c.overall_score}%` }} />
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-1.5 mb-3">
+                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${st.className}`}>{st.label}</Badge>
+                                {isPerfect && <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">✓ Đúng vị trí</Badge>}
+                                {!isPerfect && c.analysis_result?.best_match && <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">→ {c.analysis_result.best_match.job_title}</Badge>}
+                              </div>
+                              <div className="flex items-center justify-end gap-2">
+                                {c.analysis_result ? (
+                                  <>
+                                    <button onClick={() => onViewDetail(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Eye className="h-4 w-4" /></button>
+                                    <button onClick={() => onReanalyze(c)} disabled={reanalyzingId === c.id} className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"><RotateCcw className={`h-4 w-4 ${reanalyzingId === c.id ? 'animate-spin' : ''}`} /></button>
+                                    <button onClick={() => onCreateInterview(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"><Calendar className="h-4 w-4" /></button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="px-3 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors flex items-center gap-1"><Brain className="h-3.5 w-3.5" />Phân tích</button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -856,8 +922,8 @@ function UnanalyzedCandidatesView({
         </span>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* Desktop Table */}
+      <div className="hidden sm:block rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -960,6 +1026,70 @@ function UnanalyzedCandidatesView({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Cards — tab Chưa đánh giá */}
+      <div className="sm:hidden space-y-3">
+        {filtered.length === 0 ? null : filtered.map(c => {
+          const st = getStatusLabel(c.status)
+          const isExpanded = expandedId === c.id
+          return (
+            <div key={c.id} className="bg-white rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50/30 to-white shadow-sm p-4">
+              {/* Header */}
+              <div className="flex items-start gap-2.5 mb-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-white">
+                    {c.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{c.full_name}</p>
+                  <p className="text-xs text-gray-400 truncate">{c.cv_jobs?.title || '—'}</p>
+                </div>
+                <Badge className={`text-[10px] border flex-shrink-0 ${st.className}`}>{st.label}</Badge>
+              </div>
+
+              {/* Info row */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
+                <span>{new Date(c.created_at).toLocaleDateString('vi-VN')}</span>
+                {c.source && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">{c.source}</span>}
+              </div>
+
+              {/* Expanded quick info */}
+              {isExpanded && (
+                <div className="mb-3 grid grid-cols-2 gap-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100 text-xs">
+                  <div>
+                    <p className="font-medium text-gray-500 mb-0.5">SĐT</p>
+                    <p className="text-gray-800">{c.phone_number || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-500 mb-0.5">Trường</p>
+                    <p className="text-gray-800 truncate">{c.university || '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="font-medium text-gray-500 mb-0.5">Địa chỉ</p>
+                    <p className="text-gray-800">{c.address || '—'}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                <Button size="sm" onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="gap-1 flex-1 justify-center">
+                  <Brain className="h-3.5 w-3.5" />Phân tích
+                </Button>
+                <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                  <Eye className="h-4 w-4" />
+                </button>
+                <button onClick={() => onCreateInterview(c)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                  <Calendar className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {filtered.length === 0 && (
