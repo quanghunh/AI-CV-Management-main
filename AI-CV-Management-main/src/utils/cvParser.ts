@@ -52,7 +52,7 @@ interface BackendCVResponse {
 
 const CONFIG = {
   API_URL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  AI_TIMEOUT: 30000, // 30 seconds
+  AI_TIMEOUT: 90000, // 90 seconds (backend Gemini timeout is 120s)
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
   SUPPORTED_FORMATS: ['.pdf', '.docx', '.txt'],
   RETRY_ATTEMPTS: 2, // ✅ NEW: Retry logic

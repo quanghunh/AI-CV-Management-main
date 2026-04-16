@@ -1204,6 +1204,23 @@ export function CandidatesPage() {
     } finally { setIsUploading(false) }
   }
 
+  // ✅ Sanitize strings: remove null bytes (\u0000) that PostgreSQL rejects (error 22P05)
+  const sanitizeStr = (s: string | null | undefined): string | null => {
+    if (!s) return null
+    return s.replace(/\u0000/g, '').replace(/\x00/g, '')
+  }
+  const sanitizeObj = (obj: any): any => {
+    if (!obj) return obj
+    if (typeof obj === 'string') return sanitizeStr(obj)
+    if (Array.isArray(obj)) return obj.map(sanitizeObj)
+    if (typeof obj === 'object') {
+      const result: any = {}
+      for (const key of Object.keys(obj)) result[key] = sanitizeObj(obj[key])
+      return result
+    }
+    return obj
+  }
+
   const handleSubmit = async () => {
     if (!formData.full_name || !formData.email || !formData.job_id) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Vị trí ứng tuyển)'); return
@@ -1216,13 +1233,13 @@ export function CandidatesPage() {
         const { error: uploadError } = await supabase.storage.from('cv-files').upload(fName, selectedFile)
         if (uploadError) throw uploadError
         cvUrl = supabase.storage.from('cv-files').getPublicUrl(fName).data.publicUrl
-        cvFileName = selectedFile.name; parsedCV = parsedData
+        cvFileName = selectedFile.name; parsedCV = sanitizeObj(parsedData) // ✅ sanitize null bytes
       }
       const { data, error } = await supabase.from('cv_candidates').insert({
-        full_name: formData.full_name, email: formData.email,
-        phone_number: formData.phone_number || null, job_id: formData.job_id,
-        address: formData.address || null, experience: formData.experience || null,
-        education: formData.education || null, university: formData.university || null,
+        full_name: sanitizeStr(formData.full_name), email: sanitizeStr(formData.email),
+        phone_number: sanitizeStr(formData.phone_number) || null, job_id: formData.job_id,
+        address: sanitizeStr(formData.address) || null, experience: sanitizeStr(formData.experience) || null,
+        education: sanitizeStr(formData.education) || null, university: sanitizeStr(formData.university) || null,
         status: 'Mới', source: formData.source || null,
         cv_url: cvUrl, cv_file_name: cvFileName, cv_parsed_data: parsedCV,
       }).select().single()
@@ -1235,6 +1252,7 @@ export function CandidatesPage() {
     } catch (err: any) { alert('Lỗi: ' + (err.message || 'Không thể thêm ứng viên')) }
     finally { setIsSaving(false) }
   }
+
 
   const handleUpdateCandidate = async () => {
     if (!editCandidate) return

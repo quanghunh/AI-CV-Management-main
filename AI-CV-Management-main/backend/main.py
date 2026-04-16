@@ -244,6 +244,19 @@ def call_openai_api(messages: List[dict], api_key: str, endpoint: str = "https:/
 
 import base64
 
+def sanitize_text(text: str) -> str:
+    """Remove null bytes and unsupported Unicode characters that PostgreSQL rejects.
+    PyPDF2/python-docx often extract \u0000 (null byte) from PDF/DOCX files.
+    PostgreSQL text columns reject \u0000, causing error 22P05.
+    """
+    if not text:
+        return text
+    # Remove null bytes (\u0000) - main cause of PostgreSQL 22P05 error
+    text = text.replace('\x00', '').replace('\u0000', '')
+    # Remove other PostgreSQL-incompatible control characters (keep newline, tab)
+    text = ''.join(ch for ch in text if ch == '\n' or ch == '\t' or ord(ch) >= 32)
+    return text
+
 def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-flash-preview", temperature: float = 0.7, max_tokens: int = 8192, file_content: bytes = None, mime_type: str = None) -> dict:
     contents = []
     
@@ -300,12 +313,13 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
         ]
     }
         
-    # ✅ v1beta + gemini-2.5-flash (stable, không bị truncation)
+    # ✅ v1beta endpoint - bắt buộc cho các model preview (gemini-3-flash-preview chỉ có trên v1beta)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     
     max_retries = 3
     retry_delay = 2
     import time
+    data = None
     
     for attempt in range(max_retries):
         try:
@@ -328,10 +342,8 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
                 raise HTTPException(status_code=response.status_code, detail=f"Gemini API error ({response.status_code}): {error_msg}")
             
             data = response.json()
-            # DEV: Log raw structure for debugging API response format
-            print("🔍 RAW GEMINI API RESPONSE:")
-            print(data)
-            break # Success, exit retry loop
+            print(f"✅ Gemini API thành công (attempt {attempt + 1})")
+            break  # Success, exit retry loop
             
         except requests.exceptions.Timeout:
             if attempt < max_retries - 1:
@@ -341,26 +353,34 @@ def call_gemini_api(messages: List[dict], api_key: str, model: str = "gemini-3-f
             raise HTTPException(status_code=504, detail="Gemini API timeout")
         except requests.exceptions.RequestException as e:
             raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
-        text = ""
-        if "candidates" in data and len(data["candidates"]) > 0:
-            parts = data["candidates"][0].get("content", {}).get("parts", [])
-            if parts and len(parts) > 0:
-                text = parts[0].get("text", "")
-            else:
-                print("⚠️ No parts found in content!")
-                print(data["candidates"][0])
+
+    # ✅ FIX: Parse response SAU vòng lặp retry (trước đây bị đặt sai vị trí)
+    if data is None:
+        raise HTTPException(status_code=500, detail="Gemini API: No response data received after retries")
+
+    text = ""
+    if "candidates" in data and len(data["candidates"]) > 0:
+        candidate = data["candidates"][0]
+        parts = candidate.get("content", {}).get("parts", [])
+        if parts and len(parts) > 0:
+            text = parts[0].get("text", "")
         else:
-            print("⚠️ No candidates found in response!")
-                
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "content": text
-                    }
+            finish_reason = candidate.get("finishReason", "UNKNOWN")
+            print(f"⚠️ No parts in response! finishReason={finish_reason}")
+            print(candidate)
+    else:
+        print("⚠️ No candidates in Gemini response!")
+        print(data)
+            
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": text
                 }
-            ]
-        }
+            }
+        ]
+    }
 
 def call_openrouter_api_internal(messages: List[dict], api_key: str, model: str = "openai/gpt-4o-mini", temperature: float = 0.7, max_tokens: int = 4000) -> dict:
     try:
@@ -395,8 +415,8 @@ def call_ai_api(messages: List[dict], model: str = "openai/gpt-4o-mini", tempera
     is_gemini = config.get("is_gemini_enabled")
     gemini_key = config.get("gemini_api_key")
     if is_gemini and gemini_key:
-        print("🤖 Route -> Gemini 2.5 Flash (v1beta, stable)")
-        gemini_model = "gemini-2.5-flash"  # ✅ stable, không bị giới hạn bởi preview quirks
+        print("🤖 Route -> Gemini 3 Flash Preview")
+        gemini_model = "gemini-3-flash-preview"  # ✅ Gemini 3 Flash Preview
         return call_gemini_api(messages, gemini_key, model=gemini_model, temperature=temperature, max_tokens=max_tokens, file_content=file_content, mime_type=mime_type)
         
     is_openai = config.get("is_openai_enabled")
@@ -631,6 +651,7 @@ async def parse_cv(file: UploadFile = File(None), cv_file: UploadFile = File(Non
             for page_num, page in enumerate(pdf_reader.pages):
                 text = page.extract_text()
                 if text:
+                    text = sanitize_text(text)  # ✅ Remove null bytes from PDF extraction
                     cv_text += text + "\n"
                     print(f"  ✓ Page {page_num + 1}: {len(text)} chars")
         
@@ -639,6 +660,7 @@ async def parse_cv(file: UploadFile = File(None), cv_file: UploadFile = File(Non
             doc_file = io.BytesIO(file_content)
             doc = Document(doc_file)
             cv_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        cv_text = sanitize_text(cv_text)  # ✅ Remove null bytes from DOCX extraction
         
         if not cv_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from CV")
