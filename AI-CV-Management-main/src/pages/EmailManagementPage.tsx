@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 import { EmailRecipientSelector } from "@/components/EmailRecipientSelector"
 import { useCompanyProfile } from "../hooks/useCompanyProfile"
 
@@ -425,7 +426,7 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.trigger || !form.template_id) {
-      alert('Vui lòng điền đầy đủ thông tin'); return
+      toast.warning('Vui lòng điền đầy đủ thông tin'); return
     }
     setIsSaving(true)
     try {
@@ -453,7 +454,8 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
       }
       onSaved()
       onClose()
-    } catch (e: any) { alert('Lỗi: ' + e.message) }
+      toast.success(editCampaign ? 'Cập nhật campaign thành công!' : 'Tạo campaign mới thành công!')
+    } catch (e: any) { toast.error('Lỗi: ' + e.message) }
     finally { setIsSaving(false) }
   }
 
@@ -1045,7 +1047,7 @@ export function EmailManagementPage() {
   const sendEmail = async (toField: string, subject: string, body: string, cc?: string, templateId?: string) => {
     if (!isApiKeyConfigured || !apiKey) {
       await forceRefreshApiKey()
-      if (!isApiKeyConfigured || !apiKey) { alert('Vui lòng cấu hình App Password trước khi gửi email.'); return { success:false, error:'App Password not configured' } }
+      if (!isApiKeyConfigured || !apiKey) { toast.error('Vui lòng cấu hình App Password trước khi gửi email.'); return { success:false, error:'App Password not configured' } }
     }
     setIsSaving(true)
     try {
@@ -1071,38 +1073,38 @@ export function EmailManagementPage() {
   }
 
   const handleComposeSubmit = async () => {
-    if (!composeForm.candidate_id||!composeForm.subject||!composeForm.body) { alert('Vui lòng điền đầy đủ'); return }
+    if (!composeForm.candidate_id||!composeForm.subject||!composeForm.body) { toast.warning('Vui lòng điền đầy đủ thông tin'); return }
     setEmailSendingStatus(p=>({...p,compose:'sending'}))
     try {
       const result = await sendEmail(composeForm.candidate_id,composeForm.subject,composeForm.body,composeForm.cc,composeForm.template_id)
-      if (result?.success) { setEmailSendingStatus(p=>({...p,compose:'success'})); alert('✓ Email đã gửi!'); setIsComposeOpen(false); setComposeForm({candidate_id:'',template_id:'',subject:'',body:'',scheduled_at:'',cc:'',priority:'normal'}); fetchStats() }
-      else { setEmailSendingStatus(p=>({...p,compose:'error'})); alert('Lỗi: '+result?.error) }
-    } catch(e:any){ setEmailSendingStatus(p=>({...p,compose:'error'})); alert(e.message) }
+      if (result?.success) { setEmailSendingStatus(p=>({...p,compose:'success'})); toast.success('Email đã gửi thành công!'); setIsComposeOpen(false); setComposeForm({candidate_id:'',template_id:'',subject:'',body:'',scheduled_at:'',cc:'',priority:'normal'}); fetchStats() }
+      else { setEmailSendingStatus(p=>({...p,compose:'error'})); toast.error('Lỗi: '+result?.error) }
+    } catch(e:any){ setEmailSendingStatus(p=>({...p,compose:'error'})); toast.error(e.message) }
     finally { setTimeout(()=>setEmailSendingStatus(p=>({...p,compose:'idle'})),3000) }
   }
 
   const handleTestEmail = async () => {
-    if (!testEmailForm.test_email) { alert('Nhập email nhận thử'); return }
+    if (!testEmailForm.test_email) { toast.warning('Nhập email nhận thử'); return }
     const tmpl = templates.find(t=>t.id===testEmailForm.template_id)
-    if (!tmpl) { alert('Chọn template'); return }
+    if (!tmpl) { toast.warning('Chọn template'); return }
     setEmailSendingStatus(p=>({...p,test:'sending'}))
     try {
       const result = await sendEmail(testEmailForm.test_email,`[TEST] ${tmpl.subject}`,tmpl.body,undefined,testEmailForm.template_id)
-      if (result?.success) { setEmailSendingStatus(p=>({...p,test:'success'})); alert('✓ Gửi thử thành công!'); setIsTestEmailOpen(false); setTestEmailForm({test_email:'',template_id:''}) }
-      else { setEmailSendingStatus(p=>({...p,test:'error'})); alert('Lỗi: '+result?.error) }
-    } catch(e:any){ setEmailSendingStatus(p=>({...p,test:'error'})); alert(e.message) }
+      if (result?.success) { setEmailSendingStatus(p=>({...p,test:'success'})); toast.success('Gửi thử thành công!'); setIsTestEmailOpen(false); setTestEmailForm({test_email:'',template_id:''}) }
+      else { setEmailSendingStatus(p=>({...p,test:'error'})); toast.error('Lỗi: '+result?.error) }
+    } catch(e:any){ setEmailSendingStatus(p=>({...p,test:'error'})); toast.error(e.message) }
     finally { setTimeout(()=>setEmailSendingStatus(p=>({...p,test:'idle'})),3000) }
   }
 
   const handleCreateTemplate = async () => {
-    if (!templateForm.name||!templateForm.subject||!templateForm.body||!templateForm.category_id) { alert('Điền đầy đủ thông tin'); return }
+    if (!templateForm.name||!templateForm.subject||!templateForm.body||!templateForm.category_id) { toast.warning('Điền đầy đủ thông tin template'); return }
     setIsSaving(true)
     try {
       const vars = (templateForm.body.match(/\{\{(\w+)\}\}/g)||[]).map(v=>v.replace(/[{}]/g,''))
       const { data, error } = await supabase.from('cv_email_templates').insert([{ name:templateForm.name, subject:templateForm.subject, body:templateForm.body, category_id:templateForm.category_id, variables:vars, is_default:templateForm.is_default, is_active:true, usage_count:0 }]).select('*,cv_email_categories(id,name)')
       if (error) throw error
-      if (data?.[0]) { setTemplates(prev=>[{...data[0],email_categories:data[0].cv_email_categories||null} as EmailTemplate,...prev]); alert('✓ Tạo template!'); setIsTemplateOpen(false); setTemplateForm({name:'',subject:'',body:'',category_id:'',is_default:false}); fetchStats() }
-    } catch(e:any){ alert('Lỗi: '+e.message) }
+      if (data?.[0]) { setTemplates(prev=>[{...data[0],email_categories:data[0].cv_email_categories||null} as EmailTemplate,...prev]); toast.success('Tạo template thành công!'); setIsTemplateOpen(false); setTemplateForm({name:'',subject:'',body:'',category_id:'',is_default:false}); fetchStats() }
+    } catch(e:any){ toast.error('Lỗi: '+e.message) }
     finally { setIsSaving(false) }
   }
 

@@ -1,6 +1,7 @@
 // src/components/candidates/CandidateFormDialog.tsx
 import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -159,7 +160,7 @@ export function CandidateFormDialog({
 
   const handleSubmit = async () => {
     if (!formData.full_name || !formData.email || !formData.job_id) {
-      alert('Vui lòng điền đầy đủ các trường bắt buộc (*)');
+      toast.warning('Vui lòng điền đầy đủ các trường bắt buộc (*)');
       return;
     }
 
@@ -168,9 +169,9 @@ export function CandidateFormDialog({
       await onSubmit(formData, selectedFile || undefined, parsedData || undefined);
       resetForm();
       onOpenChange(false);
-      alert(mode === 'create' ? '✓ Thêm ứng viên thành công!' : '✓ Cập nhật thông tin thành công!');
+      toast.success(mode === 'create' ? 'Thêm ứng viên thành công!' : 'Cập nhật thông tin thành công!');
     } catch (error: any) {
-      alert('Lỗi: ' + (error.message || 'Không xác định'));
+      toast.error('Lỗi: ' + (error.message || 'Không xác định'));
     } finally {
       setIsSaving(false);
     }

@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -181,8 +182,8 @@ useEffect(() => {
 
 
   const handleSubmitNewReview = async () => {
-if (!selectedPendingInterview || newRating === 0) {
-      alert('Vui lòng chọn số sao đánh giá!');
+    if (!selectedPendingInterview || newRating === 0) {
+      toast.warning('Vui lòng chọn số sao đánh giá!');
       return;
     }
 
@@ -245,7 +246,7 @@ if (!selectedPendingInterview || newRating === 0) {
       setNewNote('');
       setReviewOutcome('Đạt');
 
-      alert('Đánh giá đã được lưu thành công!');
+      toast.success('Đánh giá đã được lưu thành công!');
 
       fireCampaign('interview_result_published', {
         candidateId: resolvedCandidateId,
@@ -259,7 +260,7 @@ if (!selectedPendingInterview || newRating === 0) {
       }).catch(console.error);
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Có lỗi xảy ra khi lưu đánh giá!');
+      toast.error('Có lỗi xảy ra khi lưu đánh giá!');
     } finally {
       setSubmitting(false);
     }
@@ -276,7 +277,7 @@ if (!selectedPendingInterview || newRating === 0) {
 
   const handleSubmitRerating = async () => {
     if (!selectedReview || newRating === 0) {
-      alert('Vui lòng chọn số sao đánh giá!');
+      toast.warning('Vui lòng chọn số sao đánh giá!');
       return;
     }
 
@@ -321,10 +322,10 @@ if (!selectedPendingInterview || newRating === 0) {
       setNewRating(0);
       setNewNote('');
       
-      alert('Cập nhật đánh giá thành công!');
+      toast.success('Cập nhật đánh giá thành công!');
     } catch (error: any) {
       console.error('Error updating rating:', error);
-      alert(`Có lỗi xảy ra: ${error.message || 'Không thể cập nhật đánh giá'}`);
+      toast.error(`Có lỗi xảy ra: ${error.message || 'Không thể cập nhật đánh giá'}`);
     } finally {
       setSubmitting(false);
     }

@@ -11,6 +11,7 @@ import { User, Mail, Phone, Upload, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabaseClient"
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 export function ProfileSettingsPage() {
   const { t } = useTranslation()
@@ -80,7 +81,7 @@ export function ProfileSettingsPage() {
     if (!user) return;
     
     if (!profileData.full_name || profileData.full_name.trim() === '') {
-      alert(t('profile.messages.nameRequired'))
+      toast.warning(t('profile.messages.nameRequired'))
       return
     }
 
@@ -111,9 +112,9 @@ export function ProfileSettingsPage() {
         if (error) throw error;
       }
 
-      alert(t('profile.messages.saveSuccess'))
+      toast.success(t('profile.messages.saveSuccess'))
     } catch (error) {
-      alert(t('profile.messages.saveError'))
+      toast.error(t('profile.messages.saveError'))
       console.error('Profile update exception:', error)
     } finally {
       setLoading(false)
@@ -127,12 +128,12 @@ export function ProfileSettingsPage() {
 
     // Validation
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng upload định dạng hình ảnh (JPG, PNG)')
+      toast.warning('Vui lòng upload định dạng hình ảnh (JPG, PNG)')
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('Kích thước ảnh phải nhỏ hơn 2MB')
+      toast.warning('Kích thước ảnh phải nhỏ hơn 2MB')
       return
     }
 
@@ -195,15 +196,14 @@ export function ProfileSettingsPage() {
 
       // Step 5: Update local state
       setProfileData(prev => ({ ...prev, avatar_url: publicUrl }))
-      console.log('✅ Avatar updated successfully')
-      alert(t('profile.messages.saveSuccess'))
+      toast.success('Ảnh đại diện đã được cập nhật thành công!')
       
     } catch (error) {
       console.error('❌ Avatar upload failed:', error)
       if (error instanceof Error) {
-        alert(`Error uploading avatar: ${error.message}`)
+        toast.error(`Lỗi upload ảnh: ${error.message}`)
       } else {
-        alert('Error uploading avatar. Please try again.')
+        toast.error('Lỗi upload ảnh. Vui lòng thử lại.')
       }
     } finally {
       setLoading(false)

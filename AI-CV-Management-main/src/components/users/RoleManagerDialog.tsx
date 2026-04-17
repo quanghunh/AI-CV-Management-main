@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 // ==================== TYPES ====================
 
@@ -88,9 +89,9 @@ export function RoleManagerDialog({
 
   async function handleAdd() {
     const name = newRole.name.trim()
-    if (!name) { alert('❌ Vui lòng nhập tên vai trò'); return }
+    if (!name) { toast.warning('Vui lòng nhập tên vai trò'); return }
     if (roles.some(r => r.name.toLowerCase() === name.toLowerCase())) {
-      alert('❌ Tên vai trò này đã tồn tại!'); return
+      toast.warning('Tên vai trò này đã tồn tại!'); return
     }
 
     setSaving(true)
@@ -102,11 +103,12 @@ export function RoleManagerDialog({
     }])
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       resetAddForm()
       await fetchRoles()
-      onRolesUpdated()   // → User.tsx gọi fetchRoles() → dropdown "Vai trò" cập nhật
+      onRolesUpdated()
+      toast.success('Đã thêm vai trò mới thành công!')
     }
     setSaving(false)
   }
@@ -115,9 +117,9 @@ export function RoleManagerDialog({
 
   async function handleEdit(id: number) {
     const name = editingData.name.trim()
-    if (!name) { alert('❌ Vui lòng nhập tên vai trò'); return }
+    if (!name) { toast.warning('Vui lòng nhập tên vai trò'); return }
     if (roles.some(r => r.roles !== id && r.name.toLowerCase() === name.toLowerCase())) {
-      alert('❌ Tên vai trò này đã tồn tại!'); return
+      toast.warning('Tên vai trò này đã tồn tại!'); return
     }
 
     setSaving(true)
@@ -132,11 +134,12 @@ export function RoleManagerDialog({
       .eq('roles', id)
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       setEditingId(null)
       await fetchRoles()
       onRolesUpdated()
+      toast.success('Cập nhật vai trò thành công!')
     }
     setSaving(false)
   }
@@ -145,26 +148,26 @@ export function RoleManagerDialog({
 
   async function handleDelete(role: RoleItem) {
     if (PROTECTED_ROLE_IDS.includes(role.roles)) {
-      alert('⚠️ Không thể xóa vai trò Admin mặc định!'); return
+      toast.warning('Không thể xóa vai trò Admin mặc định!'); return
     }
 
-    // Kiểm tra có user nào đang dùng không
     const { count } = await supabase
       .from('cv_user_roles')
       .select('*', { count: 'exact', head: true })
       .eq('role_id', role.roles)
 
     if (count && count > 0) {
-      alert(`⚠️ Không thể xóa vai trò "${role.name}" vì có ${count} người dùng đang sử dụng!\n\nVui lòng đổi vai trò cho họ trước.`)
+      toast.warning(`Không thể xóa vai trò "${role.name}" vì có ${count} người dùng đang sử dụng. Vui lòng đổi vai trò cho họ trước.`)
       return
     }
 
     if (!confirm(`Xóa vai trò "${role.name}"?\n\nVai trò này sẽ bị xóa khỏi hệ thống phân quyền.`)) return
 
     const { error } = await supabase.from('cv_roles').delete().eq('roles', role.roles)
-    if (error) { alert(`❌ Lỗi: ${error.message}`); return }
+    if (error) { toast.error(`Lỗi: ${error.message}`); return }
     await fetchRoles()
     onRolesUpdated()
+    toast.success(`Đã xóa vai trò "${role.name}" thành công!`)
   }
 
   // -------- helpers --------

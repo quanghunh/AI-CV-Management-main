@@ -15,14 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// ==================== TOAST ====================
-const useToast = () => {
-  const toast = React.useCallback((options: { title: string; description: string; duration: number }) => {
-    alert(`${options.title}\n${options.description}`)
-  }, [])
-  return { toast }
-}
+import { toast } from "sonner"
 
 // ==================== PROGRESS BAR ====================
 const Progress = ({ value, className = "" }: { value: number; className?: string }) => (
@@ -1105,7 +1098,6 @@ function UnanalyzedCandidatesView({
 
 // ==================== MAIN COMPONENT ====================
 export default function PotentialCandidatesPage() {
-  const { toast } = useToast()
   const navigate = useNavigate()
 
   const [loading,       setLoading]       = React.useState(true)
@@ -1166,7 +1158,7 @@ export default function PotentialCandidatesPage() {
       })
       setCandidates(parsedCandidates)
     } catch (error) {
-      toast({ title: "Lỗi", description: "Không thể tải dữ liệu", duration: 3000 })
+      toast.error("Không thể tải dữ liệu")
     } finally { setLoading(false) }
   }
 
@@ -1175,25 +1167,25 @@ export default function PotentialCandidatesPage() {
       setAnalyzing(true)
 
       if (selectedJob === 'all') {
-        toast({ title: "Thông báo", description: "Vui lòng chọn một vị trí công việc cụ thể để phân tích hàng loạt", duration: 3000 })
+        toast.warning("Vui lòng chọn một vị trí công việc cụ thể để phân tích hàng loạt")
         return
       }
 
       const selectedJobData = jobs.find(j => j.id === selectedJob)
       if (!selectedJobData) {
-        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc", duration: 3000 })
+        toast.error("Không tìm thấy thông tin vị trí công việc")
         return
       }
 
       if (!rubricMap.has(selectedJob)) {
-        toast({ title: "Không thể chấm điểm", description: `Vị trí "${selectedJobData.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        toast.warning(`Vị trí "${selectedJobData.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`)
         return
       }
 
       const toAnalyze = candidates.filter(c => c.job_id === selectedJob && !c.analysis_result)
 
       if (!toAnalyze.length) {
-        toast({ title: "Thông báo", description: `Tất cả CV của vị trí "${selectedJobData.title}" đã được phân tích`, duration: 3000 })
+        toast.info(`Tất cả CV của vị trí "${selectedJobData.title}" đã được phân tích`)
         return
       }
 
@@ -1215,11 +1207,11 @@ export default function PotentialCandidatesPage() {
         } catch (e) { console.error(`Error analyzing candidate ${candidate.id}:`, e) }
       }
 
-      toast({ title: "Hoàn thành", description: `Phân tích ${success}/${toAnalyze.length} CV cho vị trí "${selectedJobData.title}" thành công`, duration: 3000 })
+      toast.success(`Phân tích ${success}/${toAnalyze.length} CV cho vị trí "${selectedJobData.title}" thành công`)
       await fetchData()
     } catch (e) {
       console.error(e)
-      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi phân tích", duration: 3000 })
+      toast.error("Có lỗi xảy ra khi phân tích")
     } finally { setAnalyzing(false) }
   }
 
@@ -1228,11 +1220,11 @@ export default function PotentialCandidatesPage() {
     try {
       const candidateJob = jobs.find(j => j.id === candidate.job_id)
       if (!candidateJob) {
-        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
+        toast.error("Không tìm thấy thông tin vị trí công việc của ứng viên")
         return
       }
       if (!rubricMap.has(candidate.job_id)) {
-        toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        toast.warning(`Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`)
         return
       }
       const result = await analyzeWithGPT4o(
@@ -1246,9 +1238,9 @@ export default function PotentialCandidatesPage() {
         cv_parsed_data: { ...(candidate.cv_parsed_data || {}), analysis_result: result },
         status: newStatus,
       }).eq("id", candidate.id)
-      toast({ title: "Thành công", description: "Phân tích CV hoàn tất", duration: 3000 })
+      toast.success("Phân tích CV hoàn tất")
       await fetchData()
-    } catch (e: any) { toast({ title: "Lỗi", description: e.message, duration: 3000 }) }
+    } catch (e: any) { toast.error(e.message) }
     finally { setAnalyzingId(null) }
   }
 
@@ -1257,11 +1249,11 @@ export default function PotentialCandidatesPage() {
     try {
       const candidateJob = jobs.find(j => j.id === candidate.job_id)
       if (!candidateJob) {
-        toast({ title: "Lỗi", description: "Không tìm thấy thông tin vị trí công việc của ứng viên", duration: 3000 })
+        toast.error("Không tìm thấy thông tin vị trí công việc của ứng viên")
         return
       }
       if (!rubricMap.has(candidate.job_id)) {
-        toast({ title: "Không thể chấm điểm", description: `Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`, duration: 5000 })
+        toast.warning(`Vị trí "${candidateJob.title}" chưa có bảng tiêu chí đánh giá. Vui lòng thiết lập bảng tiêu chí trong trang Quản lý vị trí.`)
         return
       }
       const result = await analyzeWithGPT4o(
@@ -1275,9 +1267,9 @@ export default function PotentialCandidatesPage() {
         cv_parsed_data: { ...(candidate.cv_parsed_data || {}), analysis_result: result },
         status: newStatus,
       }).eq("id", candidate.id)
-      toast({ title: "Phân tích lại thành công", description: `${candidate.full_name} - Điểm mới: ${result.overall_score}`, duration: 3000 })
+      toast.success(`${candidate.full_name} - Điểm mới: ${result.overall_score}`)
       await fetchData()
-    } catch (e: any) { toast({ title: "Lỗi phân tích lại", description: e.message, duration: 3000 }) }
+    } catch (e: any) { toast.error(e.message) }
     finally { setReanalyzingId(null) }
   }
 
