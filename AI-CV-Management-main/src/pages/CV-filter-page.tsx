@@ -899,7 +899,7 @@ function UnanalyzedCandidatesView({
             {uniqueStatuses.map(st => <option key={st} value={st}>{st}</option>)}
           </select>
         </div>
-        <Button onClick={onAnalyzeAll} disabled={analyzing || filtered.length === 0} size="sm" className="flex-shrink-0 gap-1.5">
+        <Button onClick={onAnalyzeAll} disabled={analyzing || filtered.length === 0} size="sm" className="flex-shrink-0 gap-1.5 text-black">
           <Sparkles className="h-4 w-4" />
           {analyzing ? 'Đang phân tích...' : `Phân tích ${filtered.length}`}
         </Button>
@@ -1002,10 +1002,10 @@ function UnanalyzedCandidatesView({
                               <p className="text-gray-900 truncate">{c.education?.substring(0, 50) || '—'}...</p>
                             </div>
                             <div className="flex items-end gap-2">
-                              <Button size="sm" onClick={() => onViewDetail(c)} variant="outline" className="gap-1">
+                              <Button size="sm" onClick={() => onViewDetail(c)} variant="outline" className="gap-1 text-black">
                                 <Eye className="h-3.5 w-3.5" />Xem đầy đủ
                               </Button>
-                              <Button size="sm" onClick={() => onCreateInterview(c)} className="gap-1 bg-blue-600 hover:bg-blue-700">
+                              <Button size="sm" onClick={() => onCreateInterview(c)} className="gap-1 bg-blue-600 hover:bg-blue-700 text-white">
                                 <Calendar className="h-3.5 w-3.5" />Phỏng vấn
                               </Button>
                             </div>
@@ -1068,7 +1068,7 @@ function UnanalyzedCandidatesView({
 
               {/* Actions */}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                <Button size="sm" onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="gap-1 flex-1 justify-center">
+                <Button size="sm" onClick={() => onAnalyzeOne(c)} disabled={analyzing} className="gap-1 flex-1 justify-center text-black">
                   <Brain className="h-3.5 w-3.5" />Phân tích
                 </Button>
                 <button onClick={() => setExpandedId(isExpanded ? null : c.id)}
@@ -1314,6 +1314,10 @@ export default function PotentialCandidatesPage() {
     onAnalyzeOne: handleAnalyzeOne,
   }
 
+  const unanalyzedCountForSelectedJob = selectedJob === 'all' 
+    ? 0 
+    : candidates.filter(c => c.job_id === selectedJob && !c.analysis_result).length;
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
@@ -1342,12 +1346,18 @@ export default function PotentialCandidatesPage() {
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${analyzing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
-          <Button onClick={handleAnalyzeAll} disabled={analyzing || selectedJob === 'all'} size="sm">
+          <Button 
+            onClick={handleAnalyzeAll} 
+            disabled={analyzing || selectedJob === 'all' || unanalyzedCountForSelectedJob === 0} 
+            size="sm"
+            className={selectedJob !== 'all' && unanalyzedCountForSelectedJob > 0 && !analyzing ? "text-gray-900 bg-amber-400 hover:bg-amber-500 font-semibold" : "text-gray-900"}
+          >
             <Sparkles className="h-3.5 w-3.5 mr-1.5" />
             <span className="hidden sm:inline">
               {analyzing ? "Đang phân tích..." :
                selectedJob === 'all' ? "Chọn vị trí để phân tích hàng loạt" :
-               `Phân tích ${stats.unanalyzed} CV chưa đánh giá`}
+               unanalyzedCountForSelectedJob === 0 ? "Đã phân tích tất cả CV vị trí này" :
+               `Phân tích ${unanalyzedCountForSelectedJob} CV chưa đánh giá`}
             </span>
           </Button>
         </div>
