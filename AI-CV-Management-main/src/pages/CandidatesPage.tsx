@@ -5,7 +5,7 @@ import {
   Search, Plus, Eye, Edit, Trash2, Users, UserCheck, TrendingUp,
   Filter, Download, FileText, Brain, X, AlertTriangle, CheckCircle2,
   Info, MoreHorizontal, Tag, Upload, AlertCircle, ChevronDown,
-  CheckCircle, XCircle, Loader2, Table2
+  CheckCircle, XCircle, Loader2, Table2, RefreshCw, History
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,15 @@ import { SkillsInput } from "@/components/ui/skills-input"
 import { Input } from "@/components/ui/input"
 import { ActivityLogger } from '@/lib/activityLogger'
 import { CandidateCategoryDialog } from "@/components/candidates/CandidateCategoryDialog"
+
+// ── Extend HTMLInputElement to support webkitdirectory (folder picker) ────────
+declare module 'react' {
+  interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
+    webkitdirectory?: string
+    mozdirectory?: string
+    directory?: string
+  }
+}
 
 const Checkbox = ({ id, checked, onCheckedChange, className }: {
   id?: string; checked: boolean
@@ -54,6 +63,7 @@ interface Candidate {
   phone_number?: string; status: string; source: string; address?: string
   university?: string; experience?: string; education?: string
   cv_url?: string; cv_file_name?: string; cv_parsed_data?: any
+  source_note?: string | null
   cv_jobs: { title: string; level: string } | null
   cv_candidate_skills?: { cv_skills: { id: string; name: string; category?: string } }[]
 }
@@ -72,22 +82,32 @@ interface CsvRow {
   full_name: string; email: string; phone_number?: string
   address?: string; university?: string; experience?: string
   education?: string; job_title?: string
-  cv_file_name?: string          // optional column in CSV: name of CV file
+  cv_file_name?: string
   _rowIndex: number
   _valid: boolean
   _errors: string[]
-  _jobId?: string    // resolved after matching with jobs
-  _cvFile?: File     // matched CV file object (set after CV folder selected)
+  _jobId?: string
+  _cvFile?: File
   _cvParseStatus?: 'pending' | 'parsing' | 'done' | 'error'
-  _cvParsed?: any    // ParsedCV result
-  _cvUrl?: string    // Supabase public URL after upload
+  _cvParsed?: any
+  _cvUrl?: string
 }
+
+// ── Duplicate handling mode ───────────────────────────────────────────────────
+type DuplicateMode = 'smart' | 'skip' | 'overwrite' | 'allow'
 
 type ImportStatus = 'idle' | 'previewing' | 'importing' | 'done'
 
 interface ImportResult {
   success: number; skipped: number; failed: number
   details: { row: number; name: string; status: 'success' | 'skip' | 'fail'; reason?: string }[]
+}
+
+// ── Existing candidate record for duplicate check ─────────────────────────────
+interface ExistingRecord {
+  id: string
+  created_at: string
+  job_id: string | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -101,7 +121,6 @@ const FALLBACK_SOURCES: SourceItem[] = [
   { value: 'Khác', label: 'Khác' },
 ]
 
-// CSV columns we recognize (case-insensitive, multi-alias)
 const COL_MAP: Record<string, string> = {
   'họ tên': 'full_name', 'ho ten': 'full_name', 'full name': 'full_name',
   'fullname': 'full_name', 'tên': 'full_name', 'name': 'full_name',
@@ -119,6 +138,37 @@ const COL_MAP: Record<string, string> = {
   'tên file cv': 'cv_file_name', 'ten file cv': 'cv_file_name',
 }
 
+// ── Duplicate mode config ─────────────────────────────────────────────────────
+const DUPLICATE_MODES: { value: DuplicateMode; label: string; description: string; color: string }[] = [
+  {
+    value: 'smart',
+    label: '✨ Thông minh (khuyến nghị)',
+    description: 'Cho phép nộp lại nếu cách lần trước ≥ 30 ngày hoặc ứng tuyển vị trí khác. Tự động gắn nhãn "Re-apply" / "Multi-apply".',
+    color: 'blue',
+  },
+  {
+    value: 'skip',
+    label: '🚫 Bỏ qua trùng email + vị trí',
+    description: 'Bỏ qua nếu email và vị trí đã tồn tại. Cho phép cùng email ứng tuyển vị trí khác.',
+    color: 'yellow',
+  },
+  {
+    value: 'overwrite',
+    label: '🔄 Ghi đè CV mới nhất',
+    description: 'Cập nhật thông tin bằng dữ liệu mới nhất khi email + vị trí đã tồn tại.',
+    color: 'orange',
+  },
+  {
+    value: 'allow',
+    label: '✅ Cho phép tất cả',
+    description: 'Không lọc trùng lặp, tạo bản ghi mới cho mọi dòng hợp lệ.',
+    color: 'green',
+  },
+]
+
+// ── Re-apply cooldown in days ─────────────────────────────────────────────────
+const REAPPLY_COOLDOWN_DAYS = 30
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getStatusBadge = (status: string) => {
@@ -132,12 +182,33 @@ const getStatusBadge = (status: string) => {
   return map[status] || <Badge variant="secondary">{status}</Badge>
 }
 
-/** Parse raw CSV text → array of objects */
+/**
+ * Badge hiển thị nhãn Re-apply / Multi-apply trong bảng ứng viên.
+ * Trả về null nếu không có source_note.
+ */
+const getSourceNoteBadge = (sourceNote?: string | null) => {
+  if (!sourceNote) return null
+  if (sourceNote === 'Re-apply') return (
+    <Badge variant="outline" className="text-xs text-orange-600 border-orange-300 bg-orange-50 flex items-center gap-1 w-fit">
+      <RefreshCw className="h-2.5 w-2.5" />Re-apply
+    </Badge>
+  )
+  if (sourceNote === 'Multi-apply') return (
+    <Badge variant="outline" className="text-xs text-purple-600 border-purple-300 bg-purple-50 flex items-center gap-1 w-fit">
+      <History className="h-2.5 w-2.5" />Multi-apply
+    </Badge>
+  )
+  return (
+    <Badge variant="outline" className="text-xs text-gray-500 border-gray-300 bg-gray-50 w-fit">
+      {sourceNote}
+    </Badge>
+  )
+}
+
 function parseCsvText(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.trim().split(/\r?\n/)
   if (lines.length < 2) return { headers: [], rows: [] }
 
-  // Parse a single CSV line respecting quoted fields
   const parseLine = (line: string): string[] => {
     const result: string[] = []
     let cur = ''
@@ -168,7 +239,6 @@ function parseCsvText(text: string): { headers: string[]; rows: Record<string, s
   return { headers: rawHeaders, rows }
 }
 
-/** Map raw CSV headers → internal field names */
 function mapHeaders(rawHeaders: string[]): Record<string, string> {
   const map: Record<string, string> = {}
   rawHeaders.forEach(h => {
@@ -179,7 +249,6 @@ function mapHeaders(rawHeaders: string[]): Record<string, string> {
   return map
 }
 
-/** Validate and map a raw row to CsvRow */
 function validateRow(
   rawRow: Record<string, string>,
   headerMap: Record<string, string>,
@@ -190,27 +259,23 @@ function validateRow(
     full_name: '', email: '', _rowIndex: idx, _valid: true, _errors: []
   }
 
-  // Map fields
   Object.entries(headerMap).forEach(([rawHeader, field]) => {
     const val = (rawRow[rawHeader] || '').trim()
     ;(row as any)[field] = val
   })
 
-  // Validate
   if (!row.full_name) { row._errors.push('Thiếu họ tên'); row._valid = false }
   if (!row.email) { row._errors.push('Thiếu email'); row._valid = false }
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
     row._errors.push('Email không hợp lệ'); row._valid = false
   }
 
-  // Resolve job_title → job_id
   if (row.job_title) {
     const match = jobs.find(j =>
       j.title.toLowerCase().trim() === row.job_title!.toLowerCase().trim()
     )
     if (match) row._jobId = match.id
     else row._errors.push(`Không tìm thấy vị trí "${row.job_title}"`)
-    // job mismatch is a warning, not blocking
   }
 
   return row
@@ -228,48 +293,46 @@ interface ImportCsvDialogProps {
 
 function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: ImportCsvDialogProps) {
   const fileRef = useRef<HTMLInputElement>(null)
-  const [step, setStep] = useState<1 | 2 | 3>(1)   // 1=config, 2=preview, 3=result
+  const [step, setStep] = useState<1 | 2 | 3>(1)
 
-  // Step 1 config
   const [selectedSource, setSelectedSource] = useState('')
   const [defaultJobId, setDefaultJobId] = useState('')
-  const [skipDuplicates, setSkipDuplicates] = useState(true)
+  // ── Duplicate mode (replaces old skipDuplicates boolean) ──────────────────
+  const [duplicateMode, setDuplicateMode] = useState<DuplicateMode>('smart')
   const [fileName, setFileName] = useState('')
 
-  // Step 2 preview
   const [csvRows, setCsvRows] = useState<CsvRow[]>([])
   const [headerMap, setHeaderMap] = useState<Record<string, string>>({})
   const [rawHeaders, setRawHeaders] = useState<string[]>([])
   const [parseError, setParseError] = useState('')
 
-  // Step 3 result
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [importProgress, setImportProgress] = useState(0)
-  const [importDetail, setImportDetail] = useState('')   // current row label while importing
+  const [importDetail, setImportDetail] = useState('')
 
-  // CV folder upload
+  // ── CV folder state ───────────────────────────────────────────────────────
   const cvFolderRef = useRef<HTMLInputElement>(null)
   const [cvFileMap, setCvFileMap] = useState<Map<string, File>>(new Map())
-  // enableCvUpload: user opted in to attach CV files
+  const [cvUniqueFiles, setCvUniqueFiles] = useState<File[]>([])
   const [enableCvUpload, setEnableCvUpload] = useState(false)
-  const [parseAllCv, setParseAllCv] = useState(false)     // auto-parse CV with AI
+  const [parseAllCv, setParseAllCv] = useState(false)
 
   const validRows = csvRows.filter(r => r._valid)
   const invalidRows = csvRows.filter(r => !r._valid)
 
   const reset = () => {
-    setStep(1); setSelectedSource(''); setDefaultJobId(''); setSkipDuplicates(true)
+    setStep(1); setSelectedSource(''); setDefaultJobId(''); setDuplicateMode('smart')
     setFileName(''); setCsvRows([]); setHeaderMap({}); setRawHeaders([])
     setParseError(''); setResult(null); setImportProgress(0); setImportDetail('')
-    setCvFileMap(new Map()); setEnableCvUpload(false); setParseAllCv(false)
+    setCvFileMap(new Map()); setCvUniqueFiles([]); setEnableCvUpload(false); setParseAllCv(false)
     if (fileRef.current) fileRef.current.value = ''
     if (cvFolderRef.current) cvFolderRef.current.value = ''
   }
 
   const handleClose = () => { reset(); onOpenChange(false) }
 
-  // ── File selected ──────────────────────────────────────────────────────────
+  // ── File CSV selected ──────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -287,7 +350,11 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       setHeaderMap(hMap)
 
       const mapped = rows.map((r, i) => validateRow(r, hMap, i + 2, jobs))
-      setCsvRows(mapped)
+      if (cvFileMap.size > 0) {
+        setCsvRows(mapped.map(row => ({ ...row, _cvFile: matchCvFile(row, cvFileMap) })))
+      } else {
+        setCsvRows(mapped)
+      }
     }
     reader.readAsText(file, 'UTF-8')
   }
@@ -295,39 +362,50 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   // ── CV folder selected ────────────────────────────────────────────────────
   const handleCvFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
+    const cvFiles = files.filter(f =>
+      /\.(pdf|docx|doc|txt)$/i.test(f.name) && !f.name.startsWith('.')
+    )
+
+    if (cvFiles.length === 0) {
+      toast.warning('Không tìm thấy file CV hợp lệ (PDF, DOCX, DOC, TXT) trong thư mục đã chọn')
+      return
+    }
+
     const map = new Map<string, File>()
-    files.forEach(f => {
-      if (/\.(pdf|docx|doc|txt)$/i.test(f.name)) {
-        // index by both original name and lowercase for fuzzy matching
-        map.set(f.name.toLowerCase(), f)
-        map.set(f.name, f)
-      }
+    cvFiles.forEach(f => {
+      map.set(f.name, f)
+      map.set(f.name.toLowerCase(), f)
     })
+
     setCvFileMap(map)
-    // Try to auto-match existing rows by email or name
-    setCsvRows(prev => prev.map(row => {
-      const matched = matchCvFile(row, map)
-      return matched ? { ...row, _cvFile: matched } : row
-    }))
+    setCvUniqueFiles(cvFiles)
+
+    if (csvRows.length > 0) {
+      setCsvRows(prev => prev.map(row => ({
+        ...row,
+        _cvFile: row._cvFile || matchCvFile(row, map)
+      })))
+    }
+
+    const skipped = files.length - cvFiles.length
+    toast.success(
+      `Đã nhận ${cvFiles.length} file CV` +
+      (skipped > 0 ? ` (bỏ qua ${skipped} file không hợp lệ)` : '')
+    )
   }
 
-  /** Try to find a CV file matching this row.
-   *  Priority: 1) exact cv_file_name column value  2) email in filename  3) full_name in filename */
   const matchCvFile = (row: CsvRow, map: Map<string, File>): File | undefined => {
-    // 1. explicit column value
     if (row.cv_file_name) {
       const f = map.get(row.cv_file_name) || map.get(row.cv_file_name.toLowerCase())
       if (f) return f
     }
-    // 2. email anywhere in filename
     const emailBase = row.email.replace(/[@.]/g, '').toLowerCase()
     for (const [key, file] of Array.from(map.entries())) {
       if (key.toLowerCase().includes(row.email.toLowerCase()) ||
-          key.toLowerCase().replace(/[^a-z0-9]/g,'').includes(emailBase)) {
+          key.toLowerCase().replace(/[^a-z0-9]/g, '').includes(emailBase)) {
         return file
       }
     }
-    // 3. name (last word = surname in Vietnamese) anywhere in filename
     const lastName = row.full_name.trim().split(/\s+/).pop()?.toLowerCase() || ''
     const firstName = row.full_name.trim().split(/\s+/)[0]?.toLowerCase() || ''
     for (const [key, file] of Array.from(map.entries())) {
@@ -342,7 +420,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   const handleNextToPreview = () => {
     if (!selectedSource) { toast.warning('Vui lòng chọn nguồn ứng viên'); return }
     if (!csvRows.length) { toast.warning('Vui lòng chọn file CSV'); return }
-    // Re-match CV files in case folder was loaded after CSV
     if (cvFileMap.size > 0) {
       setCsvRows(prev => prev.map(row => ({
         ...row,
@@ -362,27 +439,145 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     const res: ImportResult = { success: 0, skipped: 0, failed: 0, details: [] }
     const rows = validRows
 
-    // Pre-fetch existing emails if skipDuplicates
-    let existingEmails = new Set<string>()
-    if (skipDuplicates) {
-      const { data } = await supabase.from('cv_candidates').select('email')
-      existingEmails = new Set((data || []).map((r: any) => r.email.toLowerCase()))
+    // ── Build existing records map keyed by "email::job_id" ──────────────────
+    // Fetch with pagination to handle DB > 1000 rows safely
+    type ExistingRecord = { id: string; email: string; job_id: string | null; created_at: string }
+    let allExisting: ExistingRecord[] = []
+
+    if (duplicateMode !== 'allow') {
+      setImportDetail('Đang kiểm tra dữ liệu trùng lặp...')
+      let from = 0
+      const PAGE = 1000
+      while (true) {
+        const { data, error } = await supabase
+          .from('cv_candidates')
+          .select('id, email, job_id, created_at')
+          .range(from, from + PAGE - 1)
+
+        if (error) {
+          toast.error('Không thể kiểm tra dữ liệu trùng lặp. Vui lòng thử lại.')
+          setImporting(false)
+          setStep(2)
+          return
+        }
+        if (!data || data.length === 0) break
+        allExisting.push(...(data as ExistingRecord[]))
+        if (data.length < PAGE) break
+        from += PAGE
+      }
     }
+
+    // existingMap: "email_lower::job_id_or_empty" → array of records
+    const existingMap = new Map<string, ExistingRecord[]>()
+    for (const r of allExisting) {
+      const key = `${r.email.toLowerCase()}::${r.job_id || ''}`
+      if (!existingMap.has(key)) existingMap.set(key, [])
+      existingMap.get(key)!.push(r)
+    }
+
+    // emailJobIds: Set of all "email::job_id" keys that exist (for multi-apply detection)
+    const allEmailKeys = new Set(allExisting.map(r => r.email.toLowerCase()))
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       setImportProgress(Math.round(((i + 1) / rows.length) * 100))
       setImportDetail(`Đang xử lý: ${row.full_name}`)
 
-      // Skip duplicates
-      if (skipDuplicates && existingEmails.has(row.email.toLowerCase())) {
+      const jobId = row._jobId || (defaultJobId && defaultJobId !== 'none' ? defaultJobId : null)
+      const emailLower = row.email.toLowerCase()
+      const dupKey = `${emailLower}::${jobId || ''}`
+      const existingRecords = existingMap.get(dupKey) || []
+
+      // ── Determine source_note ─────────────────────────────────────────────
+      let sourceNote: string | null = null
+      const emailExistsAnyJob = allEmailKeys.has(emailLower)
+      const sameJobExists = existingRecords.length > 0
+
+      if (emailExistsAnyJob && !sameJobExists) {
+        // Cùng email nhưng khác job → Multi-apply
+        sourceNote = 'Multi-apply'
+      }
+
+      // ── Apply duplicate mode logic ────────────────────────────────────────
+      if (duplicateMode === 'skip' && sameJobExists) {
         res.skipped++
-        res.details.push({ row: row._rowIndex, name: row.full_name, status: 'skip', reason: 'Email đã tồn tại' })
+        res.details.push({ row: row._rowIndex, name: row.full_name, status: 'skip', reason: 'Email + vị trí đã tồn tại' })
         continue
       }
 
+      if (duplicateMode === 'smart' && sameJobExists) {
+        const latest = [...existingRecords].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0]
+        const daysSince = (Date.now() - new Date(latest.created_at).getTime()) / 86_400_000
+
+        if (daysSince < REAPPLY_COOLDOWN_DAYS) {
+          res.skipped++
+          res.details.push({
+            row: row._rowIndex, name: row.full_name, status: 'skip',
+            reason: `Nộp lại quá sớm (${Math.round(daysSince)} ngày, tối thiểu ${REAPPLY_COOLDOWN_DAYS} ngày)`
+          })
+          continue
+        }
+        // Re-apply hợp lệ
+        sourceNote = 'Re-apply'
+      }
+
+      if (duplicateMode === 'overwrite' && sameJobExists) {
+        // Update record cũ thay vì tạo mới
+        const latest = [...existingRecords].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0]
+        setImportDetail(`Đang ghi đè: ${row.full_name}`)
+        try {
+          let cvUrl: string | null = null
+          let cvFileName: string | null = null
+          let cvParsedData: any = null
+          const cvFile = row._cvFile
+
+          if (cvFile && enableCvUpload) {
+            const storageName = `${Date.now()}_${cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+            const { error: upErr } = await supabase.storage.from('cv-files').upload(storageName, cvFile)
+            if (!upErr) {
+              cvUrl = supabase.storage.from('cv-files').getPublicUrl(storageName).data.publicUrl
+              cvFileName = cvFile.name
+              if (parseAllCv) {
+                try {
+                  const { parseCV } = await import('@/utils/cvParser')
+                  cvParsedData = await parseCV(cvFile)
+                } catch { /* parse failed, continue without parsed data */ }
+              }
+            }
+          }
+
+          const updatePayload: any = {
+            full_name: row.full_name,
+            email: row.email,
+            phone_number: row.phone_number || null,
+            address: row.address || null,
+            university: row.university || null,
+            experience: row.experience || null,
+            education: row.education || null,
+            source: selectedSource,
+            source_note: 'Re-apply',
+          }
+          if (cvUrl) { updatePayload.cv_url = cvUrl; updatePayload.cv_file_name = cvFileName }
+          if (cvParsedData) updatePayload.cv_parsed_data = cvParsedData
+
+          const { error } = await supabase.from('cv_candidates').update(updatePayload).eq('id', latest.id)
+          if (error) throw error
+
+          res.success++
+          res.details.push({ row: row._rowIndex, name: row.full_name, status: 'success', reason: 'Ghi đè thành công' })
+        } catch (err: any) {
+          res.failed++
+          res.details.push({ row: row._rowIndex, name: row.full_name, status: 'fail', reason: err.message || 'Lỗi ghi đè' })
+        }
+        continue
+      }
+
+      // ── Default: INSERT new record ────────────────────────────────────────
       try {
-        // ── Step A: Upload CV file if present ───────────────────────────────
         let cvUrl: string | null = null
         let cvFileName: string | null = null
         let cvParsedData: any = null
@@ -392,36 +587,25 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           setImportDetail(`Đang tải CV: ${cvFile.name}`)
           try {
             const storageName = `${Date.now()}_${cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-            const { error: upErr } = await supabase.storage
-              .from('cv-files')
-              .upload(storageName, cvFile)
+            const { error: upErr } = await supabase.storage.from('cv-files').upload(storageName, cvFile)
             if (upErr) throw upErr
 
             cvUrl = supabase.storage.from('cv-files').getPublicUrl(storageName).data.publicUrl
             cvFileName = cvFile.name
 
-            // ── Step B: Parse CV if opted in ──────────────────────────────
             if (parseAllCv) {
               setImportDetail(`Đang phân tích CV: ${cvFile.name}`)
               try {
                 const { parseCV } = await import('@/utils/cvParser')
-                const parsed = await parseCV(cvFile)
-                cvParsedData = parsed
-                // Enrich row data from parsed CV (only if CSV fields are empty)
-              } catch (parseErr) {
-                console.warn('CV parse failed:', parseErr)
-                // Non-fatal: continue without parsed data
-              }
+                cvParsedData = await parseCV(cvFile)
+              } catch { /* parse failed, continue */ }
             }
           } catch (uploadErr: any) {
             console.warn('CV upload failed for', cvFile.name, uploadErr)
-            // Non-fatal: continue without CV
           }
         }
 
-        // ── Step C: Insert candidate ────────────────────────────────────────
         setImportDetail(`Đang lưu: ${row.full_name}`)
-        const jobId = row._jobId || (defaultJobId && defaultJobId !== 'none' ? defaultJobId : null)
         const { data, error } = await supabase
           .from('cv_candidates')
           .insert({
@@ -435,6 +619,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
             job_id: jobId,
             source: selectedSource,
             status: 'Mới',
+            source_note: sourceNote,
             cv_url: cvUrl,
             cv_file_name: cvFileName,
             cv_parsed_data: cvParsedData || null,
@@ -444,23 +629,28 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
         if (error) throw error
 
-        // Log activity
+        // Update lookup sets so within-batch duplicates are also caught
+        allEmailKeys.add(emailLower)
+        const newRec: ExistingRecord = { id: data.id, email: row.email, job_id: jobId, created_at: new Date().toISOString() }
+        if (!existingMap.has(dupKey)) existingMap.set(dupKey, [])
+        existingMap.get(dupKey)!.push(newRec)
+
         try {
           await ActivityLogger.logCVSubmitted(row.full_name, data.id, undefined)
         } catch (_) {}
 
         res.success++
-        existingEmails.add(row.email.toLowerCase())
         const hasCv = !!cvUrl
+        const noteLabel = sourceNote ? ` [${sourceNote}]` : ''
         res.details.push({
           row: row._rowIndex, name: row.full_name, status: 'success',
-          reason: hasCv ? (cvParsedData ? 'CV đã tải + phân tích' : 'CV đã tải lên') : undefined
+          reason: hasCv ? (cvParsedData ? `CV đã tải + phân tích${noteLabel}` : `CV đã tải lên${noteLabel}`) : (noteLabel || undefined)
         })
       } catch (err: any) {
         res.failed++
         res.details.push({
           row: row._rowIndex, name: row.full_name, status: 'fail',
-          reason: err.message?.includes('duplicate') ? 'Email trùng lặp' : (err.message || 'Lỗi không xác định')
+          reason: err.message?.includes('duplicate') ? 'Email trùng lặp (DB constraint)' : (err.message || 'Lỗi không xác định')
         })
       }
     }
@@ -485,6 +675,12 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     a.href = url; a.download = 'template_import_ung_vien.csv'; a.click()
     URL.revokeObjectURL(url)
   }
+
+  // ── Derived stats ──────────────────────────────────────────────────────────
+  const matchedCount = csvRows.filter(r => r._valid && r._cvFile).length
+  const unmatchedCount = validRows.length - matchedCount
+
+  const activeModeConfig = DUPLICATE_MODES.find(m => m.value === duplicateMode)!
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -549,11 +745,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                         </code>
                       ))}
                     </div>
-                    <p className="text-[11px] text-purple-700 mt-1.5 flex items-center gap-1">
-                      <FileText className="h-3 w-3" />
-                      Cột <strong>CV</strong>: tên file CV (VD: <code className="bg-purple-50 px-1 rounded">nguyen_van_a.pdf</code>).
-                      Dùng kết hợp với thư mục CV bên dưới.
-                    </p>
                     <button onClick={downloadTemplate}
                       className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
                       <Download className="h-3.5 w-3.5" />
@@ -616,20 +807,73 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                 </Select>
               </div>
 
-              {/* Options */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <Checkbox
-                  id="skip-dup"
-                  checked={skipDuplicates}
-                  onCheckedChange={setSkipDuplicates}
-                />
-                <div>
-                  <label htmlFor="skip-dup" className="text-sm font-medium text-gray-800 cursor-pointer">
-                    Bỏ qua ứng viên trùng email
-                  </label>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Nếu email đã tồn tại trong hệ thống, dòng đó sẽ được bỏ qua.
-                  </p>
+              {/* ── Duplicate handling mode ────────────────────────────────── */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Xử lý ứng viên trùng lặp
+                </label>
+                <p className="text-xs text-gray-500">
+                  Quy tắc áp dụng khi phát hiện email đã tồn tại trong hệ thống.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  {DUPLICATE_MODES.map(mode => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      onClick={() => setDuplicateMode(mode.value)}
+                      className={`text-left px-3 py-3 rounded-lg border-2 transition-all ${
+                        duplicateMode === mode.value
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <p className={`text-xs font-semibold mb-0.5 ${duplicateMode === mode.value ? 'text-blue-800' : 'text-gray-800'}`}>
+                        {mode.label}
+                      </p>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">{mode.description}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active mode explanation banner */}
+                <div className={`flex items-start gap-2 p-3 rounded-lg border mt-1 ${
+                  duplicateMode === 'smart' ? 'bg-blue-50 border-blue-200' :
+                  duplicateMode === 'skip' ? 'bg-yellow-50 border-yellow-200' :
+                  duplicateMode === 'overwrite' ? 'bg-orange-50 border-orange-200' :
+                  'bg-green-50 border-green-200'
+                }`}>
+                  <Info className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                    duplicateMode === 'smart' ? 'text-blue-500' :
+                    duplicateMode === 'skip' ? 'text-yellow-600' :
+                    duplicateMode === 'overwrite' ? 'text-orange-500' :
+                    'text-green-600'
+                  }`} />
+                  <div className="text-xs leading-relaxed">
+                    {duplicateMode === 'smart' && (
+                      <span className="text-blue-800">
+                        <strong>Chế độ thông minh:</strong> Hệ thống tự phân biệt{' '}
+                        <strong>spam</strong> (nộp lại &lt; {REAPPLY_COOLDOWN_DAYS} ngày, cùng vị trí → bỏ qua),{' '}
+                        <strong>Re-apply</strong> (nộp lại ≥ {REAPPLY_COOLDOWN_DAYS} ngày → cho phép + gắn nhãn),{' '}
+                        và <strong>Multi-apply</strong> (cùng email, khác vị trí → luôn cho phép + gắn nhãn).
+                      </span>
+                    )}
+                    {duplicateMode === 'skip' && (
+                      <span className="text-yellow-800">
+                        <strong>Chế độ bảo thủ:</strong> Bỏ qua nếu email + vị trí đã tồn tại. Cùng email nhưng khác vị trí vẫn được tạo mới.
+                      </span>
+                    )}
+                    {duplicateMode === 'overwrite' && (
+                      <span className="text-orange-800">
+                        <strong>Chế độ ghi đè:</strong> Cập nhật thông tin của bản ghi cũ nhất khi email + vị trí trùng. Tự động gắn nhãn "Re-apply".
+                      </span>
+                    )}
+                    {duplicateMode === 'allow' && (
+                      <span className="text-green-800">
+                        <strong>Không lọc:</strong> Tạo bản ghi mới cho mọi dòng hợp lệ, kể cả email và vị trí hoàn toàn trùng nhau.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -644,52 +888,82 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                   <div className="flex-1">
                     <label htmlFor="enable-cv" className="text-sm font-medium text-purple-900 cursor-pointer flex items-center gap-1.5">
                       <FileText className="h-4 w-4 text-purple-600" />
-                      Đính kèm file CV (PDF / DOCX)
+                      Đính kèm file CV từ thư mục (PDF / DOCX)
                     </label>
                     <p className="text-xs text-purple-600 mt-0.5">
-                      Chọn thư mục chứa CV để tự động ghép với ứng viên theo email hoặc tên.
+                      Chọn <strong>cả thư mục</strong> — hệ thống tự ghép CV với ứng viên theo email hoặc tên.
                     </p>
                   </div>
                 </div>
 
                 {enableCvUpload && (
                   <div className="pl-3 space-y-3 border-l-2 border-purple-200">
-                    {/* Folder picker */}
                     <div>
                       <input
                         ref={cvFolderRef}
                         type="file"
                         accept=".pdf,.docx,.doc,.txt"
                         multiple
+                        webkitdirectory=""
+                        mozdirectory=""
+                        directory=""
                         className="hidden"
                         onChange={handleCvFolderChange}
                       />
+
                       <div
                         onClick={() => cvFolderRef.current?.click()}
                         className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-                          cvFileMap.size > 0
+                          cvUniqueFiles.length > 0
                             ? 'border-purple-400 bg-purple-50'
                             : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50/30'
                         }`}
                       >
-                        {cvFileMap.size > 0 ? (
-                          <div className="space-y-1">
+                        {cvUniqueFiles.length > 0 ? (
+                          <div className="space-y-2">
                             <CheckCircle2 className="h-8 w-8 mx-auto text-purple-500" />
                             <p className="font-medium text-purple-700 text-sm">
-                              Đã tải {cvFileMap.size / 2} file CV
+                              Đã tải {cvUniqueFiles.length} file CV
                             </p>
-                            {/* Show match stats if rows are loaded */}
-                            {csvRows.length > 0 && (() => {
-                              const matched = csvRows.filter(r => r._cvFile).length
-                              return (
-                                <p className="text-xs text-gray-600">
-                                  Ghép được <span className="text-green-600 font-semibold">{matched}</span> / {csvRows.filter(r=>r._valid).length} ứng viên
-                                </p>
-                              )
-                            })()}
+                            {csvRows.length > 0 && (
+                              <div className="flex items-center justify-center gap-3 text-xs">
+                                <span className="flex items-center gap-1 text-green-600 font-semibold">
+                                  <CheckCircle className="h-3.5 w-3.5" />{matchedCount} ghép được
+                                </span>
+                                {unmatchedCount > 0 && (
+                                  <span className="flex items-center gap-1 text-orange-500">
+                                    <AlertCircle className="h-3.5 w-3.5" />{unmatchedCount} chưa ghép
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <div className="mt-2 text-left max-h-28 overflow-y-auto space-y-1 px-1">
+                              {cvUniqueFiles.slice(0, 5).map((f, idx) => {
+                                const isMatched = csvRows.some(r => r._cvFile?.name === f.name)
+                                return (
+                                  <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600">
+                                    <FileText className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                                    <span className="truncate flex-1">{f.name}</span>
+                                    {csvRows.length > 0 && (
+                                      isMatched
+                                        ? <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                        : <span className="h-3 w-3 rounded-full border border-gray-300 flex-shrink-0" />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                              {cvUniqueFiles.length > 5 && (
+                                <p className="text-xs text-gray-400 pl-4">... và {cvUniqueFiles.length - 5} file khác</p>
+                              )}
+                            </div>
                             <button
                               type="button"
-                              onClick={e => { e.stopPropagation(); setCvFileMap(new Map()); if (cvFolderRef.current) cvFolderRef.current.value = ''; setCsvRows(prev => prev.map(r => ({ ...r, _cvFile: undefined }))) }}
+                              onClick={e => {
+                                e.stopPropagation()
+                                setCvFileMap(new Map()); setCvUniqueFiles([])
+                                if (cvFolderRef.current) cvFolderRef.current.value = ''
+                                setCsvRows(prev => prev.map(r => ({ ...r, _cvFile: undefined })))
+                              }}
                               className="text-xs text-gray-400 hover:text-red-500 underline"
                             >
                               Xóa & chọn lại
@@ -698,12 +972,13 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                         ) : (
                           <div className="space-y-1.5">
                             <Upload className="h-8 w-8 mx-auto text-purple-300" />
-                            <p className="text-sm text-gray-600 font-medium">Chọn nhiều file CV</p>
-                            <p className="text-xs text-gray-400">PDF, DOCX, DOC, TXT</p>
+                            <p className="text-sm text-gray-600 font-medium">Click để chọn thư mục CV</p>
+                            <p className="text-xs text-gray-400">Chọn cả thư mục — tự động đọc toàn bộ file bên trong</p>
+                            <p className="text-xs text-purple-400">PDF · DOCX · DOC · TXT</p>
                           </div>
                         )}
                       </div>
-                      {/* Matching rules info */}
+
                       <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 space-y-0.5">
                         <p className="font-medium text-gray-600">Quy tắc ghép tự động:</p>
                         <p>① Cột <code className="bg-gray-200 px-1 rounded">CV</code> trong CSV (tên file chính xác)</p>
@@ -730,7 +1005,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                 )}
               </div>
 
-              {/* File upload */}
+              {/* File CSV upload */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-gray-800">
                   File CSV <span className="text-red-500">*</span>
@@ -807,7 +1082,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                   { label: 'Tổng dòng', value: csvRows.length, color: 'text-gray-900', bg: 'bg-gray-50' },
                   { label: 'Hợp lệ', value: validRows.length, color: 'text-green-700', bg: 'bg-green-50' },
                   { label: 'Có lỗi', value: invalidRows.length, color: 'text-red-600', bg: 'bg-red-50' },
-                  ...(enableCvUpload ? [{ label: 'Có CV', value: csvRows.filter(r => r._cvFile).length, color: 'text-purple-700', bg: 'bg-purple-50' }] : []),
+                  ...(enableCvUpload ? [{ label: 'Có CV', value: matchedCount, color: 'text-purple-700', bg: 'bg-purple-50' }] : []),
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-xl p-4 text-center border`}>
                     <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -816,7 +1091,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                 ))}
               </div>
 
-              {/* Source + job recap */}
+              {/* Source + job + mode recap */}
               <div className="flex flex-wrap items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
                 <div className="flex items-center gap-1.5">
                   <Tag className="h-4 w-4 text-blue-600" />
@@ -830,11 +1105,23 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                     <span className="font-medium">{jobs.find(j => j.id === defaultJobId)?.title}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <span className="text-gray-600">Trùng lặp:</span>
+                  <Badge className={`text-xs ${
+                    duplicateMode === 'smart' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                    duplicateMode === 'skip' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                    duplicateMode === 'overwrite' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                    'bg-green-100 text-green-700 border-green-200'
+                  }`}>
+                    {activeModeConfig.label}
+                  </Badge>
+                </div>
                 {enableCvUpload && (
                   <div className="flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-purple-600" />
                     <span className="text-gray-600">CV:</span>
-                    <span className="text-purple-700 font-medium">{csvRows.filter(r => r._cvFile).length} ghép được</span>
+                    <span className="text-purple-700 font-medium">{matchedCount} ghép được</span>
                     {parseAllCv && <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px]">AI parse</Badge>}
                   </div>
                 )}
@@ -984,6 +1271,36 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                     ))}
                   </div>
 
+                  {/* Re-apply / Multi-apply stats */}
+                  {(() => {
+                    const reapplyCount  = result.details.filter(d => d.status === 'success' && d.reason?.includes('Re-apply')).length
+                    const multiCount    = result.details.filter(d => d.status === 'success' && d.reason?.includes('Multi-apply')).length
+                    const overwriteCount = result.details.filter(d => d.status === 'success' && d.reason?.includes('Ghi đè')).length
+                    if (!reapplyCount && !multiCount && !overwriteCount) return null
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {reapplyCount > 0 && (
+                          <div className="flex items-center gap-2 p-2.5 bg-orange-50 border border-orange-200 rounded-lg text-xs">
+                            <RefreshCw className="h-4 w-4 text-orange-500" />
+                            <span className="text-orange-800 font-medium">{reapplyCount} Re-apply được chấp nhận</span>
+                          </div>
+                        )}
+                        {multiCount > 0 && (
+                          <div className="flex items-center gap-2 p-2.5 bg-purple-50 border border-purple-200 rounded-lg text-xs">
+                            <History className="h-4 w-4 text-purple-500" />
+                            <span className="text-purple-800 font-medium">{multiCount} Multi-apply (vị trí mới)</span>
+                          </div>
+                        )}
+                        {overwriteCount > 0 && (
+                          <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs">
+                            <RefreshCw className="h-4 w-4 text-blue-500" />
+                            <span className="text-blue-800 font-medium">{overwriteCount} bản ghi được ghi đè</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   {/* CV upload stats */}
                   {enableCvUpload && (() => {
                     const withCv  = result.details.filter(d => d.status === 'success' && d.reason?.includes('CV')).length
@@ -992,13 +1309,9 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                       <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl text-sm">
                         <FileText className="h-5 w-5 text-purple-600 flex-shrink-0" />
                         <div>
-                          <p className="font-medium text-purple-900">
-                            CV đã tải lên: <strong>{withCv}</strong> file
-                          </p>
+                          <p className="font-medium text-purple-900">CV đã tải lên: <strong>{withCv}</strong> file</p>
                           {parseAllCv && (
-                            <p className="text-xs text-purple-600 mt-0.5">
-                              Phân tích AI thành công: {parsed}/{withCv} file
-                            </p>
+                            <p className="text-xs text-purple-600 mt-0.5">Phân tích AI thành công: {parsed}/{withCv} file</p>
                           )}
                         </div>
                       </div>
@@ -1072,8 +1385,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                 <Button variant="outline" onClick={handleClose}>Đóng</Button>
                 {result && result.success > 0 && (
                   <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleClose}>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Hoàn thành
+                    <CheckCircle2 className="h-4 w-4 mr-2" />Hoàn thành
                   </Button>
                 )}
               </>
@@ -1099,7 +1411,7 @@ export function CandidatesPage() {
   const [parsedData, setParsedData] = useState<ParsedCV | null>(null)
   const [sources, setSources] = useState<SourceItem[]>(FALLBACK_SOURCES)
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
-  const [isImportOpen, setIsImportOpen] = useState(false)   // ← NEW
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   const [viewCandidate, setViewCandidate] = useState<Candidate | null>(null)
   const [editCandidate, setEditCandidate] = useState<Candidate | null>(null)
@@ -1206,7 +1518,6 @@ export function CandidatesPage() {
     } finally { setIsUploading(false) }
   }
 
-  // ✅ Sanitize strings: remove null bytes (\u0000) that PostgreSQL rejects (error 22P05)
   const sanitizeStr = (s: string | null | undefined): string | null => {
     if (!s) return null
     return s.replace(/\u0000/g, '').replace(/\x00/g, '')
@@ -1235,7 +1546,7 @@ export function CandidatesPage() {
         const { error: uploadError } = await supabase.storage.from('cv-files').upload(fName, selectedFile)
         if (uploadError) throw uploadError
         cvUrl = supabase.storage.from('cv-files').getPublicUrl(fName).data.publicUrl
-        cvFileName = selectedFile.name; parsedCV = sanitizeObj(parsedData) // ✅ sanitize null bytes
+        cvFileName = selectedFile.name; parsedCV = sanitizeObj(parsedData)
       }
       const { data, error } = await supabase.from('cv_candidates').insert({
         full_name: sanitizeStr(formData.full_name), email: sanitizeStr(formData.email),
@@ -1254,7 +1565,6 @@ export function CandidatesPage() {
     } catch (err: any) { toast.error('Lỗi: ' + (err.message || 'Không thể thêm ứng viên')) }
     finally { setIsSaving(false) }
   }
-
 
   const handleUpdateCandidate = async () => {
     if (!editCandidate) return
@@ -1277,12 +1587,8 @@ export function CandidatesPage() {
     finally { setIsSaving(false) }
   }
 
-  // Proper handleViewCandidate (view-only dialog)
-  const handleViewCandidate = (candidate: Candidate) => {
-    setViewCandidate(candidate)
-  }
+  const handleViewCandidate = (candidate: Candidate) => { setViewCandidate(candidate) }
 
-  // Proper handleEditCandidate (prefill form, open edit dialog)
   const handleEditCandidate = (candidate: Candidate) => {
     const skills = candidate.cv_candidate_skills?.map(item => item.cv_skills.name) || []
     setFormData({
@@ -1341,11 +1647,11 @@ export function CandidatesPage() {
   }
 
   const exportCSV = () => {
-    const headers = ['ID','Full Name','Email','Phone','Status','Source','Position','Level']
+    const headers = ['ID','Full Name','Email','Phone','Status','Source','Source Note','Position','Level']
     const blob = new Blob([
       [headers.join(','), ...filteredCandidates.map(c => [
         c.id, `"${c.full_name.replace(/"/g,'""')}"`, c.email,
-        c.phone_number||'', c.status, c.source,
+        c.phone_number||'', c.status, c.source, c.source_note||'',
         c.cv_jobs?.title||'', c.cv_jobs?.level||''
       ].join(','))].join('\n')
     ], { type: 'text/csv;charset=utf-8;' })
@@ -1387,7 +1693,7 @@ export function CandidatesPage() {
           </Button>
           <Button variant="outline" size="sm" onClick={fetchCandidates} className="hidden sm:flex">Làm mới</Button>
 
-          {/* ── Import CSV button ── */}
+          {/* Import CSV button */}
           <Button variant="outline" size="sm"
             className="hidden sm:flex items-center gap-2 border-green-200 text-green-700 hover:bg-green-50"
             onClick={() => setIsImportOpen(true)}>
@@ -1407,7 +1713,7 @@ export function CandidatesPage() {
         </div>
       </div>
 
-      {/* ── Import CSV Dialog ── */}
+      {/* Import CSV Dialog */}
       <ImportCsvDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
@@ -1543,7 +1849,10 @@ export function CandidatesPage() {
                 <div>
                   <h3 className="text-lg font-bold">{viewCandidate.full_name}</h3>
                   <p className="text-sm text-gray-500">{viewCandidate.cv_jobs?.title || 'N/A'}</p>
-                  <div className="flex items-center gap-2 mt-1">{getStatusBadge(viewCandidate.status)}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    {getStatusBadge(viewCandidate.status)}
+                    {getSourceNoteBadge(viewCandidate.source_note)}
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1803,7 +2112,7 @@ export function CandidatesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="w-[250px]">Ứng viên</TableHead>
+                  <TableHead className="w-[270px]">Ứng viên</TableHead>
                   <TableHead>Vị trí</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Kỹ năng</TableHead>
@@ -1821,10 +2130,12 @@ export function CandidatesPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="font-medium text-sm flex items-center gap-1.5">
-                            <span className="truncate">{c.full_name}</span>
-                          </div>
+                          <div className="font-medium text-sm truncate">{c.full_name}</div>
                           <div className="text-xs text-gray-500 truncate">{c.email}</div>
+                          {/* ── source_note badge ─────────────────────────── */}
+                          {c.source_note && (
+                            <div className="mt-0.5">{getSourceNoteBadge(c.source_note)}</div>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -1883,13 +2194,13 @@ export function CandidatesPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-semibold text-base truncate">{c.full_name}</h3>
-                    </div>
+                    <h3 className="font-semibold text-base truncate">{c.full_name}</h3>
                     <p className="text-sm text-gray-500 truncate">{c.email}</p>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       {getStatusBadge(c.status)}
                       {c.cv_jobs && <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{c.cv_jobs.title}</span>}
+                      {/* ── source_note badge (mobile) ── */}
+                      {c.source_note && getSourceNoteBadge(c.source_note)}
                     </div>
                   </div>
                 </div>
