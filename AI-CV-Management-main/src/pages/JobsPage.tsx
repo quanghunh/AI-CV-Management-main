@@ -528,7 +528,16 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
           requirements: job.requirements,
         }),
       })
-      if (!res.ok) throw new Error(`Backend error: ${res.status}`)
+      if (!res.ok) {
+        let errMessage = `Backend error: ${res.status}`;
+        try {
+          const errData = await res.json();
+          errMessage = `Backend error: ${errData.detail || res.status}`;
+        } catch(e) {
+          errMessage = `Backend error: ${res.status}`;
+        }
+        throw new Error(errMessage);
+      }
       const data = await res.json()
       if (data.success && data.data?.criteria) {
         setCriteria(data.data.criteria.map((c: any) => ({ ...c, id: genId() })))
@@ -537,9 +546,10 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
         toast.success('AI đã tạo bảng tiêu chí phù hợp với JD!')
       }
     } catch (err: any) {
-      // Fallback to default if AI endpoint not available
+      // Fallback to default if AI endpoint fails
       loadPreset()
       console.warn('AI rubric generation failed, using defaults:', err.message)
+      toast.error(`Lỗi tạo tiêu chí bằng AI: ${err.message}`)
     } finally {
       setSaving(false)
     }

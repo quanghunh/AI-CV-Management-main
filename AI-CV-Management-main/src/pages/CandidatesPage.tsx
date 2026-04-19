@@ -316,8 +316,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   const [cvFileMap, setCvFileMap] = useState<Map<string, File>>(new Map())
   const [cvUniqueFiles, setCvUniqueFiles] = useState<File[]>([])
   const [enableCvUpload, setEnableCvUpload] = useState(false)
-  const [parseAllCv, setParseAllCv] = useState(false)
-
   const validRows = csvRows.filter(r => r._valid)
   const invalidRows = csvRows.filter(r => !r._valid)
 
@@ -325,7 +323,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     setStep(1); setSelectedSource(''); setDefaultJobId(''); setDuplicateMode('smart')
     setFileName(''); setCsvRows([]); setHeaderMap({}); setRawHeaders([])
     setParseError(''); setResult(null); setImportProgress(0); setImportDetail('')
-    setCvFileMap(new Map()); setCvUniqueFiles([]); setEnableCvUpload(false); setParseAllCv(false)
+    setCvFileMap(new Map()); setCvUniqueFiles([]); setEnableCvUpload(false)
     if (fileRef.current) fileRef.current.value = ''
     if (cvFolderRef.current) cvFolderRef.current.value = ''
   }
@@ -541,23 +539,33 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
             if (!upErr) {
               cvUrl = supabase.storage.from('cv-files').getPublicUrl(storageName).data.publicUrl
               cvFileName = cvFile.name
-              if (parseAllCv) {
-                try {
-                  const { parseCV } = await import('@/utils/cvParser')
-                  cvParsedData = await parseCV(cvFile)
-                } catch { /* parse failed, continue without parsed data */ }
-              }
+              try {
+                const { parseCV } = await import('@/utils/cvParser')
+                let rawParsedData = await parseCV(cvFile)
+                const sanitizeStr = (s: string | null | undefined): string | null => s ? s.replace(/\u0000/g, '').replace(/\x00/g, '') : null
+                const sanitizeObj = (obj: any): any => {
+                  if (!obj) return obj
+                  if (typeof obj === 'string') return sanitizeStr(obj)
+                  if (Array.isArray(obj)) return obj.map(sanitizeObj)
+                  if (typeof obj === 'object') {
+                    const result: any = {}; for (const key of Object.keys(obj)) result[key] = sanitizeObj(obj[key])
+                    return result
+                  }
+                  return obj
+                }
+                cvParsedData = sanitizeObj(rawParsedData)
+              } catch (pErr) { console.warn('CV parse failed for', cvFile.name, pErr) }
             }
           }
 
           const updatePayload: any = {
             full_name: row.full_name,
             email: row.email,
-            phone_number: row.phone_number || null,
-            address: row.address || null,
-            university: row.university || null,
-            experience: row.experience || null,
-            education: row.education || null,
+            phone_number: row.phone_number || (cvParsedData?.phone || null),
+            address: row.address || (cvParsedData?.address || null),
+            university: row.university || (cvParsedData?.university || null),
+            experience: row.experience || (cvParsedData?.experience || null),
+            education: row.education || (cvParsedData?.education || null),
             source: selectedSource,
             source_note: 'Re-apply',
           }
@@ -566,6 +574,13 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
           const { error } = await supabase.from('cv_candidates').update(updatePayload).eq('id', latest.id)
           if (error) throw error
+
+          if (cvParsedData?.skills && cvParsedData.skills.length > 0) {
+            try {
+              const { saveCandidateSkills } = await import('@/utils/skillsHelper')
+              await saveCandidateSkills(latest.id, cvParsedData.skills)
+            } catch (skErr) { console.error('Lỗi lưu kỹ năng:', skErr) }
+          }
 
           res.success++
           res.details.push({ row: row._rowIndex, name: row.full_name, status: 'success', reason: 'Ghi đè thành công' })
@@ -593,13 +608,23 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
             cvUrl = supabase.storage.from('cv-files').getPublicUrl(storageName).data.publicUrl
             cvFileName = cvFile.name
 
-            if (parseAllCv) {
-              setImportDetail(`Đang phân tích CV: ${cvFile.name}`)
-              try {
-                const { parseCV } = await import('@/utils/cvParser')
-                cvParsedData = await parseCV(cvFile)
-              } catch { /* parse failed, continue */ }
-            }
+            setImportDetail(`Đang trích xuất dữ liệu CV: ${cvFile.name}`)
+            try {
+              const { parseCV } = await import('@/utils/cvParser')
+              let rawParsedData = await parseCV(cvFile)
+              const sanitizeStr = (s: string | null | undefined): string | null => s ? s.replace(/\u0000/g, '').replace(/\x00/g, '') : null
+              const sanitizeObj = (obj: any): any => {
+                if (!obj) return obj
+                if (typeof obj === 'string') return sanitizeStr(obj)
+                if (Array.isArray(obj)) return obj.map(sanitizeObj)
+                if (typeof obj === 'object') {
+                  const result: any = {}; for (const key of Object.keys(obj)) result[key] = sanitizeObj(obj[key])
+                  return result
+                }
+                return obj
+              }
+              cvParsedData = sanitizeObj(rawParsedData)
+            } catch (pErr) { console.warn('CV parse failed for', cvFile.name, pErr) }
           } catch (uploadErr: any) {
             console.warn('CV upload failed for', cvFile.name, uploadErr)
           }
@@ -611,7 +636,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           .insert({
             full_name: row.full_name,
             email: row.email,
-            phone_number: row.phone_number || null,
+            phone_number: row.phone_number || (cvParsedData?.phone || null),
             address: row.address || (cvParsedData?.address || null),
             university: row.university || (cvParsedData?.university || null),
             experience: row.experience || (cvParsedData?.experience || null),
@@ -628,6 +653,13 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           .single()
 
         if (error) throw error
+
+        if (cvParsedData?.skills && cvParsedData.skills.length > 0) {
+          try {
+            const { saveCandidateSkills } = await import('@/utils/skillsHelper')
+            await saveCandidateSkills(data.id, cvParsedData.skills)
+          } catch (skErr) { console.error('Lỗi lưu kỹ năng:', skErr) }
+        }
 
         // Update lookup sets so within-batch duplicates are also caught
         allEmailKeys.add(emailLower)
@@ -987,20 +1019,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                         <p className="text-orange-500">⚠ Có thể ghép thủ công trong bước Xem trước</p>
                       </div>
                     </div>
-
-                    {/* Parse CV option */}
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <Checkbox id="parse-cv" checked={parseAllCv} onCheckedChange={setParseAllCv} />
-                      <div>
-                        <label htmlFor="parse-cv" className="text-sm font-medium text-gray-800 cursor-pointer flex items-center gap-1.5">
-                          <Brain className="h-4 w-4 text-orange-500" />
-                          Tự động phân tích CV bằng AI
-                        </label>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Trích xuất thêm thông tin từ CV để bổ sung vào hồ sơ ứng viên (chậm hơn).
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1122,7 +1140,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                     <FileText className="h-4 w-4 text-purple-600" />
                     <span className="text-gray-600">CV:</span>
                     <span className="text-purple-700 font-medium">{matchedCount} ghép được</span>
-                    {parseAllCv && <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px]">AI parse</Badge>}
                   </div>
                 )}
               </div>
@@ -1250,7 +1267,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                   {enableCvUpload && (
                     <p className="text-xs text-purple-600 flex items-center gap-1 justify-center">
                       <FileText className="h-3.5 w-3.5" />
-                      Đang tải CV lên Supabase Storage{parseAllCv ? ' và phân tích bằng AI' : ''}
+                      Đang tải CV lên Supabase Storage và trích xuất dữ liệu
                     </p>
                   )}
                 </div>
@@ -1310,9 +1327,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
                         <FileText className="h-5 w-5 text-purple-600 flex-shrink-0" />
                         <div>
                           <p className="font-medium text-purple-900">CV đã tải lên: <strong>{withCv}</strong> file</p>
-                          {parseAllCv && (
-                            <p className="text-xs text-purple-600 mt-0.5">Phân tích AI thành công: {parsed}/{withCv} file</p>
-                          )}
+                          <p className="text-xs text-purple-600 mt-0.5">Trích xuất thành công: {parsed}/{withCv} file</p>
                         </div>
                       </div>
                     ) : null
@@ -1542,7 +1557,7 @@ export function CandidatesPage() {
     try {
       let cvUrl = null, cvFileName = null, parsedCV = null
       if (selectedFile) {
-        const fName = `${Date.now()}_${selectedFile.name}`
+        const fName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
         const { error: uploadError } = await supabase.storage.from('cv-files').upload(fName, selectedFile)
         if (uploadError) throw uploadError
         cvUrl = supabase.storage.from('cv-files').getPublicUrl(fName).data.publicUrl

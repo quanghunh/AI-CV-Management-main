@@ -1,4 +1,18 @@
+import sys
+import builtins
 
+# Safely print Unicode without crashing Windows terminals
+_old_print = builtins.print
+def safe_print(*args, **kwargs):
+    safe_args = []
+    encoding = sys.stdout.encoding or 'utf-8'
+    for arg in args:
+        if isinstance(arg, str):
+            safe_args.append(arg.encode(encoding, errors='replace').decode(encoding))
+        else:
+            safe_args.append(arg)
+    _old_print(*safe_args, **kwargs)
+builtins.print = safe_print
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -83,6 +97,14 @@ class GenerateInterviewQuestionsRequest(BaseModel):
     requirements: Optional[str] = None
     mandatory_requirements: Optional[str] = None
     language: str = "vietnamese"
+
+class GenerateScoringRubricRequest(BaseModel):
+    job_title: str
+    department: str
+    level: str
+    job_type: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
 
 # ==================== HELPERS ====================
 
@@ -1628,6 +1650,99 @@ Begin your response now:"""
             status_code=500, 
             detail=f"Error generating interview questions: {str(e)}"
         )
+
+@app.post("/api/generate-scoring-rubric")
+async def generate_scoring_rubric(request: GenerateScoringRubricRequest):
+    """
+    Generate a scoring rubric based on job description using AI.
+    """
+    try:
+        print(f"\n📊 ===== GENERATING SCORING RUBRIC =====")
+        print(f"💼 Title: {request.job_title}")
+        
+        job_context = f"""Job Position: {request.job_title}
+Department: {request.department}
+Level: {request.level}
+Job Type: {request.job_type or 'Full-time'}
+Description: {request.description or 'Not specified'}
+Requirements: {request.requirements or 'Not specified'}"""
+        
+        messages = [
+            {"role": "system", "content": "You are a professional HR specialist and Talent Acquisition Manager. Define a scoring rubric matrix with criteria based on the job description. Return ONLY valid JSON. LƯU Ý QUAN TRỌNG: Viết toàn bộ nội dung (tên tiêu chí, mô tả, hướng dẫn chấm điểm, ghi chú) BẰNG TIẾNG VIỆT."},
+            {"role": "user", "content": f"""Create a detailed CV scoring rubric (in Vietnamese) for the following job:
+            
+{job_context}
+
+The total weight of ALL 'required' and 'important' criteria MUST sum to exactly 100. The 'nice_to_have' criteria weights are additional bonus weights (e.g. 5 or 10).
+Try to create about 4-6 criteria total covering Technical, Experience, Soft Skills. Mọi nội dung text trả về phải bằng Tiếng Việt.
+
+Return strictly in this JSON format. DO NOT include markdown code blocks (like ```json), just return the raw JSON:
+{{
+  "criteria": [
+    {{
+      "name": "Criterion name",
+      "description": "Detailed description properly escaping internal double quotes if any",
+      "weight": 10,
+      "level": "required",
+      "scoring_guide": {{
+        "excellent": "Excellent rating description",
+        "good": "Good rating description",
+        "average": "Average rating description",
+        "poor": "Poor rating description"
+      }}
+    }}
+  ],
+  "passing_score": 70,
+  "notes": "Any other instructions"
+}}
+Note: 'level' must be strictly one of: "required" or "important" or "nice_to_have".
+CRITICAL RULES FOR JSON VALIDITY:
+1. Double check that ALL your opening brackets {{ have matching closing brackets }}.
+2. Escape any internal double quotes inside descriptions using \\" (backslash quote).
+3. Do NOT add trailing commas at the end of lists or objects.
+4. Do NOT output ANY conversational text before or after the JSON.
+"""}
+        ]
+        
+        import time
+        max_attempts = 3
+        last_error = None
+        
+        for attempt in range(max_attempts):
+            try:
+                result = call_ai_api(messages=messages, model="openai/gpt-4o-mini", temperature=0.1, max_tokens=2500)
+                content = result['choices'][0]['message']['content']
+                rubric_data = extract_json_from_response(content)
+                
+                if "criteria" not in rubric_data:
+                    raise ValueError("Missing 'criteria' in AI response")
+                if not isinstance(rubric_data["criteria"], list):
+                    raise ValueError("'criteria' is not a list")
+                    
+                print(f"✅ Generated scoring rubric successfully on attempt {attempt + 1}")
+                print(f"===== SCORING RUBRIC GENERATION END =====\n")
+                
+                return {
+                    "success": True,
+                    "data": rubric_data,
+                    "message": "Scoring rubric generated successfully",
+                    "metadata": {"model": "gpt-4o-mini", "attempts": attempt + 1}
+                }
+            except Exception as e:
+                print(f"⚠️ Generation error on attempt {attempt + 1}: {str(e)}")
+                last_error = e
+                if attempt < max_attempts - 1:
+                    time.sleep(1.5)
+                
+        raise ValueError(f"AI failed to generate valid rubric after {max_attempts} attempts. Last error: {str(last_error)}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error generating rubric: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating scoring rubric: {str(e)}")
 
 from pydantic import EmailStr
 import smtplib
