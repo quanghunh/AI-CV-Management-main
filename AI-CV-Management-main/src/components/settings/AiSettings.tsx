@@ -7,6 +7,7 @@ import { CheckCircle2, Sparkles, Link as LinkIcon, Loader2, AlertCircle } from '
 import { supabase } from '@/lib/supabaseClient';
 import { testGeminiConnection } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 interface AIConfig {
   id?: string;
@@ -165,18 +166,18 @@ const AiSettings = () => {
 
   const testOpenAI = async () => {
     if (!config.openai_api_key || !config.openai_endpoint) {
-      alert(t('ai.messages.enterOpenAIKey'));
+      toast.warning(t('ai.messages.enterOpenAIKey'));
       return;
     }
 
     if (!config.openai_api_key.startsWith('sk-')) {
-      alert(t('ai.messages.invalidOpenAIKey'));
+      toast.warning(t('ai.messages.invalidOpenAIKey'));
       setOpenAIStatus('error');
       return;
     }
 
     if (!config.openai_endpoint.startsWith('https://')) {
-      alert(t('ai.messages.invalidEndpoint'));
+      toast.warning(t('ai.messages.invalidEndpoint'));
       setOpenAIStatus('error');
       return;
     }
@@ -199,14 +200,14 @@ const AiSettings = () => {
 
       if (data.success) {
         setOpenAIStatus('configured');
-        alert(t('ai.messages.openAISuccess'));
+        toast.success(t('ai.messages.openAISuccess'));
       } else {
         setOpenAIStatus('error');
-        alert(t('ai.messages.openAIFailed') + ' ' + data.error);
+        toast.error(t('ai.messages.openAIFailed') + ' ' + data.error);
       }
     } catch (error: any) {
       setOpenAIStatus('error');
-      alert(t('ai.messages.openAIError') + ' ' + (error.message || 'Unknown error'));
+      toast.error(t('ai.messages.openAIError') + ' ' + (error.message || 'Unknown error'));
       console.error('OpenAI test error:', error);
     } finally {
       setTestingOpenAI(false);
@@ -215,7 +216,7 @@ const AiSettings = () => {
 
   const testGemini = async () => {
     if (!config.gemini_api_key) {
-      alert(t('ai.messages.enterGeminiKey'));
+      toast.warning(t('ai.messages.enterGeminiKey'));
       return;
     }
 
@@ -225,14 +226,14 @@ const AiSettings = () => {
       
       if (result.success) {
         setGeminiStatus('configured');
-        alert(t('ai.messages.geminiSuccess'));
+        toast.success(t('ai.messages.geminiSuccess'));
       } else {
         setGeminiStatus('error');
-        alert(t('ai.messages.geminiFailed') + ' ' + result.error);
+        toast.error(t('ai.messages.geminiFailed') + ' ' + result.error);
       }
     } catch (error: any) {
       setGeminiStatus('error');
-      alert(t('ai.messages.geminiError') + ' ' + (error.message || 'Unknown error'));
+      toast.error(t('ai.messages.geminiError') + ' ' + (error.message || 'Unknown error'));
       console.error('Gemini test error:', error);
     } finally {
       setTestingGemini(false);
@@ -241,12 +242,12 @@ const AiSettings = () => {
 
   const testOpenRouter = async () => {
     if (!config.openrouter_api_key) {
-      alert(t('ai.messages.enterOpenRouterKey')); // Assume new translation key
+      toast.warning(t('ai.messages.enterOpenRouterKey'));
       return;
     }
 
-    if (!config.openrouter_api_key.startsWith('sk-or-')) { // Assuming OpenRouter keys start with 'sk-or-'
-      alert(t('ai.messages.invalidOpenRouterKey')); // Assume new translation key
+    if (!config.openrouter_api_key.startsWith('sk-or-')) {
+      toast.warning(t('ai.messages.invalidOpenRouterKey'));
       setOpenRouterStatus('error');
       return;
     }
@@ -268,14 +269,14 @@ const AiSettings = () => {
 
       if (data.success) {
         setOpenRouterStatus('configured');
-        alert(t('ai.messages.openRouterSuccess')); // Assume new translation key
+        toast.success(t('ai.messages.openRouterSuccess'));
       } else {
         setOpenRouterStatus('error');
-        alert(t('ai.messages.openRouterFailed') + ' ' + data.error); // Assume new translation key
+        toast.error(t('ai.messages.openRouterFailed') + ' ' + data.error);
       }
     } catch (error: any) {
       setOpenRouterStatus('error');
-      alert(t('ai.messages.openRouterError') + ' ' + (error.message || 'Unknown error')); // Assume new translation key
+      toast.error(t('ai.messages.openRouterError') + ' ' + (error.message || 'Unknown error'));
       console.error('OpenRouter test error:', error);
     } finally {
       setTestingOpenRouter(false);
@@ -294,10 +295,10 @@ const AiSettings = () => {
     
     setSaving(false);
     if (error) {
-      alert(t('ai.messages.saveError'));
+      toast.error(t('ai.messages.saveError'));
       console.error(error);
     } else {
-      alert(t('ai.messages.saveSuccess'));
+      toast.success(t('ai.messages.saveSuccess'));
       loadConfig();
     }
   };

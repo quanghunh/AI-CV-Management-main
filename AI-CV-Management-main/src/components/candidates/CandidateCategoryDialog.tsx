@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 // ==================== TYPES ====================
 
@@ -94,15 +95,16 @@ export function CandidateCategoryDialog({
 
     if (error) {
       if (error.code === "23505") {
-        alert("❌ Nguồn này đã tồn tại!")
+        toast.warning('Nguồn này đã tồn tại!')
       } else {
-        alert(`❌ Lỗi: ${error.message}`)
+        toast.error(`Lỗi: ${error.message}`)
       }
     } else {
       setNewLabel("")
       setAddingType(null)
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success('Thêm nguồn ứng tuyển thành công!')
     }
     setSaving(false)
   }
@@ -118,19 +120,20 @@ export function CandidateCategoryDialog({
       .eq("is_default", false)
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       setEditingId(null)
       setEditingLabel("")
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success('Cập nhật nguồn ứng tuyển thành công!')
     }
     setSaving(false)
   }
 
   const handleDelete = async (item: CandidateCategory) => {
     if (item.is_default) {
-      alert("⚠️ Không thể xóa nguồn mặc định!")
+      toast.warning('Không thể xóa nguồn mặc định!')
       return
     }
 
@@ -142,10 +145,11 @@ export function CandidateCategoryDialog({
       .eq("id", item.id)
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success(`Đã xóa nguồn "${item.label}" thành công!`)
     }
   }
 

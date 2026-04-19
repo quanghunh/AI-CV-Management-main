@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import {
   Search, Plus, MoreHorizontal, FileText, CheckCircle, Users, Eye, Edit, Trash2,
   Share2, Copy, Sparkles, PenTool, X, Tag,
@@ -471,8 +472,8 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
 
   const handleSave = async () => {
     if (!job) return
-    if (!weightOk) { alert('Tổng trọng số phải bằng 100%. Hiện tại: ' + totalWeight + '%'); return }
-    if (!criteria.length) { alert('Vui lòng thêm ít nhất 1 tiêu chí'); return }
+    if (!weightOk) { toast.warning('Tổng trọng số phải bằng 100%. Hiện tại: ' + totalWeight + '%'); return }
+    if (!criteria.length) { toast.warning('Vui lòng thêm ít nhất 1 tiêu chí'); return }
 
     // Update max_score based on weight
     const finalCriteria = criteria.map(c => ({ ...c, max_score: c.weight }))
@@ -503,7 +504,7 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
       setSaveSuccess(true)
       setTimeout(() => { setSaveSuccess(false); onOpenChange(false) }, 1200)
     } catch (err: any) {
-      alert('Lỗi khi lưu rubric: ' + (err.message || 'Không xác định'))
+      toast.error('Lỗi khi lưu rubric: ' + (err.message || 'Không xác định'))
     } finally {
       setSaving(false)
     }
@@ -533,7 +534,7 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
         setCriteria(data.data.criteria.map((c: any) => ({ ...c, id: genId() })))
         if (data.data.passing_score) setPassingScore(data.data.passing_score)
         if (data.data.notes) setNotes(data.data.notes)
-        alert('✅ AI đã tạo bảng tiêu chí phù hợp với JD!')
+        toast.success('AI đã tạo bảng tiêu chí phù hợp với JD!')
       }
     } catch (err: any) {
       // Fallback to default if AI endpoint not available
@@ -947,8 +948,8 @@ export function JobsPage() {
           cv_candidate_skills(cv_skills(id,name,category))`)
         .eq('job_id', jobId).order('created_at', { ascending: false })
       if (data) setJobCandidates(data)
-      if (error) alert('❌ Không thể tải danh sách ứng viên')
-    } catch { alert('❌ Có lỗi xảy ra khi tải danh sách ứng viên') }
+      if (error) toast.error('Không thể tải danh sách ứng viên')
+    } catch { toast.error('Có lỗi xảy ra khi tải danh sách ứng viên') }
     finally { setLoadingCandidates(false) }
   }
 
@@ -1032,7 +1033,7 @@ export function JobsPage() {
 
   // ── AI handlers ────────────────────────────────────────────────────────────
   const handleAIGenerate = async () => {
-    if (!formData.title || !formData.department) { alert('❌ Vui lòng điền đầy đủ: Tiêu đề vị trí và Phòng ban'); return }
+    if (!formData.title || !formData.department) { toast.warning('Vui lòng điền đầy đủ: Tiêu đề vị trí và Phòng ban'); return }
     setGeneratingAI(true)
     try {
       const generated = await generateJobDescriptionAI({
@@ -1046,8 +1047,8 @@ export function JobsPage() {
         benefits: generated.benefits
       }))
       setActiveTab('manual')
-      alert('✅ Đã tạo gợi ý JD với AI thành công!')
-    } catch (e: any) { alert(`❌ Lỗi khi tạo JD với AI: ${e.message}`) }
+      toast.success('Đã tạo gợi ý JD với AI thành công!')
+    } catch (e: any) { toast.error(`Lỗi khi tạo JD với AI: ${e.message}`) }
     finally { setGeneratingAI(false) }
   }
 
@@ -1069,10 +1070,10 @@ export function JobsPage() {
   }
 
   const handleCopyAIQuestions = () => {
-    if (!aiQuestions) { alert('⚠️ Không có câu hỏi để sao chép'); return }
+    if (!aiQuestions) { toast.warning('Không có câu hỏi để sao chép'); return }
     navigator.clipboard.writeText(aiQuestions)
-      .then(() => alert('✅ Đã sao chép câu hỏi vào clipboard!'))
-      .catch(() => alert('❌ Không thể sao chép. Vui lòng thử lại.'))
+      .then(() => toast.success('Đã sao chép câu hỏi vào clipboard!'))
+      .catch(() => toast.error('Không thể sao chép. Vui lòng thử lại.'))
   }
 
   // ── NEW: Open Scoring Rubric ────────────────────────────────────────────────
@@ -1084,10 +1085,10 @@ export function JobsPage() {
   // ── CRUD ───────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!formData.title || !formData.department) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc: Tiêu đề vị trí và Phòng ban'); return
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc: Tiêu đề vị trí và Phòng ban'); return
     }
     if (activeTab === 'manual' && (!formData.description || !formData.requirements || !formData.benefits)) {
-      alert('Vui lòng điền đầy đủ: Mô tả công việc, Yêu cầu công việc và Quyền lợi'); return
+      toast.warning('Vui lòng điền đầy đủ: Mô tả công việc, Yêu cầu công việc và Quyền lợi'); return
     }
     setIsSubmitting(true)
     const { error } = await supabase.from('cv_jobs').insert([{
@@ -1098,8 +1099,8 @@ export function JobsPage() {
       benefits: formData.benefits || null,
       posted_date: formData.posted_date
     }]).select()
-    if (error) { alert(`Có lỗi xảy ra khi tạo JD: ${error.message}`) }
-    else { alert('✅ Tạo JD thành công!'); setIsDialogOpen(false); handleReset(); fetchJobs() }
+    if (error) { toast.error(`Có lỗi xảy ra khi tạo JD: ${error.message}`) }
+    else { toast.success('Tạo JD thành công!'); setIsDialogOpen(false); handleReset(); fetchJobs() }
     setIsSubmitting(false)
   }
 
@@ -1122,7 +1123,7 @@ export function JobsPage() {
   }
 
   const handleUpdateJob = async () => {
-    if (!editFormData.title || !editFormData.department) { alert('Vui lòng điền đầy đủ thông tin bắt buộc'); return }
+    if (!editFormData.title || !editFormData.department) { toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc'); return }
     setIsSubmitting(true)
     const { error } = await supabase.from('cv_jobs').update({
       title: editFormData.title, department: editFormData.department,
@@ -1131,8 +1132,8 @@ export function JobsPage() {
       description: editFormData.description || null, requirements: editFormData.requirements || null,
       benefits: editFormData.benefits || null
     }).eq('id', editFormData.id)
-    if (error) { alert(`❌ Lỗi: ${error.message}`) }
-    else { alert('✅ Đã cập nhật Job Description thành công!'); setIsEditDialogOpen(false); setEditFormData(null); fetchJobs() }
+    if (error) { toast.error(`Lỗi: ${error.message}`) }
+    else { toast.success('Đã cập nhật Job Description thành công!'); setIsEditDialogOpen(false); setEditFormData(null); fetchJobs() }
     setIsSubmitting(false)
   }
 
@@ -1145,13 +1146,13 @@ export function JobsPage() {
       benefits: job.benefits || null,
       posted_date: new Date().toISOString().split('T')[0]
     }])
-    if (error) alert(`❌ Lỗi khi sao chép: ${error.message}`)
-    else { alert('✅ Đã sao chép Job Description thành công!'); fetchJobs() }
+    if (error) toast.error(`Lỗi khi sao chép: ${error.message}`)
+    else { toast.success('Đã sao chép Job Description thành công!'); fetchJobs() }
   }
 
   const handleShare = (job: Job) => {
     navigator.clipboard.writeText(`${window.location.origin}/jobs/${job.id}`)
-    alert('✅ Đã sao chép link chia sẻ vào clipboard!')
+    toast.success('Đã sao chép link chia sẻ vào clipboard!')
   }
 
   const handleDelete = (job: Job) => { setSelectedJob(job); setIsDeleteDialogOpen(true) }
@@ -1160,9 +1161,9 @@ export function JobsPage() {
     if (!selectedJob) return
     setIsDeleting(true)
     const { error } = await supabase.from('cv_jobs').delete().eq('id', selectedJob.id)
-    if (error) alert(`❌ Lỗi khi xóa: ${error.message}`)
+    if (error) toast.error(`Lỗi khi xóa: ${error.message}`)
     else {
-      alert('✅ Đã xóa Job Description thành công!')
+      toast.success('Đã xóa Job Description thành công!')
       setIsDeleteDialogOpen(false); setSelectedJob(null); fetchJobs()
     }
     setIsDeleting(false)

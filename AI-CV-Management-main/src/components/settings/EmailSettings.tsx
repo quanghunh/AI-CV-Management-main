@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { KeyRound, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 interface EmailSettingsData {
   id?: string
@@ -41,13 +42,12 @@ export function EmailSettings() {
         .single()
 
       if (error) {
-        // Nếu không có data thì bỏ qua lỗi
         if (error.code === 'PGRST116') {
           console.log('No settings found, using defaults')
           return
         }
         console.error('Error loading settings:', error)
-        alert(`Lỗi tải cài đặt: ${error.message}`)
+        toast.error(`Lỗi tải cài đặt: ${error.message}`)
         return
       }
 
@@ -59,7 +59,7 @@ export function EmailSettings() {
       }
     } catch (error) {
       console.error('Unexpected error:', error)
-      alert('Không thể tải cài đặt email')
+      toast.error('Không thể tải cài đặt email')
     } finally {
       setIsLoading(false)
     }
@@ -67,7 +67,7 @@ export function EmailSettings() {
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
-      alert('Vui lòng nhập App Password')
+      toast.warning('Vui lòng nhập App Password')
       return
     }
 
@@ -104,12 +104,11 @@ export function EmailSettings() {
       }
 
       setSettingsId(result.data.id)
-      localStorage.setItem('email_settings_updated', 'true'); // Trigger update event
-
-      alert('Cài đặt email đã được lưu thành công!')
+      localStorage.setItem('email_settings_updated', 'true')
+      toast.success('Cài đặt email đã được lưu thành công!')
     } catch (error: any) {
       console.error('Error saving settings:', error)
-      alert(`Lỗi lưu cài đặt: ${error.message || 'Không thể lưu cài đặt'}`)
+      toast.error(`Lỗi lưu cài đặt: ${error.message || 'Không thể lưu cài đặt'}`)
     } finally {
       setIsLoading(false)
     }
@@ -117,16 +116,14 @@ export function EmailSettings() {
 
   const handleTestAPI = () => {
     if (!apiKey.trim()) {
-      alert('Vui lòng nhập Mật khẩu ứng dụng (App Password)')
+      toast.warning('Vui lòng nhập Mật khẩu ứng dụng (App Password)')
       return
     }
-
     if (apiKey.replace(/\s/g, '').length !== 16) {
-      alert('Mật khẩu ứng dụng của Google thường có 16 ký tự. Vui lòng kiểm tra lại.')
+      toast.warning('Mật khẩu ứng dụng của Google thường có 16 ký tự. Vui lòng kiểm tra lại.')
       return
     }
-
-    alert('Định dạng hợp lệ! Hãy lưu cài đặt và test bằng cách gửi email từ hệ thống.')
+    toast.info('Định dạng hợp lệ! Hãy lưu cài đặt và test bằng cách gửi email từ hệ thống.')
   }
 
   return (

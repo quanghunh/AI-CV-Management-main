@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 import {
   Search, Plus, Eye, Edit, Trash2, Users, UserCheck, TrendingUp,
   Filter, Download, FileText, Brain, X, AlertTriangle, CheckCircle2,
@@ -339,8 +340,8 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   }
 
   const handleNextToPreview = () => {
-    if (!selectedSource) { alert('Vui lòng chọn nguồn ứng viên'); return }
-    if (!csvRows.length) { alert('Vui lòng chọn file CSV'); return }
+    if (!selectedSource) { toast.warning('Vui lòng chọn nguồn ứng viên'); return }
+    if (!csvRows.length) { toast.warning('Vui lòng chọn file CSV'); return }
     // Re-match CV files in case folder was loaded after CSV
     if (cvFileMap.size > 0) {
       setCsvRows(prev => prev.map(row => ({
@@ -1184,7 +1185,7 @@ export function CandidatesPage() {
     const file = event.target.files?.[0]
     if (!file) return
     const validation = validateCVFile(file)
-    if (!validation.valid) { alert(validation.error); event.target.value = ''; return }
+    if (!validation.valid) { toast.error(validation.error || 'File CV không hợp lệ'); event.target.value = ''; return }
     setSelectedFile(file)
     try {
       setIsUploading(true)
@@ -1198,15 +1199,33 @@ export function CandidatesPage() {
       if (parsed.education) handleInputChange('education', parsed.education)
       if (parsed.experience) handleInputChange('experience', parsed.experience)
       if (parsed.skills?.length) handleInputChange('skills', parsed.skills)
+      toast.success('Phân tích CV thành công! Thông tin đã được điền tự động.')
       setTimeout(() => setCurrentTab('basic'), 300)
     } catch (err: any) {
-      alert('⚠️ Không thể phân tích CV:\n' + (err.message || 'Lỗi không xác định'))
+      toast.error('Không thể phân tích CV: ' + (err.message || 'Lỗi không xác định'))
     } finally { setIsUploading(false) }
+  }
+
+  // ✅ Sanitize strings: remove null bytes (\u0000) that PostgreSQL rejects (error 22P05)
+  const sanitizeStr = (s: string | null | undefined): string | null => {
+    if (!s) return null
+    return s.replace(/\u0000/g, '').replace(/\x00/g, '')
+  }
+  const sanitizeObj = (obj: any): any => {
+    if (!obj) return obj
+    if (typeof obj === 'string') return sanitizeStr(obj)
+    if (Array.isArray(obj)) return obj.map(sanitizeObj)
+    if (typeof obj === 'object') {
+      const result: any = {}
+      for (const key of Object.keys(obj)) result[key] = sanitizeObj(obj[key])
+      return result
+    }
+    return obj
   }
 
   const handleSubmit = async () => {
     if (!formData.full_name || !formData.email || !formData.job_id) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Vị trí ứng tuyển)'); return
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Vị trí ứng tuyển)'); return
     }
     setIsSaving(true)
     try {
@@ -1216,13 +1235,13 @@ export function CandidatesPage() {
         const { error: uploadError } = await supabase.storage.from('cv-files').upload(fName, selectedFile)
         if (uploadError) throw uploadError
         cvUrl = supabase.storage.from('cv-files').getPublicUrl(fName).data.publicUrl
-        cvFileName = selectedFile.name; parsedCV = parsedData
+        cvFileName = selectedFile.name; parsedCV = sanitizeObj(parsedData) // ✅ sanitize null bytes
       }
       const { data, error } = await supabase.from('cv_candidates').insert({
-        full_name: formData.full_name, email: formData.email,
-        phone_number: formData.phone_number || null, job_id: formData.job_id,
-        address: formData.address || null, experience: formData.experience || null,
-        education: formData.education || null, university: formData.university || null,
+        full_name: sanitizeStr(formData.full_name), email: sanitizeStr(formData.email),
+        phone_number: sanitizeStr(formData.phone_number) || null, job_id: formData.job_id,
+        address: sanitizeStr(formData.address) || null, experience: sanitizeStr(formData.experience) || null,
+        education: sanitizeStr(formData.education) || null, university: sanitizeStr(formData.university) || null,
         status: 'Mới', source: formData.source || null,
         cv_url: cvUrl, cv_file_name: cvFileName, cv_parsed_data: parsedCV,
       }).select().single()
@@ -1231,10 +1250,11 @@ export function CandidatesPage() {
       try { await ActivityLogger.logCVSubmitted(formData.full_name, data.id, jobs.find(j => j.id === formData.job_id)?.title) } catch (_) {}
       const { data: fullData } = await supabase.from('cv_candidates')
         .select(`*, cv_jobs(title,level), cv_candidate_skills(cv_skills(id,name,category))`).eq('id', data.id).single()
-      if (fullData) { setCandidates(prev => [fullData as Candidate, ...prev]); setIsDialogOpen(false); resetForm(); alert('✓ Thêm ứng viên thành công!') }
-    } catch (err: any) { alert('Lỗi: ' + (err.message || 'Không thể thêm ứng viên')) }
+      if (fullData) { setCandidates(prev => [fullData as Candidate, ...prev]); setIsDialogOpen(false); resetForm(); toast.success('Thêm ứng viên thành công!') }
+    } catch (err: any) { toast.error('Lỗi: ' + (err.message || 'Không thể thêm ứng viên')) }
     finally { setIsSaving(false) }
   }
+
 
   const handleUpdateCandidate = async () => {
     if (!editCandidate) return
@@ -1251,9 +1271,9 @@ export function CandidatesPage() {
         .select(`*, cv_jobs(title,level), cv_candidate_skills(cv_skills(id,name,category))`).eq('id', editCandidate.id).single()
       if (data) {
         setCandidates(prev => prev.map(c => c.id === editCandidate.id ? data as Candidate : c))
-        setEditCandidate(null); resetForm(); alert('✓ Cập nhật thông tin thành công!')
+        setEditCandidate(null); resetForm(); toast.success('Cập nhật thông tin ứng viên thành công!')
       }
-    } catch (err: any) { alert('Lỗi: ' + (err.message || 'Không thể cập nhật')) }
+    } catch (err: any) { toast.error('Lỗi: ' + (err.message || 'Không thể cập nhật')) }
     finally { setIsSaving(false) }
   }
 
@@ -1286,7 +1306,7 @@ export function CandidatesPage() {
     try {
       const { data } = await supabase.from('cv_candidates').select('id,full_name,cv_url,cv_file_name,created_at').eq('id', candidate.id).single()
       if (data) {
-        if (!data.cv_url) { alert('Ứng viên chưa có CV'); return }
+        if (!data.cv_url) { toast.warning('Ứng viên chưa có CV'); return }
         setViewCVCandidate(data as Candidate)
       }
     } finally { setIsLoadingCV(false) }
@@ -1299,7 +1319,7 @@ export function CandidatesPage() {
         .select('id,full_name,cv_url,cv_parsed_data,status,cv_candidate_skills(cv_skills(id,name,category))')
         .eq('id', candidate.id).single()
       if (data) {
-        if (!data.cv_parsed_data && !data.cv_url) { alert('Ứng viên chưa có CV để phân tích'); return }
+        if (!data.cv_parsed_data && !data.cv_url) { toast.warning('Ứng viên chưa có CV để phân tích'); return }
         setAnalyzeCVCandidate(data as unknown as Candidate)
       }
     } finally { setIsLoadingAnalyze(false) }
@@ -1316,8 +1336,8 @@ export function CandidatesPage() {
       if (error) throw error
       try { await ActivityLogger.logCVDeleted(deleteCandidate.full_name) } catch (_) {}
       setCandidates(prev => prev.filter(c => c.id !== deleteCandidate.id))
-      setDeleteCandidate(null); alert('✓ Đã xóa ứng viên thành công!')
-    } catch (err: any) { alert('Lỗi khi xóa: ' + (err.message || 'Không xác định')) }
+      setDeleteCandidate(null); toast.success('Đã xóa ứng viên thành công!')
+    } catch (err: any) { toast.error('Lỗi khi xóa: ' + (err.message || 'Không xác định')) }
   }
 
   const exportCSV = () => {
@@ -1332,6 +1352,7 @@ export function CandidatesPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'candidates.csv'; a.click()
     URL.revokeObjectURL(url)
+    toast.success(`Đã xuất ${filteredCandidates.length} ứng viên ra file CSV`)
   }
 
   const uniquePositions = Array.from(new Set(candidates.map(c => c.cv_jobs?.title).filter((v): v is string => !!v)))

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 import {
   Plus, Calendar, Clock, CheckCircle, XCircle, MoreHorizontal,
   Search, User, Briefcase, X, Star, UserCircle,
@@ -674,7 +675,7 @@ export function InterviewsPage() {
       setFormErrors({ interview_date:"", interview_time:"", duration:"", interviewers:"" });
       setSelectedCandidate(null);
       setIsDialogOpen(false);
-      alert('Tạo lịch phỏng vấn thành công!');
+      toast.success('Tạo lịch phỏng vấn thành công!');
 
       if (formData.candidate_id) {
         fireCampaign('interview_created', {
@@ -689,7 +690,7 @@ export function InterviewsPage() {
       }
     } catch (error) {
       console.error(error);
-      alert('Có lỗi xảy ra khi tạo lịch phỏng vấn!');
+      toast.error('Có lỗi xảy ra khi tạo lịch phỏng vấn!');
     } finally { setSubmitting(false); }
   };
 
@@ -699,7 +700,12 @@ export function InterviewsPage() {
     if (!confirm(`Kết thúc sớm phỏng vấn với ${iv.cv_candidates?.full_name}?`)) return;
     setSubmitting(true);
     const { error } = await supabase.from('cv_interviews').update({ status: 'Đang đánh giá' }).eq('id', iv.id);
-    if (!error) setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đang đánh giá' } : i));
+    if (error) {
+      toast.error('Có lỗi xảy ra khi cập nhật trạng thái!');
+    } else {
+      setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đang đánh giá' } : i));
+      toast.success(`Đã kết thúc phỏng vấn với ${iv.cv_candidates?.full_name}!`);
+    }
     setSubmitting(false);
   };
 
@@ -707,7 +713,12 @@ export function InterviewsPage() {
     if (!confirm(`Bắt đầu phỏng vấn ngay với ${iv.cv_candidates?.full_name}?`)) return;
     setSubmitting(true);
     const { error } = await supabase.from('cv_interviews').update({ status: 'Đang phỏng vấn' }).eq('id', iv.id);
-    if (!error) setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đang phỏng vấn' } : i));
+    if (error) {
+      toast.error('Có lỗi xảy ra khi cập nhật trạng thái!');
+    } else {
+      setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đang phỏng vấn' } : i));
+      toast.success(`Đã bắt đầu phỏng vấn với ${iv.cv_candidates?.full_name}!`);
+    }
     setSubmitting(false);
   };
 
@@ -715,7 +726,12 @@ export function InterviewsPage() {
     if (!confirm(`Hủy lịch phỏng vấn với ${iv.cv_candidates?.full_name}?`)) return;
     setSubmitting(true);
     const { error } = await supabase.from('cv_interviews').update({ status: 'Đã hủy' }).eq('id', iv.id);
-    if (!error) setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đã hủy' } : i));
+    if (error) {
+      toast.error('Có lỗi xảy ra khi hủy lịch phỏng vấn!');
+    } else {
+      setInterviews(prev => prev.map(i => i.id === iv.id ? { ...i, status: 'Đã hủy' } : i));
+      toast.success(`Đã hủy lịch phỏng vấn với ${iv.cv_candidates?.full_name}!`);
+    }
     setSubmitting(false);
   };
 
@@ -770,7 +786,7 @@ export function InterviewsPage() {
       if (error) throw error;
       await fetchInterviews();
       setIsEditDialogOpen(false);
-      alert('Cập nhật lịch phỏng vấn thành công!');
+      toast.success('Cập nhật lịch phỏng vấn thành công!');
       fireCampaign('interview_rescheduled', {
         interviewId: editFormData.id,
         interviewDate: isoStr,
@@ -778,7 +794,7 @@ export function InterviewsPage() {
         interviewLocation: editFormData.location,
         interviewerName: editFormData.interviewers.join(', '),
       }).catch(console.error);
-    } catch (err: any) { alert(`Lỗi: ${err.message}`); }
+    } catch (err: any) { toast.error(`Lỗi: ${err.message}`); }
     finally { setSubmitting(false); }
   };
 
@@ -789,7 +805,7 @@ export function InterviewsPage() {
   };
 
   const handleSubmitReviewForm = async () => {
-    if (!interviewToReview || reviewData.rating === 0) { alert('Vui lòng chọn số sao!'); return; }
+    if (!interviewToReview || reviewData.rating === 0) { toast.warning('Vui lòng chọn số sao đánh giá!'); return; }
     setSubmitting(true);
     try {
       await supabase.from('cv_interview_reviews').insert([{
@@ -822,8 +838,8 @@ export function InterviewsPage() {
           interviewerName: ivData ? getInterviewersList(ivData).join(', ') : '',
         }).catch(console.error);
       }
-      alert('✓ Đánh giá đã được lưu thành công!');
-    } catch (err) { console.error(err); alert('Có lỗi xảy ra!'); }
+      toast.success('Đánh giá đã được lưu thành công!');
+    } catch (err) { console.error(err); toast.error('Có lỗi xảy ra khi lưu đánh giá!'); }
     finally { setSubmitting(false); }
   };
 

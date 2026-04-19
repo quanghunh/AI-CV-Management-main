@@ -5,6 +5,7 @@ import {
   RouterProvider,
   Navigate,
 } from "react-router-dom";
+import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -298,6 +299,15 @@ export default function App() {
         <Suspense fallback={<LoadingScreen />}>
           <RouterProvider router={router} />
         </Suspense>
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          duration={3500}
+          toastOptions={{
+            style: { fontFamily: 'inherit' },
+          }}
+        />
       </PermissionsProvider>
     </AuthProvider>
   );

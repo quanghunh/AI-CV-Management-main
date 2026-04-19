@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 // ==================== TYPES ====================
 
@@ -189,15 +190,16 @@ export function CategoryManagerDialog({
 
     if (error) {
       if (error.code === "23505") {
-        alert("❌ Giá trị này đã tồn tại!")
+        toast.warning('Giá trị này đã tồn tại!')
       } else {
-        alert(`❌ Lỗi: ${error.message}`)
+        toast.error(`Lỗi: ${error.message}`)
       }
     } else {
       setNewLabel("")
       setAddingType(null)
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success('Thêm danh mục thành công!')
     }
     setSaving(false)
   }
@@ -216,12 +218,13 @@ export function CategoryManagerDialog({
     const { error } = await safeUpdateCategory(id, updateData)
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       setEditingId(null)
       setEditingLabel("")
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success('Cập nhật danh mục thành công!')
     }
     setSaving(false)
   }
@@ -230,7 +233,7 @@ export function CategoryManagerDialog({
 
   const handleDelete = async (item: JobCategory) => {
     if (item.is_default) {
-      alert("⚠️ Không thể xóa danh mục mặc định!")
+      toast.warning('Không thể xóa danh mục mặc định!')
       return
     }
 
@@ -242,10 +245,11 @@ export function CategoryManagerDialog({
       .eq("id", item.id)
 
     if (error) {
-      alert(`❌ Lỗi: ${error.message}`)
+      toast.error(`Lỗi: ${error.message}`)
     } else {
       await fetchCategories()
       onCategoriesUpdated()
+      toast.success(`Đã xóa "${item.label}" thành công!`)
     }
   }
 

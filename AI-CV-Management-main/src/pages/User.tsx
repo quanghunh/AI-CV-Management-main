@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 // ✅ THÊM IMPORT
 import { RoleManagerDialog } from "@/components/users/RoleManagerDialog"
@@ -367,7 +368,7 @@ export default function UsersPage() {
       setIsEditDialogOpen(false)
       setEditingUser(null)
       await fetchUsers()
-      alert("✅ Đã cập nhật thông tin người dùng thành công!")
+      toast.success('Cập nhật thông tin người dùng thành công!')
 
     } catch (error: unknown) {
       console.error('❌ Unexpected error:', error)
@@ -398,11 +399,11 @@ export default function UsersPage() {
       }
 
       await fetchUsers()
-      alert("✅ Đã xóa người dùng thành công!")
+      toast.success('Đã xóa người dùng thành công!')
     } catch (error: unknown) {
       console.error('Error deleting user:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      alert(`❌ Không thể xóa người dùng: ${errorMessage}`)
+      toast.error(`Không thể xóa người dùng: ${errorMessage}`)
     }
   }
 
