@@ -1246,13 +1246,13 @@ Trả về JSON với format (KHÔNG TRẢ VỀ MARKDOWN):
 {cv_context}
 
 {rubric_level_text}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CÁC CÔNG VIỆC CẦN MATCHING:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {jobs_text}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Hãy chấm điểm cho {len(request.jobs)} jobs theo đúng quy trình phân tách Base và Bonus:
 
@@ -1655,6 +1655,7 @@ Begin your response now:"""
 async def generate_scoring_rubric(request: GenerateScoringRubricRequest):
     """
     Generate a scoring rubric based on job description using AI.
+    ✅ FIXED: JSON parse error caused by newline characters inside AI-generated strings
     """
     try:
         print(f"\n📊 ===== GENERATING SCORING RUBRIC =====")
@@ -1664,36 +1665,54 @@ async def generate_scoring_rubric(request: GenerateScoringRubricRequest):
 Department: {request.department}
 Level: {request.level}
 Job Type: {request.job_type or 'Full-time'}
-Description: {request.description or 'Not specified'}
-Requirements: {request.requirements or 'Not specified'}"""
-        
+Description: {(request.description or 'Not specified')[:500]}
+Requirements: {(request.requirements or 'Not specified')[:500]}"""
+
+        # ✅ FIX 1: System prompt cấm rõ ràng newline bên trong JSON strings
         messages = [
-            {"role": "system", "content": "You are a professional HR specialist and Talent Acquisition Manager. Define a scoring rubric matrix with criteria based on the job description. Return ONLY valid JSON. LƯU Ý QUAN TRỌNG: Viết toàn bộ nội dung (tên tiêu chí, mô tả, hướng dẫn chấm điểm, ghi chú) BẰNG TIẾNG VIỆT."},
-            {"role": "user", "content": f"""Create a detailed CV scoring rubric (in Vietnamese) for the following job:
+            {
+                "role": "system",
+                "content": (
+                    "You are a professional HR specialist and Talent Acquisition Manager. "
+                    "Define a scoring rubric matrix with criteria based on the job description. "
+                    "Return ONLY a raw valid JSON object — no markdown, no code blocks, no text before or after. "
+                    "CRITICAL JSON RULES: "
+                    "1. ALL string values must be on a SINGLE LINE — absolutely NO newline characters (\\n or actual line breaks) inside any string value. "
+                    "2. If you need to list items inside a string, separate them with ' | ' or '; ' instead of newlines. "
+                    "3. Escape any internal double-quotes with backslash (\\\"). "
+                    "4. No trailing commas after the last item in any array or object. "
+                    "5. Every opening bracket { or [ must have a matching closing bracket. "
+                    "LƯU Ý QUAN TRỌNG: Viết toàn bộ nội dung BẰNG TIẾNG VIỆT nhưng KHÔNG dùng ký tự xuống dòng bên trong chuỗi JSON."
+                )
+            },
+            {
+                "role": "user",
+                "content": f"""Create a detailed CV scoring rubric (in Vietnamese) for the following job:
             
 {job_context}
 
 The total weight of ALL 'required' and 'important' criteria MUST sum to exactly 100. The 'nice_to_have' criteria weights are additional bonus weights (e.g. 5 or 10).
 Try to create about 4-6 criteria total covering Technical, Experience, Soft Skills. Mọi nội dung text trả về phải bằng Tiếng Việt.
+NHẮC LẠI: Mỗi giá trị string trong JSON phải nằm trên MỘT DÒNG DUY NHẤT, không được xuống dòng.
 
 Return strictly in this JSON format. DO NOT include markdown code blocks (like ```json), just return the raw JSON:
 {{
   "criteria": [
     {{
-      "name": "Criterion name",
-      "description": "Detailed description properly escaping internal double quotes if any",
+      "name": "Tên tiêu chí",
+      "description": "Mô tả ngắn gọn trên một dòng duy nhất, dùng dấu | để liệt kê nếu cần",
       "weight": 10,
       "level": "required",
       "scoring_guide": {{
-        "excellent": "Excellent rating description",
-        "good": "Good rating description",
-        "average": "Average rating description",
-        "poor": "Poor rating description"
+        "excellent": "Mô tả xuất sắc trên một dòng duy nhất",
+        "good": "Mô tả tốt trên một dòng duy nhất",
+        "average": "Mô tả trung bình trên một dòng duy nhất",
+        "poor": "Mô tả kém trên một dòng duy nhất"
       }}
     }}
   ],
   "passing_score": 70,
-  "notes": "Any other instructions"
+  "notes": "Ghi chú ngắn trên một dòng"
 }}
 Note: 'level' must be strictly one of: "required" or "important" or "nice_to_have".
 CRITICAL RULES FOR JSON VALIDITY:
@@ -1701,23 +1720,74 @@ CRITICAL RULES FOR JSON VALIDITY:
 2. Escape any internal double quotes inside descriptions using \\" (backslash quote).
 3. Do NOT add trailing commas at the end of lists or objects.
 4. Do NOT output ANY conversational text before or after the JSON.
-"""}
+5. Each string value must be on ONE single line — no line breaks inside strings.
+"""
+            }
         ]
         
-        import time
+        import time, re
+
+        # ✅ FIX 2: Hàm sửa newline thật sự bên trong JSON strings trước khi parse
+        def repair_json_newlines(text: str) -> str:
+            """Replace actual newline characters inside JSON string values with a space."""
+            result = []
+            in_string = False
+            escape = False
+            for ch in text:
+                if escape:
+                    result.append(ch)
+                    escape = False
+                    continue
+                if ch == '\\':
+                    result.append(ch)
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    result.append(ch)
+                    continue
+                # ✅ Thay newline thật sự bên trong string bằng dấu cách
+                if in_string and ch in '\r\n':
+                    result.append(' ')
+                    continue
+                result.append(ch)
+            return ''.join(result)
+
         max_attempts = 3
         last_error = None
+        raw_content = ""
         
         for attempt in range(max_attempts):
             try:
-                result = call_ai_api(messages=messages, model="openai/gpt-4o-mini", temperature=0.1, max_tokens=2500)
-                content = result['choices'][0]['message']['content']
-                rubric_data = extract_json_from_response(content)
+                result = call_ai_api(
+                    messages=messages,
+                    model="openai/gpt-4o-mini",
+                    temperature=0.1,
+                    max_tokens=3000  # ✅ FIX 3: Tăng từ 2500 lên 3000 tránh bị cắt giữa chừng
+                )
+                raw_content = result['choices'][0]['message']['content']
+
+                # Bước 1: Strip markdown fences nếu có
+                content = raw_content.strip()
+                if content.startswith('```'):
+                    content = re.sub(r'^```[a-z]*\n?', '', content)
+                    content = re.sub(r'\n?```$', '', content)
+                    content = content.strip()
+
+                # Bước 2: Sửa newline thật sự bên trong strings
+                content = repair_json_newlines(content)
+
+                # Bước 3: Extract JSON object cân bằng ngoặc
+                balanced = find_json_object(content)
+                if balanced:
+                    content = balanced
+
+                rubric_data = json.loads(content)
                 
                 if "criteria" not in rubric_data:
                     raise ValueError("Missing 'criteria' in AI response")
-                if not isinstance(rubric_data["criteria"], list):
-                    raise ValueError("'criteria' is not a list")
+                if not isinstance(rubric_data["criteria"], list) or len(rubric_data["criteria"]) == 0:
+                    raise ValueError("'criteria' is empty or not a list")
                     
                 print(f"✅ Generated scoring rubric successfully on attempt {attempt + 1}")
                 print(f"===== SCORING RUBRIC GENERATION END =====\n")
@@ -1730,6 +1800,8 @@ CRITICAL RULES FOR JSON VALIDITY:
                 }
             except Exception as e:
                 print(f"⚠️ Generation error on attempt {attempt + 1}: {str(e)}")
+                if raw_content:
+                    print(f"   Raw snippet: {raw_content[:400]}")
                 last_error = e
                 if attempt < max_attempts - 1:
                     time.sleep(1.5)
@@ -1799,4 +1871,3 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))  # Đọc PORT từ Railway
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-    
