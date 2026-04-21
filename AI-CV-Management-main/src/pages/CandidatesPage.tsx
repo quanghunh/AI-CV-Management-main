@@ -1653,12 +1653,35 @@ export function CandidatesPage() {
         const fn = deleteCandidate.cv_url.split('/').pop()
         if (fn) await supabase.storage.from('cv-files').remove([fn])
       }
+      
+      // 1. Lấy danh sách ID của các lịch phỏng vấn liên quan
+      const { data: ivs } = await supabase.from('cv_interviews').select('id').eq('candidate_id', deleteCandidate.id)
+      if (ivs && ivs.length > 0) {
+        const ivIds = ivs.map(i => i.id)
+        // 2. Xóa các đánh giá (reviews) của những lịch phỏng vấn này
+        await supabase.from('cv_interview_reviews').delete().in('interview_id', ivIds)
+      }
+      
+      // 3. Xóa các interviews liên quan
+      await supabase.from('cv_interviews').delete().eq('candidate_id', deleteCandidate.id)
+      
+      // 4. Xóa skills của candidate
+      await supabase.from('cv_candidate_skills').delete().eq('candidate_id', deleteCandidate.id)
+      
+      // 5. Cập nhật activity logs (nếu delete gây lỗi foreign key trong logs, thường log sẽ lưu snapshot chứ không phải foreign key cứng, nếu có ta có thể xoá logs, nhưng ta giả sử log an toàn)
+      
+      // 6. Xóa candidate
       const { error } = await supabase.from('cv_candidates').delete().eq('id', deleteCandidate.id)
       if (error) throw error
+      
       try { await ActivityLogger.logCVDeleted(deleteCandidate.full_name) } catch (_) {}
+      
       setCandidates(prev => prev.filter(c => c.id !== deleteCandidate.id))
-      setDeleteCandidate(null); toast.success('Đã xóa ứng viên thành công!')
-    } catch (err: any) { toast.error('Lỗi khi xóa: ' + (err.message || 'Không xác định')) }
+      setDeleteCandidate(null)
+      toast.success('Đã xóa ứng viên thành công!')
+    } catch (err: any) { 
+      toast.error('Lỗi khi xóa: ' + (err.message || 'Không xác định')) 
+    }
   }
 
   const exportCSV = () => {

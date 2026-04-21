@@ -1170,13 +1170,38 @@ export function JobsPage() {
   const confirmDelete = async () => {
     if (!selectedJob) return
     setIsDeleting(true)
-    const { error } = await supabase.from('cv_jobs').delete().eq('id', selectedJob.id)
-    if (error) toast.error(`Lỗi khi xóa: ${error.message}`)
-    else {
-      toast.success('Đã xóa Job Description thành công!')
-      setIsDeleteDialogOpen(false); setSelectedJob(null); fetchJobs()
+    
+    try {
+      // 1. Lấy danh sách ID của các lịch phỏng vấn liên quan
+      const { data: ivs } = await supabase.from('cv_interviews').select('id').eq('job_id', selectedJob.id)
+      if (ivs && ivs.length > 0) {
+        const ivIds = ivs.map(i => i.id)
+        // 2. Xóa các đánh giá (reviews) của những lịch phỏng vấn này trước
+        await supabase.from('cv_interview_reviews').delete().in('interview_id', ivIds)
+      }
+      
+      // 3. Xóa các lịch phỏng vấn liên quan
+      await supabase.from('cv_interviews').delete().eq('job_id', selectedJob.id)
+      
+      // 4. Xóa bảng tiêu chí chấm điểm (rubrics) liên quan nếu có
+      await supabase.from('cv_job_scoring_rubrics').delete().eq('job_id', selectedJob.id)
+      
+      // 5. Cuối cùng mới xóa Job
+      const { error } = await supabase.from('cv_jobs').delete().eq('id', selectedJob.id)
+      
+      if (error) {
+        toast.error(`Lỗi khi xóa: ${error.message}`)
+      } else {
+        toast.success('Đã xóa Job Description thành công!')
+        setIsDeleteDialogOpen(false)
+        setSelectedJob(null)
+        fetchJobs()
+      }
+    } catch (err: any) {
+      toast.error(`Lỗi hệ thống khi xóa: ${err.message}`)
+    } finally {
+      setIsDeleting(false)
     }
-    setIsDeleting(false)
   }
 
   // ── Filtering ──────────────────────────────────────────────────────────────
