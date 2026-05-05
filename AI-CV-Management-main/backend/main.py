@@ -684,12 +684,26 @@ async def parse_cv(file: UploadFile = File(None), cv_file: UploadFile = File(Non
             cv_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
         cv_text = sanitize_text(cv_text)  # ✅ Remove null bytes from DOCX extraction
         
+        is_scanned_pdf = False
         if not cv_text.strip():
-            raise HTTPException(status_code=400, detail="Could not extract text from CV")
+            # PDF có thể là scan (ảnh) — PyPDF2 không đọc được text layer
+            if upload_file.filename.lower().endswith('.pdf'):
+                MAX_OCR_PDF_BYTES = 4 * 1024 * 1024  # 4 MB limit cho Gemini OCR
+                if len(file_content) <= MAX_OCR_PDF_BYTES:
+                    print(f"⚠️ PDF text extraction returned empty — likely a scanned PDF. Will send raw PDF to Gemini for OCR ({len(file_content)/1024:.1f} KB).")
+                    is_scanned_pdf = True
+                    cv_text = "[Scanned PDF - content will be read directly by AI]"
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File PDF này có vẻ là bản scan (ảnh) và quá lớn ({len(file_content)/1024:.0f} KB) để xử lý tự động. Vui lòng chuyển đổi sang PDF dạng text hoặc dùng file DOCX."
+                    )
+            else:
+                raise HTTPException(status_code=400, detail="Could not extract text from CV")
         
         print(f"✅ Extracted {len(cv_text)} characters")
         
-        ai_input_text = cv_text[:4000] if len(cv_text) > 4000 else cv_text
+        ai_input_text = "[Scanned PDF - extract all information from the attached PDF file]" if is_scanned_pdf else (cv_text[:4000] if len(cv_text) > 4000 else cv_text)
         
         print(f"🤖 Calling OpenRouter AI with ENHANCED prompt...")
         
@@ -903,14 +917,31 @@ CRITICAL REMINDERS:
         ]
         
         # Determine File Types for direct Document AI features if supported
-        mime_type = "application/pdf" if upload_file.filename.lower().endswith('.pdf') else None
-        pdf_bytes = file_content if mime_type else None
+        # - PDF scan (is_scanned_pdf=True): luôn gửi bytes để Gemini OCR (đã giới hạn 4MB ở trên)
+        # - PDF thường (có text): chỉ gửi inline nếu <= 1MB, lớn hơn dùng extracted text
+        MAX_INLINE_PDF_BYTES = 1 * 1024 * 1024  # 1 MB
+        if upload_file.filename.lower().endswith('.pdf'):
+            if is_scanned_pdf:
+                mime_type = "application/pdf"
+                pdf_bytes = file_content
+                print(f"📎 Sending scanned PDF as inline data for Gemini OCR ({len(file_content)/1024:.1f} KB)")
+            elif len(file_content) <= MAX_INLINE_PDF_BYTES:
+                mime_type = "application/pdf"
+                pdf_bytes = file_content
+                print(f"📎 Sending PDF as inline data ({len(file_content)/1024:.1f} KB)")
+            else:
+                mime_type = None
+                pdf_bytes = None
+                print(f"⚠️ PDF too large for inline ({len(file_content)/1024:.1f} KB > 1024 KB), using extracted text only")
+        else:
+            mime_type = None
+            pdf_bytes = None
         
         result = call_ai_api(
             messages=messages, 
             model="openai/gpt-4o-mini", 
-            temperature=0.3,  # Low temperature for consistency
-            max_tokens=4000,  # 🔥 Fixed: Increased from 2000 to 4000 to prevent MAX_TOKENS truncation
+            temperature=0.3,
+            max_tokens=4000,
             file_content=pdf_bytes,
             mime_type=mime_type
         )
@@ -1727,7 +1758,7 @@ CRITICAL RULES FOR JSON VALIDITY:
         
         import time, re
 
-        # ✅ FIX 2: Hàm sửa newline thật sự bên trong JSON strings trước khi parse
+        # ✅ Hàm sửa newline thật sự bên trong JSON strings trước khi parse
         def repair_json_newlines(text: str) -> str:
             """Replace actual newline characters inside JSON string values with a space."""
             result = []
@@ -1746,12 +1777,76 @@ CRITICAL RULES FOR JSON VALIDITY:
                     in_string = not in_string
                     result.append(ch)
                     continue
-                # ✅ Thay newline thật sự bên trong string bằng dấu cách
+                # Thay newline thật sự bên trong string bằng dấu cách
                 if in_string and ch in '\r\n':
                     result.append(' ')
                     continue
                 result.append(ch)
             return ''.join(result)
+
+        def attempt_json_repair(text: str) -> str:
+            """
+            Cố gắng sửa JSON bị cắt (truncated) bằng cách:
+            1. Nếu đang trong string (in_string=True), đóng chuỗi.
+            2. Đóng tất cả ngoặc [ và { còn chưa được đóng.
+            """
+            stack = []
+            in_string = False
+            escape = False
+            for ch in text:
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\':
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if not in_string:
+                    if ch in '{[':
+                        stack.append(ch)
+                    elif ch == '}':
+                        if stack and stack[-1] == '{':
+                            stack.pop()
+                    elif ch == ']':
+                        if stack and stack[-1] == '[':
+                            stack.pop()
+
+            # Xây dựng phần đóng bù
+            closing = ''
+            if in_string:
+                closing += '"'
+            for bracket in reversed(stack):
+                closing += '}' if bracket == '{' else ']'
+            return text.rstrip() + closing
+
+        def try_parse_rubric(content: str):
+            """Thử nhiều cách parse JSON từ content, trả về dict hoặc raise."""
+            # Bước 1: Extract JSON object cân bằng ngoặc
+            balanced = find_json_object(content)
+            if balanced:
+                try:
+                    return json.loads(balanced)
+                except json.JSONDecodeError:
+                    pass
+                # Thử repair newlines rồi parse lại
+                try:
+                    return json.loads(repair_json_newlines(balanced))
+                except json.JSONDecodeError:
+                    pass
+
+            # Bước 2: JSON bị cắt → thử tự đóng ngoặc
+            repaired = attempt_json_repair(content)
+            balanced2 = find_json_object(repaired)
+            if balanced2:
+                try:
+                    return json.loads(balanced2)
+                except json.JSONDecodeError:
+                    pass
+
+            # Bước 3: Parse thẳng content
+            return json.loads(content)
 
         max_attempts = 3
         last_error = None
@@ -1763,7 +1858,7 @@ CRITICAL RULES FOR JSON VALIDITY:
                     messages=messages,
                     model="openai/gpt-4o-mini",
                     temperature=0.1,
-                    max_tokens=3000  # ✅ FIX 3: Tăng từ 2500 lên 3000 tránh bị cắt giữa chừng
+                    max_tokens=4000  # ✅ Tăng lên 4000 để tránh bị cắt giữa chừng
                 )
                 raw_content = result['choices'][0]['message']['content']
 
@@ -1777,12 +1872,8 @@ CRITICAL RULES FOR JSON VALIDITY:
                 # Bước 2: Sửa newline thật sự bên trong strings
                 content = repair_json_newlines(content)
 
-                # Bước 3: Extract JSON object cân bằng ngoặc
-                balanced = find_json_object(content)
-                if balanced:
-                    content = balanced
-
-                rubric_data = json.loads(content)
+                # Bước 3: Parse với nhiều fallback
+                rubric_data = try_parse_rubric(content)
                 
                 if "criteria" not in rubric_data:
                     raise ValueError("Missing 'criteria' in AI response")
