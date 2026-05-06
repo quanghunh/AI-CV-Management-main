@@ -1,9 +1,8 @@
-// src/components/layout/Header.tsx
+
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
-// Fixed UUID cho company profile (chung cho toàn hệ thống)
 const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
 
 interface HeaderProps {
@@ -14,7 +13,6 @@ interface HeaderProps {
 export function Header({ onMenuClick, companyName = 'Recruit AI' }: HeaderProps) {
   const [logo, setLogo] = useState<string | null>(null);
 
-  // Load logo từ localStorage cache
   const cachedLogo = localStorage.getItem('company-logo');
   if (cachedLogo && !logo) {
     setLogo(cachedLogo);

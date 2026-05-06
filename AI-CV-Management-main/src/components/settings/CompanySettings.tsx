@@ -1,4 +1,4 @@
-// src/components/settings/CompanySettings.tsx
+
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
@@ -13,14 +13,10 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface CompanySettingsProps {
   profile: any
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001'
 const BUCKET_NAME = 'logos'
@@ -40,8 +36,6 @@ const COLOR_PRESETS = [
   { name: 'Lá emerald',button: '#059669', menu: '#d1fae5' },
   { name: 'Vàng',      button: '#d97706', menu: '#fef3c7' },
 ]
-
-// ─── Color utilities ──────────────────────────────────────────────────────────
 
 const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
   const clean = hex.replace('#', '')
@@ -107,8 +101,6 @@ const loadPersistedColors = () => {
   }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 /** Inline section card with consistent header */
 function SectionCard({
   icon, title, description, children, className = ''
@@ -130,17 +122,14 @@ function SectionCard({
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export function CompanySettings({ profile, handleInputChange }: CompanySettingsProps) {
-  // ── color state ──────────────────────────────────────────────────────────
+
   const init = loadPersistedColors()
   const [buttonColor, setButtonColor] = useState(init.buttonColor)
   const [menuColor, setMenuColor] = useState(init.menuColor)
   const [colorApplied, setColorApplied] = useState(false)
   const [colorSaving, setColorSaving] = useState(false)
 
-  // ── logo state ───────────────────────────────────────────────────────────
   const [logo, setLogo] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoError, setLogoError] = useState('')
@@ -149,11 +138,10 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
   const [logoSaveSuccess, setLogoSaveSuccess] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // ── on mount: apply saved colors + load logo ─────────────────────────────
   useEffect(() => {
     applyThemeColors(buttonColor, menuColor)
     loadLogo()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [])
 
   useEffect(() => {
@@ -171,8 +159,6 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
       setColorApplied(false)
     }
   }, [buttonColor, menuColor])
-
-  // ── Logo helpers ─────────────────────────────────────────────────────────
 
   const loadLogo = async () => {
     try {
@@ -195,7 +181,7 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
   }
 
   const upsertCompanyProfile = async (payload: Record<string, any>) => {
-    // try update first
+
     const { data, error } = await supabase
       .from('cv_company_profile')
       .update(payload)
@@ -203,7 +189,7 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
       .select()
       .maybeSingle()
     if (error) throw error
-    // if nothing was updated, insert
+
     if (!data) {
       const { error: insertErr } = await supabase
         .from('cv_company_profile')
@@ -245,14 +231,13 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
     setLogoUploading(true)
     setLogoFile(file)
 
-    // Local preview first
     const reader = new FileReader()
     reader.onloadend = async () => {
       setLogo(reader.result as string)
       setLogoUploading(false)
       setLogoSaving(true)
       try {
-        // Upload to storage
+
         const { error: uploadErr } = await supabase.storage
           .from(BUCKET_NAME).upload(LOGO_PATH, file, { upsert: true })
         if (uploadErr) throw uploadErr
@@ -298,8 +283,6 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
     }
   }
 
-  // ── Color helpers ────────────────────────────────────────────────────────
-
   const handleApplyColors = useCallback(() => {
     setColorSaving(true)
     applyThemeColors(buttonColor, menuColor)
@@ -319,8 +302,6 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
 
   const btnHSL = hexToHSL(buttonColor)
   const mnuHSL = hexToHSL(menuColor)
-
-  // ── render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
@@ -492,7 +473,7 @@ export function CompanySettings({ profile, handleInputChange }: CompanySettingsP
               </div>
             </div>
           ) : (
-            // Upload zone
+
             <div
               onClick={() => !(logoUploading || logoSaving) && fileRef.current?.click()}
               className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 text-center transition-all

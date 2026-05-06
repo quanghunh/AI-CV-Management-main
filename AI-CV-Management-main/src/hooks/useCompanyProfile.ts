@@ -1,4 +1,4 @@
-// src/hooks/useCompanyProfile.ts
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -21,7 +21,6 @@ export function useCompanyProfile() {
   useEffect(() => {
     loadProfile();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel('company_profile_changes')
       .on(

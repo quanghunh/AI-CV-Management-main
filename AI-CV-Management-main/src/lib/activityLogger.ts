@@ -9,8 +9,6 @@
 
 import { supabase } from '@/lib/supabaseClient';
 
-// ─── Interfaces ────────────────────────────────────────────────────────────────
-
 export interface ActivityLogEntry {
   user_name: string;
   user_id?: string;
@@ -21,18 +19,16 @@ export interface ActivityLogEntry {
   metadata?: Record<string, any>;
 }
 
-// ─── Lấy thông tin user hiện tại ─────────────────────────────────────────────
-
 /**
  * Lấy thông tin user đang đăng nhập từ Supabase Auth session.
  * Fallback về localStorage nếu không có session.
  */
 async function getCurrentUserInfo(): Promise<{ name: string; id?: string }> {
   try {
-    // Thử lấy từ Supabase Auth session trước
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Lấy profile từ cv_profiles
+
       const { data: profile } = await supabase
         .from('cv_profiles')
         .select('id, full_name, email')
@@ -45,14 +41,13 @@ async function getCurrentUserInfo(): Promise<{ name: string; id?: string }> {
           id: profile.id,
         };
       }
-      // Fallback: dùng email từ Auth
+
       return { name: user.email || 'Unknown', id: user.id };
     }
   } catch {
-    // Ignore lỗi auth
+
   }
 
-  // Fallback: lấy từ localStorage (nếu app tự lưu)
   try {
     const stored = localStorage.getItem('currentUser');
     if (stored) {
@@ -63,13 +58,11 @@ async function getCurrentUserInfo(): Promise<{ name: string; id?: string }> {
       };
     }
   } catch {
-    // Ignore parse error
+
   }
 
   return { name: 'System' };
 }
-
-// ─── Core log function ────────────────────────────────────────────────────────
 
 /**
  * Ghi một activity log vào database.
@@ -78,7 +71,7 @@ async function getCurrentUserInfo(): Promise<{ name: string; id?: string }> {
  */
 async function log(entry: ActivityLogEntry): Promise<void> {
   try {
-    // Nếu không có user_name, tự động detect
+
     let userName = entry.user_name;
     let userId = entry.user_id;
 
@@ -104,18 +97,12 @@ async function log(entry: ActivityLogEntry): Promise<void> {
       console.warn('[ActivityLogger] Insert error:', error.message);
     }
   } catch (err) {
-    // Fail silently — logging không được làm gián đoạn UX
+
     console.warn('[ActivityLogger] Failed to log activity:', err);
   }
 }
 
-// ─── ActivityLogger public API ────────────────────────────────────────────────
-
 export const ActivityLogger = {
-
-  // ──────────────────────────────────────────────
-  // CV / Ứng viên
-  // ──────────────────────────────────────────────
 
   /** Ứng viên nộp CV */
   async logCVSubmitted(
@@ -167,10 +154,6 @@ export const ActivityLogger = {
     });
   },
 
-  // ──────────────────────────────────────────────
-  // Công việc (JD)
-  // ──────────────────────────────────────────────
-
   /** Tạo JD mới */
   async logJobCreated(jobTitle: string, jobId: string): Promise<void> {
     const user = await getCurrentUserInfo();
@@ -212,10 +195,6 @@ export const ActivityLogger = {
     });
   },
 
-  // ──────────────────────────────────────────────
-  // Phỏng vấn
-  // ──────────────────────────────────────────────
-
   /** Tạo lịch phỏng vấn */
   async logInterviewCreated(
     candidateName: string,
@@ -252,10 +231,6 @@ export const ActivityLogger = {
       metadata:    { candidate_name: candidateName, outcome, rating },
     });
   },
-
-  // ──────────────────────────────────────────────
-  // Người dùng (Users)
-  // ──────────────────────────────────────────────
 
   /** Tạo người dùng mới */
   async logUserCreated(
@@ -320,10 +295,6 @@ export const ActivityLogger = {
     });
   },
 
-  // ──────────────────────────────────────────────
-  // Email
-  // ──────────────────────────────────────────────
-
   /** Gửi email */
   async logEmailSent(
     recipientName: string,
@@ -340,10 +311,6 @@ export const ActivityLogger = {
       metadata:    { recipient_name: recipientName, recipient_email: recipientEmail, subject },
     });
   },
-
-  // ──────────────────────────────────────────────
-  // Vai trò & Phân quyền
-  // ──────────────────────────────────────────────
 
   /** Thêm vai trò mới */
   async logRoleCreated(roleName: string): Promise<void> {
@@ -371,10 +338,6 @@ export const ActivityLogger = {
     });
   },
 
-  // ──────────────────────────────────────────────
-  // General / Custom
-  // ──────────────────────────────────────────────
-
   /** Ghi log tùy chỉnh */
   async logCustomActivity(
     action: string,
@@ -395,8 +358,6 @@ export const ActivityLogger = {
     });
   },
 };
-
-// ─── Query helpers ────────────────────────────────────────────────────────────
 
 /**
  * Lấy logs gần đây (trong 30 ngày, tối đa maxRows records).

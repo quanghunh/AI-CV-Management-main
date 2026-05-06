@@ -1,4 +1,4 @@
-// src/components/layout/MobileFooter.tsx
+
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -55,7 +55,6 @@ export function MobileFooter() {
   const { t } = useTranslation();
   const { canView } = usePermissions();
 
-  // Filter nav items based on permissions
   const visibleNavItems = NAV_ITEMS.filter((item) =>
     canView(item.permissionKey)
   );

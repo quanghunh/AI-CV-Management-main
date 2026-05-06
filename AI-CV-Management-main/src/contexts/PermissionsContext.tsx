@@ -1,4 +1,4 @@
-// src/contexts/PermissionsContext.tsx - OPTIMIZED VERSION
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/contexts/AuthContext"
@@ -34,21 +34,15 @@ type PermissionsContextType = {
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined)
 
-// ========================================
-// SESSION STORAGE KEYS
-// ========================================
 const CACHE_KEY_PERMISSIONS = 'cached_permissions'
 const CACHE_KEY_GROUPED = 'cached_grouped_permissions'
-const CACHE_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
+const CACHE_EXPIRY_MS = 5 * 60 * 1000
 
 type CachedData<T> = {
   data: T
   timestamp: number
 }
 
-// ========================================
-// CACHE HELPERS
-// ========================================
 function getCachedData<T>(key: string): T | null {
   try {
     const cached = sessionStorage.getItem(key)
@@ -57,7 +51,7 @@ function getCachedData<T>(key: string): T | null {
     const parsed: CachedData<T> = JSON.parse(cached)
     const now = Date.now()
     
-    // Check if expired
+
     if (now - parsed.timestamp > CACHE_EXPIRY_MS) {
       sessionStorage.removeItem(key)
       return null
@@ -82,9 +76,6 @@ function setCachedData<T>(key: string, data: T): void {
   }
 }
 
-// ========================================
-// PROVIDER COMPONENT
-// ========================================
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth()
   const [permissions, setPermissions] = useState<Permission[]>([])
@@ -96,7 +87,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (user) {
       loadPermissions()
     } else {
-      // Clear permissions when user logs out
+
       setPermissions([])
       setGroupedPermissions({})
       setLoading(false)
@@ -123,7 +114,6 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         console.log('🔄 Loading permissions for user:', user.id)
       }
 
-      // ✅ Try to load from cache first
       const cachedPerms = getCachedData<Permission[]>(CACHE_KEY_PERMISSIONS)
       const cachedGrouped = getCachedData<GroupedPermissions>(CACHE_KEY_GROUPED)
       
@@ -137,14 +127,13 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return
       }
 
-      // ✅ Load from database
       const { data: permsData, error: permsError } = await supabase
         .rpc('get_user_permissions', { p_user_id: user.id })
 
       if (permsError) {
         console.error('❌ Error loading permissions:', permsError)
         
-        // ✅ Better error handling
+
         if (permsError.code === 'PGRST116') {
           throw new Error('RPC function "get_user_permissions" không tồn tại. Vui lòng chạy migrations.')
         } else if (permsError.message.includes('permission denied')) {
@@ -161,7 +150,6 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const loadedPermissions = permsData || []
       setPermissions(loadedPermissions)
 
-      // ✅ Load grouped permissions
       const { data: groupedData, error: groupedError } = await supabase
         .rpc('get_user_permissions_grouped', { p_user_id: user.id })
 
@@ -179,7 +167,6 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         console.log('✅ Grouped permissions loaded:', groupedData?.length || 0)
       }
 
-      // ✅ Convert array to object for easier access
       const grouped: GroupedPermissions = {}
       groupedData?.forEach((item: any) => {
         grouped[item.module] = {
@@ -191,7 +178,6 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       })
       setGroupedPermissions(grouped)
 
-      // ✅ Cache the results
       setCachedData(CACHE_KEY_PERMISSIONS, loadedPermissions)
       setCachedData(CACHE_KEY_GROUPED, grouped)
 
@@ -209,7 +195,6 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }
 
-  // ✅ Memoized functions - Avoid re-creating on every render
   const hasPermission = useCallback((module: string, action: string): boolean => {
     const result = permissions.some(p => p.module === module && p.action === action)
     
@@ -265,14 +250,13 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       console.log('🔄 Refreshing permissions...')
     }
     
-    // Clear cache before refresh
+
     sessionStorage.removeItem(CACHE_KEY_PERMISSIONS)
     sessionStorage.removeItem(CACHE_KEY_GROUPED)
     
     await loadPermissions()
   }, [user?.id])
 
-  // ✅ Memoize context value to avoid unnecessary re-renders
   const contextValue = useMemo(() => ({
     permissions,
     groupedPermissions,
@@ -304,16 +288,11 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   )
 }
 
-// ========================================
-// HOOKS
-// ========================================
-
-// ✅ Safe hook with fallback
 export const usePermissions = () => {
   const context = useContext(PermissionsContext)
   
   if (!context) {
-    // ✅ Fallback instead of throwing error
+
     console.warn('⚠️ usePermissions used outside PermissionsProvider, returning safe defaults')
     
     return {
@@ -333,7 +312,6 @@ export const usePermissions = () => {
   return context
 }
 
-// ✅ Hook tiện ích để check quyền cho một module cụ thể
 export const useModulePermissions = (module: string) => {
   const { groupedPermissions, hasPermission } = usePermissions()
   

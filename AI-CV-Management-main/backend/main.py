@@ -1668,7 +1668,6 @@ Job Type: {request.job_type or 'Full-time'}
 Description: {(request.description or 'Not specified')[:500]}
 Requirements: {(request.requirements or 'Not specified')[:500]}"""
 
-        # ✅ FIX 1: System prompt cấm rõ ràng newline bên trong JSON strings
         messages = [
             {
                 "role": "system",
@@ -1727,7 +1726,6 @@ CRITICAL RULES FOR JSON VALIDITY:
         
         import time, re
 
-        # ✅ FIX 2: Hàm sửa newline thật sự bên trong JSON strings trước khi parse
         def repair_json_newlines(text: str) -> str:
             """Replace actual newline characters inside JSON string values with a space."""
             result = []
@@ -1746,7 +1744,6 @@ CRITICAL RULES FOR JSON VALIDITY:
                     in_string = not in_string
                     result.append(ch)
                     continue
-                # ✅ Thay newline thật sự bên trong string bằng dấu cách
                 if in_string and ch in '\r\n':
                     result.append(' ')
                     continue
@@ -1763,21 +1760,20 @@ CRITICAL RULES FOR JSON VALIDITY:
                     messages=messages,
                     model="openai/gpt-4o-mini",
                     temperature=0.1,
-                    max_tokens=3000  # ✅ FIX 3: Tăng từ 2500 lên 3000 tránh bị cắt giữa chừng
+                    max_tokens=3000
                 )
                 raw_content = result['choices'][0]['message']['content']
 
-                # Bước 1: Strip markdown fences nếu có
+               
                 content = raw_content.strip()
                 if content.startswith('```'):
                     content = re.sub(r'^```[a-z]*\n?', '', content)
                     content = re.sub(r'\n?```$', '', content)
                     content = content.strip()
 
-                # Bước 2: Sửa newline thật sự bên trong strings
+                
                 content = repair_json_newlines(content)
 
-                # Bước 3: Extract JSON object cân bằng ngoặc
                 balanced = find_json_object(content)
                 if balanced:
                     content = balanced
@@ -1869,5 +1865,5 @@ async def send_email(req: SendEmailRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))  # Đọc PORT từ Railway
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

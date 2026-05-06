@@ -1,6 +1,6 @@
  import { Upload, FileText, AlertCircle, CheckCircle, Loader2, X, Server } from 'lucide-react';
 import { useState, useEffect } from 'react';
-// ✅ FIX: Không cần import CVParserService nữa, dùng trực tiếp cvParser
+
 import { parseCV, validateCVFile, checkBackendHealth, type ParsedCV } from '@/utils/cvParser';
 
 interface CVUploadZoneProps {
@@ -24,7 +24,6 @@ export default function CVUploadZone({
   const [extractedData, setExtractedData] = useState<ParsedCV | null>(null);
   const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
 
-  // Check backend availability on mount
   useEffect(() => {
     checkHealth();
   }, []);
@@ -64,7 +63,6 @@ export default function CVUploadZone({
   const handleFile = async (file: File) => {
     if (disabled) return;
 
-    // ✅ FIX: Dùng validateCVFile từ cvParser
     const validation = validateCVFile(file);
     if (!validation.valid) {
       setError(validation.error || 'File không hợp lệ');
@@ -74,7 +72,6 @@ export default function CVUploadZone({
     setUploadedFile(file);
     setError(null);
 
-    // Create preview for images (nếu cần)
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -85,13 +82,12 @@ export default function CVUploadZone({
       setPreview(null);
     }
 
-    // ✅ FIX: Parse CV using parseCV từ cvParser
     setIsProcessing(true);
     try {
       const parsedData = await parseCV(file);
       setExtractedData(parsedData);
       
-      // Callback to parent component
+
       if (onFileSelect) {
         onFileSelect(file, parsedData);
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MessageCircle, Key, Eye, EyeOff, Check, AlertCircle, Sparkles, Bot, Database, Send, Trash2, RefreshCw } from "lucide-react";
-// Import Supabase client
+
 import { supabase } from "@/lib/supabaseClient";
 
 interface APIKeys {
@@ -157,7 +157,6 @@ Hãy hỏi tôi! 🚀`
             job:cv_jobs (title as job_title)
           `);
 
-        // Lọc theo job_title_filter (ilike trên cv_jobs.title)
         if (args.job_title_filter) {
           query = query.ilike("cv_jobs.title", `%${args.job_title_filter}%`);
         }
@@ -272,7 +271,7 @@ Hãy hỏi tôi! 🚀`
         model: "openai/gpt-4o-mini",
         messages: msgs,
         tools: tools,
-        tool_choice: "required",  // Buộc gọi tool nếu phù hợp
+        tool_choice: "required",
         temperature: 0.3,
         max_tokens: 2000
       })
@@ -297,7 +296,7 @@ Hãy hỏi tôi! 🚀`
 
     try {
       let botResponse = await callOpenRouterAPI(currentMessages);
-      let maxChains = 5;  // Tăng để hỗ trợ chain phức tạp hơn
+      let maxChains = 5;
       while (botResponse.tool_calls && botResponse.tool_calls.length > 0 && maxChains > 0) {
         const thinkingMsg: OpenAIMessage = { role: "assistant", content: null, tool_calls: botResponse.tool_calls };
         currentMessages = [...currentMessages, thinkingMsg];

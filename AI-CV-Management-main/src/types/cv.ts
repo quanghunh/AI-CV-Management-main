@@ -1,4 +1,4 @@
-// src/types/cv.ts
+
 
 export interface ParsedCV {
   name: string;

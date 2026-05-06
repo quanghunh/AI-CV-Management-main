@@ -1,4 +1,4 @@
-// src/services/openRouterService.ts
+
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -70,7 +70,6 @@ export class OpenRouterService {
   }
 }
 
-// Export instance
 export const openRouterService = new OpenRouterService(
   import.meta.env.VITE_OPENROUTER_API_KEY || ''
 );

@@ -1,4 +1,4 @@
-// src/components/candidates/CandidateList.tsx
+
 import { Eye, Edit, FileText, Brain, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

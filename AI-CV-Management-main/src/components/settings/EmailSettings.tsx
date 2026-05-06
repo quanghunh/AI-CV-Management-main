@@ -1,4 +1,4 @@
-// src/components/settings/EmailSettings.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,7 +25,7 @@ export function EmailSettings() {
   const [isLoading, setIsLoading] = useState(false)
   const [settingsId, setSettingsId] = useState<string | null>(null)
 
-  // Load settings khi component mount
+
   useEffect(() => {
     loadSettings()
   }, [])
@@ -33,7 +33,7 @@ export function EmailSettings() {
   const loadSettings = async () => {
     setIsLoading(true)
     try {
-      // Lấy row mới nhất (theo updated_at hoặc created_at)
+
       const { data, error } = await supabase
         .from('cv_email_settings')
         .select('*')
@@ -83,7 +83,7 @@ export function EmailSettings() {
       let result
 
       if (settingsId) {
-        // Update existing record
+
         result = await supabase
           .from('cv_email_settings')
           .update(settingsData)
@@ -91,7 +91,7 @@ export function EmailSettings() {
           .select()
           .single()
       } else {
-        // Insert new record
+
         result = await supabase
           .from('cv_email_settings')
           .insert([settingsData])

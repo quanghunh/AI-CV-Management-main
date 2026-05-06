@@ -1,4 +1,4 @@
-// src/components/candidates/CandidateFormDialog.tsx
+
 import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -107,7 +107,7 @@ export function CandidateFormDialog({
     setSelectedFile(file);
     setParsedData(parsed);
     
-    // Auto-fill form with parsed data
+
     if (parsed.email && !formData.email) {
       handleInputChange('email', parsed.email);
     }

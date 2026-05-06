@@ -1,4 +1,4 @@
-// Tạo file mới: utils/cvScoringHelper.ts
+
 
 export interface ScoreBreakdown {
   skills: number;
@@ -38,38 +38,35 @@ export const calculateCVScore = (
     position: 0
   };
 
-  // 1. Điểm kỹ năng (40 điểm tối đa)
   const skillsCount = candidate.skills?.length || 0;
   if (skillsCount > 0) {
-    // Công thức: mỗi skill = 8 điểm, tối đa 40
+
     breakdown.skills = Math.min(skillsCount * 8, 40);
   }
 
-  // 2. Điểm kinh nghiệm (25 điểm tối đa)
   if (candidate.experience) {
     const expMatch = candidate.experience.match(/(\d+)/);
     if (expMatch) {
       const years = parseInt(expMatch[1]);
       const level = candidate.cv_jobs?.level || jobRequirement?.level;
       
-      // Điều chỉnh điểm theo level
+
       if (level === 'Junior') {
-        // Junior: mỗi năm = 12 điểm (0-2 năm lý tưởng)
+
         breakdown.experience = Math.min(years * 12, 25);
       } else if (level === 'Mid-level') {
-        // Mid: mỗi năm = 8 điểm (2-5 năm lý tưởng)
+
         breakdown.experience = Math.min(years * 8, 25);
       } else if (level === 'Senior') {
-        // Senior: mỗi năm = 5 điểm (5+ năm lý tưởng)
+
         breakdown.experience = Math.min(years * 5, 25);
       } else {
-        // Mặc định
+
         breakdown.experience = Math.min(years * 7, 25);
       }
     }
   }
 
-  // 3. Điểm học vấn (15 điểm tối đa)
   if (candidate.university) {
     const topUniversities = [
       'Bách khoa', 'Bách Khoa', 'Bach Khoa', 'HCMUT',
@@ -86,25 +83,23 @@ export const calculateCVScore = (
     breakdown.education = isTopUni ? 15 : 10;
   }
 
-  // 4. Điểm khớp cấp độ (10 điểm tối đa)
   if (jobRequirement?.level && candidate.cv_jobs?.level) {
     if (candidate.cv_jobs.level === jobRequirement.level) {
       breakdown.level = 10;
     } else {
-      // Khớp một phần (ví dụ: Mid apply Senior)
+
       breakdown.level = 5;
     }
   } else if (candidate.cv_jobs?.level) {
-    // Có level nhưng không có requirement để so sánh
+
     breakdown.level = 7;
   }
 
-  // 5. Điểm khớp vị trí (10 điểm tối đa)
   if (jobRequirement?.title && candidate.cv_jobs?.title) {
     if (candidate.cv_jobs.title === jobRequirement.title) {
       breakdown.position = 10;
     } else {
-      // Check similar positions (Frontend vs Fullstack, Backend vs Fullstack)
+
       const candidatePos = candidate.cv_jobs.title.toLowerCase();
       const requirementPos = jobRequirement.title.toLowerCase();
       
@@ -168,7 +163,6 @@ export const calculateBulkScores = (
   return scores;
 };
 
-
 export const getScoreBadgeClass = (score: number): string => {
   if (score >= 85) return 'bg-green-100 text-green-700 border-green-300';
   if (score >= 70) return 'bg-blue-100 text-blue-700 border-blue-300';
@@ -177,8 +171,8 @@ export const getScoreBadgeClass = (score: number): string => {
 };
 
 export const getScoreIcon = (score: number): string => {
-  if (score >= 85) return '🏆'; // Trophy
-  if (score >= 70) return '⭐'; // Star
-  if (score >= 50) return '📊'; // Chart
-  return '📉'; // Declining chart
+  if (score >= 85) return '🏆';
+  if (score >= 70) return '⭐';
+  if (score >= 50) return '📊';
+  return '📉';
 };

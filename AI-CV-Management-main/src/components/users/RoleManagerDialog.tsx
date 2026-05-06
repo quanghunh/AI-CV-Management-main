@@ -14,10 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 
-// ==================== TYPES ====================
-
 export interface RoleItem {
-  roles: number       // primary key của bảng cv_roles
+  roles: number
   name: string
   description?: string
   color?: string
@@ -31,8 +29,6 @@ interface RoleManagerDialogProps {
   onRolesUpdated: () => void
 }
 
-// ==================== PRESET OPTIONS ====================
-
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
   '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6',
@@ -41,10 +37,7 @@ const PRESET_COLORS = [
 
 const PRESET_ICONS = ['👤', '👑', '🎯', '📋', '🔐', '💼', '🛡️', '⚡', '🌟', '🔧']
 
-// Admin (roles = 1) không thể xóa
 const PROTECTED_ROLE_IDS = [1]
-
-// ==================== COMPONENT ====================
 
 export function RoleManagerDialog({
   open,
@@ -55,13 +48,11 @@ export function RoleManagerDialog({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // edit state
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingData, setEditingData] = useState({
     name: '', description: '', color: '#6366f1', icon: '👤',
   })
 
-  // add new state
   const [isAdding, setIsAdding] = useState(false)
   const [newRole, setNewRole] = useState({
     name: '', description: '', color: '#6366f1', icon: '👤',
@@ -71,8 +62,6 @@ export function RoleManagerDialog({
   useEffect(() => {
     if (open) fetchRoles()
   }, [open])
-
-  // -------- fetch --------
 
   async function fetchRoles() {
     setLoading(true)
@@ -84,8 +73,6 @@ export function RoleManagerDialog({
     if (error) console.error('fetchRoles error:', error)
     setLoading(false)
   }
-
-  // -------- add --------
 
   async function handleAdd() {
     const name = newRole.name.trim()
@@ -112,8 +99,6 @@ export function RoleManagerDialog({
     }
     setSaving(false)
   }
-
-  // -------- edit --------
 
   async function handleEdit(id: number) {
     const name = editingData.name.trim()
@@ -144,8 +129,6 @@ export function RoleManagerDialog({
     setSaving(false)
   }
 
-  // -------- delete --------
-
   async function handleDelete(role: RoleItem) {
     if (PROTECTED_ROLE_IDS.includes(role.roles)) {
       toast.warning('Không thể xóa vai trò Admin mặc định!'); return
@@ -170,8 +153,6 @@ export function RoleManagerDialog({
     toast.success(`Đã xóa vai trò "${role.name}" thành công!`)
   }
 
-  // -------- helpers --------
-
   function resetAddForm() {
     setNewRole({ name: '', description: '', color: '#6366f1', icon: '👤' })
     setIsAdding(false)
@@ -187,8 +168,6 @@ export function RoleManagerDialog({
       icon: role.icon || '👤',
     })
   }
-
-  // ==================== RENDER ====================
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

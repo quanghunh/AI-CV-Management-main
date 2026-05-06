@@ -1,4 +1,4 @@
-// src/components/candidates/CVAnalysisDialog.tsx
+
 import { Brain, CheckCircle2, AlertTriangle, TrendingUp } from 'lucide-react';
 import {
   Dialog,
@@ -8,10 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// ✅ FIX: Import từ cvParser thay vì advancedCVParser
+
 import type { ParsedCV } from "@/utils/cvParser";
 
-// Simple Progress component
 const Progress = ({ value, className }: { value: number; className?: string }) => (
   <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
     <div 

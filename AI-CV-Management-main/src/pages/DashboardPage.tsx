@@ -19,8 +19,6 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 interface StatsData {
   totalCV: number;
   cvChange: number;
@@ -57,8 +55,6 @@ interface RawCandidate {
 
 type TrendPeriod = 'day' | 'month' | 'year';
 
-// ─── isOpenJob ────────────────────────────────────────────────────────────────
-
 const CLOSED_STATUSES = new Set([
   'bản nháp', 'đã đóng', 'draft', 'closed', 'archived', 'inactive',
 ]);
@@ -68,8 +64,6 @@ function isOpenJob(status: string): boolean {
   return !CLOSED_STATUSES.has(status.trim().toLowerCase());
 }
 function isClosedJob(status: string): boolean { return !isOpenJob(status); }
-
-// ─── Pure-computation helpers ─────────────────────────────────────────────────
 
 function buildTimeline(period: TrendPeriod): string[] {
   const now = new Date();
@@ -178,8 +172,6 @@ function formatActivityGroupLabel(date: string) {
   return new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// ─── Activity helpers ─────────────────────────────────────────────────────────
-
 /** Màu dot cho từng action */
 function getActivityDotColor(action: string): string {
   const a = action.toLowerCase();
@@ -223,8 +215,6 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('vi-VN');
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
 const PERIOD_LABELS: Record<TrendPeriod, string> = {
@@ -233,8 +223,6 @@ const PERIOD_LABELS: Record<TrendPeriod, string> = {
   year: '5 năm gần nhất',
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function DashboardPage() {
   const { t } = useTranslation();
 
@@ -242,7 +230,7 @@ export function DashboardPage() {
   const [topJobs, setTopJobs] = useState<TopJobData[]>([]);
   const [openJobs, setOpenJobs] = useState<TopJobData[]>([]);
   const [allJobsForChart, setAllJobsForChart] = useState<TopJobData[]>([]);
-  // ✅ Dùng ActivityData mới có user_id, entity_type, metadata
+
   const [recentActivities, setRecentActivities] = useState<ActivityData[]>([]);
   const [stats, setStats] = useState<StatsData>({
     totalCV: 0, cvChange: 0, openJobs: 0, jobsChange: 0,
@@ -256,12 +244,10 @@ export function DashboardPage() {
   const [activityEntityType, setActivityEntityType] = useState<'all' | string>('all');
   const [activityLimit, setActivityLimit] = useState(20);
 
-  // ── fetch ────────────────────────────────────────────────────────────────
-
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // 1. All candidates
+
       const { data: cvRaw } = await supabase
         .from('cv_candidates')
         .select('id, created_at, job_id, source')
@@ -285,7 +271,6 @@ export function DashboardPage() {
         cvChange: percentChange(thisMonthCount, lastMonthCount),
       }));
 
-      // 2. Jobs
       const { data: jobsRaw } = await supabase
         .from('cv_jobs').select('id, title, status, created_at');
       const allJobs: any[] = jobsRaw ?? [];
@@ -331,7 +316,6 @@ export function DashboardPage() {
         jobsChange: percentChange(openThisMonth, openLastMonth),
       }));
 
-      // 3. Interviews
       const { data: ivRaw } = await supabase
         .from('cv_interviews').select('id, interview_date, status');
       const ivAll: any[] = ivRaw ?? [];
@@ -348,7 +332,6 @@ export function DashboardPage() {
         interviewingChange: percentChange(ivThisMonth, ivLastMonth),
       }));
 
-      // 4. Load recent activities from activityLogger — trong 30 ngày
       await fetchActivities({ limit: activityLimit, entityType: activityEntityType });
 
     } catch (err) {
@@ -378,8 +361,6 @@ export function DashboardPage() {
   useEffect(() => {
     fetchActivities({ limit: activityLimit, entityType: activityEntityType });
   }, [activityLimit, activityEntityType]);
-
-  // ── Derived ──────────────────────────────────────────────────────────────
 
   const trendData = useMemo(
     () => computeTrend(allCandidates, trendPeriod, selectedJobId),
@@ -443,8 +424,6 @@ export function DashboardPage() {
     { value: 'auth', label: t('dashboard.activityFilters.auth') },
   ];
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-
   const renderChangeIndicator = (change: number) => {
     if (change > 0) return (
       <span className="text-green-600 flex items-center gap-1">
@@ -478,8 +457,6 @@ export function DashboardPage() {
       </div>
     );
   };
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-50/50 min-h-screen lg:min-h-0">

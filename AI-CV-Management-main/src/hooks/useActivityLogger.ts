@@ -1,4 +1,4 @@
-// src/hooks/useActivityLogger.ts
+
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 

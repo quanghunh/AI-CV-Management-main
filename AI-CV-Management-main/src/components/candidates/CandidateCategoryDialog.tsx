@@ -14,8 +14,6 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 
-// ==================== TYPES ====================
-
 export interface CandidateCategory {
   id: string
   type: string
@@ -31,13 +29,9 @@ interface CandidateCategoryDialogProps {
   onCategoriesUpdated: () => void
 }
 
-// ==================== CATEGORY TYPE CONFIG ====================
-
 const CATEGORY_TYPES: Record<string, { label: string; icon: string }> = {
   source: { label: "Nguồn ứng tuyển", icon: "📢" },
 }
-
-// ==================== MAIN COMPONENT ====================
 
 export function CandidateCategoryDialog({
   open,

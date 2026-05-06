@@ -1,4 +1,4 @@
-// src/components/layout/MainLayout.tsx
+
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
@@ -6,7 +6,6 @@ import { Header } from "./Header";
 import { MobileFooter } from "./MobileFooter";
 import { supabase } from "@/lib/supabaseClient";
 
-// Fixed UUID cho company profile (chung cho toàn hệ thống)
 const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
 
 export function MainLayout() {
@@ -14,7 +13,7 @@ export function MainLayout() {
   const [companyName, setCompanyName] = useState('Recruit AI');
 
   useEffect(() => {
-    // Load company name từ database
+
     async function loadCompanyName() {
       const { data, error } = await supabase
         .from('cv_company_profile')
@@ -33,7 +32,6 @@ export function MainLayout() {
 
     loadCompanyName();
 
-    // Subscribe để cập nhật real-time khi company name thay đổi
     const channel = supabase
       .channel('company_profile_changes_main')
       .on(
@@ -57,7 +55,6 @@ export function MainLayout() {
     };
   }, []);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {

@@ -16,11 +16,10 @@ export async function createUserWithAuth({
   try {
     console.log('🚀 Creating user in auth.users...')
 
-    // Bước 1: Tạo user trong auth.users bằng Admin API
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
-      email_confirm: true, // Tự động confirm email
+      email_confirm: true,
       user_metadata: {
         full_name: fullName
       }
@@ -37,7 +36,6 @@ export async function createUserWithAuth({
 
     console.log('✅ Auth user created:', authData.user.id)
 
-    // Bước 2: Tạo profile trong cv_profiles
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('cv_profiles')
       .insert({
@@ -55,14 +53,13 @@ export async function createUserWithAuth({
 
     if (profileError) {
       console.error('❌ Profile creation error:', profileError)
-      // Rollback: Xóa auth user nếu tạo profile thất bại
+
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       throw new Error(profileError.message)
     }
 
     console.log('✅ Profile created:', profileData)
 
-    // Bước 3: Gán vai trò
     const { error: roleError } = await supabaseAdmin
       .from('cv_user_roles')
       .insert({
@@ -78,7 +75,6 @@ export async function createUserWithAuth({
 
     console.log('✅ Role assigned')
 
-    // Bước 4: Log activity
     try {
       await supabaseAdmin
         .from('activity_logs')

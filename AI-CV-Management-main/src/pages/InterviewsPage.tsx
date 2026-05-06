@@ -25,8 +25,6 @@ import {
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-// ─── Interfaces ───────────────────────────────────────────────────────────────
-
 interface CandidateOption {
   id: string;
   full_name: string;
@@ -41,7 +39,7 @@ interface Interview {
   id: string;
   interview_date: string;
   interviewer: string;
-  interviewers?: string[];   // ✅ MỚI: mảng người phỏng vấn
+  interviewers?: string[];
   format: string;
   status: string;
   duration: string;
@@ -61,8 +59,6 @@ interface SystemUser {
   email: string;
   role: string;
 }
-
-// ─── CandidateSearch ────────────────────────────────────────────────────────
 
 interface CandidateSearchProps {
   onSelect: (candidate: CandidateOption) => void;
@@ -198,14 +194,11 @@ function CandidateSearch({ onSelect }: CandidateSearchProps) {
   );
 }
 
-// ─── MultiInterviewerSelect ────────────────────────────────────────────────────
-// ✅ MỚI: Thay thế InterviewerSelect đơn lẻ — cho phép chọn nhiều người
-
 interface MultiInterviewerSelectProps {
-  value: string[];                       // danh sách tên đã chọn
-  onChange: (names: string[]) => void;   // callback trả về mảng mới
+  value: string[];
+  onChange: (names: string[]) => void;
   users: SystemUser[];
-  maxCount?: number;                     // giới hạn tối đa (mặc định 10)
+  maxCount?: number;
 }
 
 function MultiInterviewerSelect({
@@ -237,7 +230,6 @@ function MultiInterviewerSelect({
     return map[role?.toUpperCase()] || 'bg-gray-100 text-gray-600';
   };
 
-  // toggle chọn / bỏ chọn
   const toggleUser = (name: string) => {
     if (value.includes(name)) {
       onChange(value.filter(n => n !== name));
@@ -246,10 +238,8 @@ function MultiInterviewerSelect({
     }
   };
 
-  // xóa 1 chip
   const removeUser = (name: string) => onChange(value.filter(n => n !== name));
 
-  // thêm tên tùy ý
   const addCustomName = (name: string) => {
     const trimmed = name.trim();
     if (trimmed && !value.includes(trimmed) && value.length < maxCount) {
@@ -412,8 +402,6 @@ function MultiInterviewerSelect({
   );
 }
 
-// ─── Helper: hiển thị danh sách interviewer ─────────────────────────────────
-
 function InterviewersList({ names, users }: { names: string[]; users: SystemUser[] }) {
   if (!names || names.length === 0) return <span className="text-gray-400 text-sm">—</span>;
 
@@ -458,8 +446,6 @@ function InterviewersList({ names, users }: { names: string[]; users: SystemUser
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -481,27 +467,23 @@ export function InterviewsPage() {
   const [reviewData, setReviewData] = useState({ rating: 0, notes: '', outcome: 'Đạt' });
   const [interviewToReview, setInterviewToReview] = useState<Interview | null>(null);
 
-  // ✅ formData: thêm interviewers (array) thay cho interviewer (string đơn)
   const [formData, setFormData] = useState({
     candidate_id: "", job_id: "", interview_date: "", interview_time: "",
     duration: "60", location: "", format: "Trực tiếp",
-    interviewers: [] as string[],   // ✅ MỚI
+    interviewers: [] as string[],
     notes: "",
   });
 
-  // ✅ editFormData: thêm interviewers
   const [editFormData, setEditFormData] = useState({
     id: "", job_id: "", interview_date: "", interview_time: "",
     duration: "", location: "", format: "",
-    interviewers: [] as string[],   // ✅ MỚI
+    interviewers: [] as string[],
     candidate_name: "",
   });
 
   const [formErrors, setFormErrors] = useState({
     interview_date: "", interview_time: "", duration: "", interviewers: "",
   });
-
-  // ── helpers ──────────────────────────────────────────────────────────────
 
   const getInterviewStatus = (iv: Interview) => {
     const now = new Date();
@@ -513,7 +495,6 @@ export function InterviewsPage() {
     return iv.status === 'Đang chờ' ? 'Đang chờ đánh giá' : iv.status;
   };
 
-  // ✅ Lấy mảng interviewers từ record (backward compat)
   const getInterviewersList = (iv: Interview): string[] => {
     if (iv.interviewers && iv.interviewers.length > 0) return iv.interviewers;
     if (iv.interviewer) return [iv.interviewer];
@@ -535,8 +516,6 @@ export function InterviewsPage() {
   const fmtDate = (iso: string) => new Date(iso).toLocaleString('vi-VN', {
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   });
-
-  // ── fetch ────────────────────────────────────────────────────────────────
 
   const fetchInterviews = async () => {
     setLoading(true);
@@ -607,8 +586,6 @@ export function InterviewsPage() {
     });
   }, []);
 
-  // ── handlers ─────────────────────────────────────────────────────────────
-
   const handleCandidateSelect = (c: CandidateOption) => {
     setSelectedCandidate(c);
     setFormData(prev => ({ ...prev, candidate_id: c.id, job_id: c.cv_jobs?.id || '' }));
@@ -651,7 +628,7 @@ export function InterviewsPage() {
 
       const payload: any = {
         interview_date: localDate.toISOString(),
-        // ✅ Lưu cả hai: interviewers[] và interviewer (primary = người đầu tiên)
+
         interviewers: formData.interviewers,
         interviewer: formData.interviewers[0] || '',
         format: formData.format,
@@ -670,7 +647,6 @@ export function InterviewsPage() {
 
       await fetchInterviews();
 
-      // Reset form
       setFormData({ candidate_id:"", job_id:"", interview_date:"", interview_time:"", duration:"60", location:"", format:"Trực tiếp", interviewers:[], notes:"" });
       setFormErrors({ interview_date:"", interview_time:"", duration:"", interviewers:"" });
       setSelectedCandidate(null);
@@ -745,7 +721,7 @@ export function InterviewsPage() {
       duration: iv.duration,
       location: iv.location,
       format: iv.format,
-      // ✅ Lấy interviewers đúng (backward compat)
+
       interviewers: getInterviewersList(iv),
       candidate_name: iv.cv_candidates?.full_name || "Ứng viên",
     });
@@ -777,7 +753,7 @@ export function InterviewsPage() {
         interview_date: isoStr,
         duration: editFormData.duration,
         format: editFormData.format,
-        // ✅ Lưu cả hai fields
+
         interviewers: editFormData.interviewers,
         interviewer: editFormData.interviewers[0] || '',
         location: editFormData.location,
@@ -843,8 +819,6 @@ export function InterviewsPage() {
     finally { setSubmitting(false); }
   };
 
-  // ── computed ──────────────────────────────────────────────────────────────
-
   const totalInterviews = interviews.length;
   const pendingInterviews = interviews.filter(i => i.status === 'Đang chờ').length;
   const completedInterviews = interviews.filter(i => i.status === 'Hoàn thành').length;
@@ -859,8 +833,6 @@ export function InterviewsPage() {
       (positionFilter === 'all' || position === positionFilter)
     );
   });
-
-  // ── render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">

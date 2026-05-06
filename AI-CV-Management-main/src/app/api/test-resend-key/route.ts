@@ -1,4 +1,4 @@
-// src/app/api/test-resend-key/route.ts
+
 import { Resend } from 'resend'
 
 export async function POST(request: Request) {

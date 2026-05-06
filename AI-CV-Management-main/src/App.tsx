@@ -1,4 +1,4 @@
-// src/App.tsx - FIXED VERSION
+
 import React, { Suspense } from "react";
 import {
   createBrowserRouter,
@@ -10,10 +10,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-// Layouts
 import { MainLayout } from "@/components/layout/MainLayout";
 
-// Safe namespace imports to avoid "has no default export" / named vs default mismatches
 import * as DashboardPageModule from "@/pages/DashboardPage";
 import * as JobsPageModule from "@/pages/JobsPage";
 import * as CandidatesPageModule from "@/pages/CandidatesPage";
@@ -29,7 +27,6 @@ import * as RegisterPageModule from "@/pages/RegisterPage";
 import * as UsersPageModule from "@/pages/User";
 import * as PermissionsPageModule from "@/pages/PermissionsPage";
 
-// Helper to pick component from module: prefer default, fallback to named export with common names
 function resolveModuleComponent<M extends Record<string, any>>(mod: M, names: string[]) {
   if (!mod) return null;
   if (mod.default) return mod.default as React.ComponentType<any>;
@@ -59,7 +56,6 @@ const RegisterPage = resolveModuleComponent(RegisterPageModule, ["RegisterPage"]
 const UsersPage = resolveModuleComponent(UsersPageModule, ["UsersPage","User"]) ?? (() => <div>Missing Users</div>);
 const PermissionsPage = resolveModuleComponent(PermissionsPageModule, ["PermissionsPage"]) ?? (() => <div>Missing Permissions</div>);
 
-// Loading Screen Component
 const LoadingScreen = () => (
   <div className="flex items-center justify-center h-screen bg-gray-50">
     <div className="text-center">
@@ -70,9 +66,7 @@ const LoadingScreen = () => (
 );
 
 const router = createBrowserRouter([
-  // ========================================
-  // PUBLIC ROUTES (No authentication required)
-  // ========================================
+
   { 
     path: "/login", 
     element: <LoginPage /> 
@@ -82,10 +76,7 @@ const router = createBrowserRouter([
     element: <RegisterPage /> 
   },
   
-  // ========================================
-  // PROTECTED ROUTES WITH MAINLAYOUT
-  // All routes below require authentication
-  // ========================================
+
   {
     path: "/",
     element: (
@@ -94,16 +85,13 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      // Redirect root to dashboard
+
       { 
         index: true, 
         element: <Navigate to="/dashboard" replace /> 
       },
       
-      // ========================================
-      // DASHBOARD MODULE
-      // Permission: dashboard.view
-      // ========================================
+
       { 
         path: "dashboard", 
         element: (
@@ -113,10 +101,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // PERSONAL SETTINGS
-      // No permission required - All authenticated users can access
-      // ========================================
+
       { 
         path: "cai-dat/thong-tin-ca-nhan", 
         element: (
@@ -126,10 +111,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // SYSTEM SETTINGS
-      // Permission: settings.view
-      // ========================================
+
       { 
         path: "cai-dat", 
         element: (
@@ -139,23 +121,9 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // CATEGORY SETTINGS
-      // Permission: settings.update
-      // ========================================
-      //{ 
-        //path: "cai-dat/danh-muc", 
-        //element: (
-        //  <ProtectedRoute requiredPermission={{ module: "settings", action: "update" }}>
-        //    <CategorySettingsPage />
-        //  </ProtectedRoute>
-      //  )
-      //},
+
       
-      // ========================================
-      // JOBS MODULE
-      // Permission: jobs.view
-      // ========================================
+
       { 
         path: "mo-ta-cong-viec", 
         element: (
@@ -165,10 +133,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // CANDIDATES MODULE
-      // Permission: candidates.view
-      // ========================================
+
       { 
         path: "ung-vien", 
         element: (
@@ -178,10 +143,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // INTERVIEWS MODULE
-      // Permission: interviews.view
-      // ========================================
+
       { 
         path: "phong-van", 
         element: (
@@ -191,10 +153,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // CV FILTER MODULE
-      // Permission: cv_filter.view
-      // ========================================
+
       { 
         path: "loc-cv", 
         element: (
@@ -204,10 +163,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // REVIEWS MODULE
-      // Permission: reviews.view
-      // ========================================
+
       { 
         path: "danh-gia", 
         element: (
@@ -217,15 +173,9 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // OFFERS MODULE
-      // Permission: offers.view
-      // ========================================
+
       
-      // ========================================
-      // USERS MODULE
-      // Permission: users.view
-      // ========================================
+
       { 
         path: "nguoi-dung", 
         element: (
@@ -235,10 +185,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // EMAIL MANAGEMENT MODULE
-      // Permission: email.view
-      // ========================================
+
       { 
         path: "quan-ly-email", 
         element: (
@@ -248,10 +195,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // PERMISSIONS MODULE
-      // Permission: permissions.view (Admin only)
-      // ========================================
+
       { 
         path: "phan-quyen", 
         element: (
@@ -261,10 +205,7 @@ const router = createBrowserRouter([
         )
       },
       
-      // ========================================
-      // AI TOOLS MODULE
-      // Permission: ai_tools.view (Admin only)
-      // ========================================
+
       { 
         path: "ai", 
         element: (
@@ -276,22 +217,13 @@ const router = createBrowserRouter([
     ],
   },
   
-  // ========================================
-  // CATCH-ALL: REDIRECT UNKNOWN ROUTES
-  // ========================================
+
   { 
     path: "*", 
     element: <Navigate to="/login" replace /> 
   },
 ]);
 
-// ========================================
-// APP COMPONENT WITH PROVIDERS
-// Provider order matters:
-// 1. AuthProvider - Provides authentication state
-// 2. PermissionsProvider - Loads user permissions (depends on auth)
-// 3. RouterProvider - Handles routing
-// ========================================
 export default function App() {
   return (
     <AuthProvider>

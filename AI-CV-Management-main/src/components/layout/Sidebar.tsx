@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx - FIXED VERSION
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -22,7 +22,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from "@/contexts/PermissionsContext";
 
-// Fixed UUID cho company profile (chung cho toàn hệ thống)
 const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
 
 interface NavItemProps {
@@ -55,29 +54,27 @@ const NavItem = ({ to, icon: Icon, label, isActive, badge }: NavItemProps) => (
   </Link>
 );
 
-// Skeleton cho nav items khi đang loading
 const NavItemSkeleton = () => (
   <div className="h-10 bg-white/10 rounded-lg animate-pulse" />
 );
 
-// Component hiển thị Logo công ty - Load từ Supabase
 function CompanyLogo({ companyName }: { companyName: string }) {
   const [logo, setLogo] = useState<string | null>(null);
   const [isLoadingLogo, setIsLoadingLogo] = useState(true);
 
   useEffect(() => {
-    // Load logo từ Supabase
+
     const loadLogoFromSupabase = async () => {
       try {
         setIsLoadingLogo(true);
         
-        // Thử load từ localStorage trước (cache)
+
         const cachedLogo = localStorage.getItem('company-logo');
         if (cachedLogo) {
           setLogo(cachedLogo);
         }
         
-        // Load từ Supabase để đảm bảo sync
+
         const { data, error } = await supabase
           .from('cv_company_profile')
           .select('logo_url')
@@ -92,13 +89,13 @@ function CompanyLogo({ companyName }: { companyName: string }) {
           setLogo(data.logo_url);
           localStorage.setItem('company-logo', data.logo_url);
         } else {
-          // No logo or no row, clear
+
           setLogo(null);
           localStorage.removeItem('company-logo');
         }
       } catch (error) {
         console.error("Error loading logo:", error);
-        // Fallback to localStorage nếu có lỗi
+
         const cachedLogo = localStorage.getItem('company-logo');
         if (cachedLogo) {
           setLogo(cachedLogo);
@@ -110,14 +107,12 @@ function CompanyLogo({ companyName }: { companyName: string }) {
 
     loadLogoFromSupabase();
 
-    // Listen for storage changes (cross-tab updates)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'company-logo') {
         setLogo(e.newValue);
       }
     };
 
-    // Listen for custom event (same-tab updates from Settings)
     const handleLogoUpdate = () => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Logo update event received, reloading...');
@@ -125,7 +120,6 @@ function CompanyLogo({ companyName }: { companyName: string }) {
       loadLogoFromSupabase();
     };
 
-    // Subscribe to realtime changes in Supabase
     const channel = supabase
       .channel('company_logo_changes')
       .on(
@@ -167,7 +161,6 @@ function CompanyLogo({ companyName }: { companyName: string }) {
     };
   }, []);
 
-  // Nếu đang loading logo, hiển thị skeleton
   if (isLoadingLogo) {
     return (
       <div className="flex items-center gap-3">
@@ -226,11 +219,6 @@ export function Sidebar() {
   const [companyName, setCompanyName] = useState('Recruit AI');
   const [loading, setLoading] = useState(true);
 
-  // ========================================
-  // PERMISSION-BASED NAVIGATION ITEMS
-  // ========================================
-  // NOTE: Quyền được kiểm soát hoàn toàn bởi database
-  // Không hardcode roles ở đây
   const navItems = [
     ...(canView('dashboard') ? [{
       to: "/",
@@ -268,11 +256,7 @@ export function Sidebar() {
       icon: Filter
     }] : []),
     
-    //...(canView('offers') ? [{
-    //  to: "/offers",
-    //  label: "Offer Management",
-    //  icon: FileText
-    //}] : []),
+
     
     ...(canView('email') ? [{
       to: "/quan-ly-email",
@@ -286,12 +270,7 @@ export function Sidebar() {
       icon: UserCog
     }] : []),
     
-    //...(canView('ai_tools') ? [{
-    //  to: "/ai",
-    //  label: "AI Tools",
-    //  icon: Sparkles,
-    //  badge: "NEW"
-    //}] : []),
+
     
     ...(canView('permissions') ? [{
       to: "/phan-quyen",
@@ -308,7 +287,7 @@ export function Sidebar() {
   ];
 
   useEffect(() => {
-    // Load company name từ database
+
     async function loadCompanyName() {
       setLoading(true);
       const { data, error } = await supabase
@@ -330,7 +309,7 @@ export function Sidebar() {
     
     loadCompanyName();
     
-    // Subscribe để cập nhật real-time khi company name thay đổi
+
     const channel = supabase
       .channel('company_profile_changes')
       .on(
@@ -354,9 +333,6 @@ export function Sidebar() {
     };
   }, []);
 
-  // ========================================
-  // RENDER SIDEBAR
-  // ========================================
   return (
     <aside 
       className="w-64 h-screen bg-gradient-to-b from-primary to-primary/90 shadow-xl flex flex-col p-4 fixed"
@@ -384,14 +360,14 @@ export function Sidebar() {
       {/* Navigation - Permission-Based */}
       <nav className="flex-1 space-y-1.5 overflow-y-auto scrollbar-thin">
         {permLoading ? (
-          // ✅ Show skeleton while loading permissions
+
           <>
             {[...Array(6)].map((_, i) => (
               <NavItemSkeleton key={i} />
             ))}
           </>
         ) : permError ? (
-          // ✅ Show error if permissions failed to load
+
           <div className="text-center py-8 px-4">
             <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-red-400" />
             <p className="text-white/70 text-sm mb-2">
@@ -402,7 +378,7 @@ export function Sidebar() {
             </p>
           </div>
         ) : navItems.length === 0 ? (
-          // ✅ Show message if no permissions
+
           <div className="text-center py-8 px-4">
             <Shield className="w-12 h-12 mx-auto mb-3 text-white/40" />
             <p className="text-white/70 text-sm mb-2">
@@ -413,7 +389,7 @@ export function Sidebar() {
             </p>
           </div>
         ) : (
-          // ✅ Show actual nav items
+
           navItems.map((item) => {
             const active = location.pathname === item.to;
             return (

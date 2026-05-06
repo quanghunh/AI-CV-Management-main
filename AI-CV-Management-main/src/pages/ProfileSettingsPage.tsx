@@ -1,4 +1,4 @@
-// src/pages/ProfileSettingsPage.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -26,7 +26,6 @@ export function ProfileSettingsPage() {
 
   const isSystemUser = user && !(user as any).isCustomAuth
 
-  // Load profile data when user or profile changes
   useEffect(() => {
     async function loadSystemProfile() {
       if (user) {
@@ -51,7 +50,7 @@ export function ProfileSettingsPage() {
             avatar_url: data?.avatar_url || metadata.avatar_url || ''
           })
         } else {
-          // CustomAuth User (Candidate or Admin via Custom Auth)
+
           setProfileData({
             full_name: profile?.full_name || '',
             email: user.email || '',
@@ -88,7 +87,7 @@ export function ProfileSettingsPage() {
     setLoading(true)
     try {
       if (isSystemUser) {
-        // 1. Update the system profiles table
+
         const { error: dbError } = await supabase
           .from('profiles')
           .update({
@@ -99,12 +98,11 @@ export function ProfileSettingsPage() {
 
         if (dbError) throw dbError;
 
-        // 2. Also keep auth meta_data in sync
         await supabase.auth.updateUser({
           data: { full_name: profileData.full_name }
         });
       } else {
-        // 1. Update custom user via Context function
+
         const { error } = await updateProfile({
           full_name: profileData.full_name,
           phone: profileData.phone
@@ -126,7 +124,6 @@ export function ProfileSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validation
     if (!file.type.startsWith('image/')) {
       toast.warning('Vui lòng upload định dạng hình ảnh (JPG, PNG)')
       return
@@ -141,7 +138,7 @@ export function ProfileSettingsPage() {
     try {
       console.log('📤 Starting avatar upload...')
       
-      // Step 1: Generate unique filename with prefix isolating system users and candidates
+
       const fileExt = file.name.split('.').pop()
       const timestamp = Date.now()
       const prefix = isSystemUser ? 'system_users' : 'candidates_avatars'
@@ -149,7 +146,6 @@ export function ProfileSettingsPage() {
       
       console.log('📁 Upload path:', fileName)
 
-      // Step 2: Upload new avatar
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
@@ -164,14 +160,12 @@ export function ProfileSettingsPage() {
 
       console.log('✅ Upload successful:', uploadData)
 
-      // Step 3: Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
       console.log('🔗 Public URL:', publicUrl)
 
-      // Step 4: Update profile in database directly
       if (isSystemUser) {
         const { error: updateError } = await supabase
           .from('profiles')
@@ -183,7 +177,7 @@ export function ProfileSettingsPage() {
           throw updateError
         }
         
-        // Update auth meta as well
+
         await supabase.auth.updateUser({
           data: { avatar_url: publicUrl }
         });
@@ -194,7 +188,6 @@ export function ProfileSettingsPage() {
         if (updateError) throw updateError;
       }
 
-      // Step 5: Update local state
       setProfileData(prev => ({ ...prev, avatar_url: publicUrl }))
       toast.success('Ảnh đại diện đã được cập nhật thành công!')
       

@@ -45,14 +45,13 @@ export function CandidateAutoCompleteDual({
   const nameDropdownRef = useRef<HTMLDivElement>(null)
   const emailDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Xử lý click outside để đóng dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close name dropdown
+
       if (nameDropdownRef.current && !nameDropdownRef.current.contains(event.target as Node)) {
         setIsNameDropdownOpen(false)
       }
-      // Close email dropdown
+
       if (emailDropdownRef.current && !emailDropdownRef.current.contains(event.target as Node)) {
         setIsEmailDropdownOpen(false)
       }
@@ -64,7 +63,6 @@ export function CandidateAutoCompleteDual({
     }
   }, [])
 
-  // Tìm kiếm ứng viên theo tên
   const searchCandidatesByName = useCallback(async (searchValue: string) => {
     console.log('Searching by name:', searchValue)
 
@@ -112,11 +110,9 @@ export function CandidateAutoCompleteDual({
     }
   }, [])
 
-  // Tìm kiếm ứng viên theo email
   const searchCandidatesByEmail = useCallback(async (searchValue: string) => {
     console.log('Searching by email:', searchValue)
 
-    // Thay đổi điều kiện: chỉ cần 2 ký tự và không bắt buộc có @ để cho phép gợi ý sớm hơn
     if (!searchValue || searchValue.trim().length < 2) {
       console.log('Email search too short or empty')
       setEmailSuggestions([])
@@ -161,7 +157,6 @@ export function CandidateAutoCompleteDual({
     }
   }, [])
 
-  // Debounce search cho tên
   useEffect(() => {
     const timer = setTimeout(() => {
       searchCandidatesByName(nameInputValue)
@@ -170,7 +165,6 @@ export function CandidateAutoCompleteDual({
     return () => clearTimeout(timer)
   }, [nameInputValue, searchCandidatesByName])
 
-  // Debounce search cho email
   useEffect(() => {
     const timer = setTimeout(() => {
       searchCandidatesByEmail(emailInputValue)
@@ -179,69 +173,54 @@ export function CandidateAutoCompleteDual({
     return () => clearTimeout(timer)
   }, [emailInputValue, searchCandidatesByEmail])
 
-  // Xử lý input change cho tên
   const handleNameInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setNameInputValue(value)
 
-    // Nếu input rỗng, reset selection
     if (!value.trim()) {
       handleClearSelection()
     }
   }
 
-  // Xử lý input change cho email
   const handleEmailInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setEmailInputValue(value)
 
-    // Nếu input rỗng, reset selection
     if (!value.trim()) {
       handleClearSelection()
     }
   }
 
-  // Xử lý chọn ứng viên từ gợi ý tên
   const handleSelectCandidateByName = (candidate: Candidate) => {
     console.log('Selected candidate by name:', candidate)
     setSelectedCandidate(candidate)
 
-    // Cập nhật cả hai input value
     setNameInputValue(candidate.full_name)
     setEmailInputValue(candidate.email)
 
-    // Đóng cả hai dropdown
     setIsNameDropdownOpen(false)
     setIsEmailDropdownOpen(false)
 
-    // Gọi callback để thông báo cho component cha
     onCandidateSelect(candidate)
 
-    // Log thông báo đã chọn ứng viên
     console.log(`✅ Đã chọn ứng viên: ${candidate.full_name} - Email: ${candidate.email}`)
   }
 
-  // Xử lý chọn ứng viên từ gợi ý email
   const handleSelectCandidateByEmail = (candidate: Candidate) => {
     console.log('Selected candidate by email:', candidate)
     setSelectedCandidate(candidate)
 
-    // Cập nhật cả hai input value
     setNameInputValue(candidate.full_name)
     setEmailInputValue(candidate.email)
 
-    // Đóng cả hai dropdown
     setIsNameDropdownOpen(false)
     setIsEmailDropdownOpen(false)
 
-    // Gọi callback để thông báo cho component cha
     onCandidateSelect(candidate)
 
-    // Log thông báo đã chọn ứng viên
     console.log(`✅ Đã chọn ứng viên: ${candidate.full_name} - Email: ${candidate.email}`)
   }
 
-  // Xử lý xóa lựa chọn
   const handleClearSelection = () => {
     setSelectedCandidate(null)
     setNameInputValue("")
@@ -251,7 +230,6 @@ export function CandidateAutoCompleteDual({
     onCandidateSelect(null)
   }
 
-  // Hiển thị gợi ý
   const renderSuggestionItem = (candidate: Candidate, type: 'name' | 'email', onSelect: (candidate: Candidate) => void) => {
     return (
       <div

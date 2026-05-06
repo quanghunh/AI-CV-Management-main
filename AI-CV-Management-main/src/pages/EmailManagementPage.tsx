@@ -1,4 +1,4 @@
-// src/pages/EmailManagementPage.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import { EmailRecipientSelector } from "@/components/EmailRecipientSelector"
 import { useCompanyProfile } from "../hooks/useCompanyProfile"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 interface EmailCategory { id: string; name: string; description?: string }
 
@@ -81,7 +81,7 @@ interface CustomRule {
   operator: RuleOperator
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────────
+
 
 const TRIGGER_OPTIONS = [
   {
@@ -186,7 +186,7 @@ const EMPTY_RULE = (): CustomRule => ({
   id: genId(), field: 'candidate_status', condition: 'equals', value: '', operator: 'AND'
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+
 
 const describeRules = (rules: CustomRule[]): string => {
   if (!rules.length) return 'Không có điều kiện'
@@ -209,7 +209,7 @@ const getCategoryBadge = (category: string) => {
   return <Badge variant="outline" className={colors[category] || 'bg-gray-50 text-gray-700'}>{category}</Badge>
 }
 
-// ─── Campaign Wizard Steps ─────────────────────────────────────────────────
+
 
 type WizardStep = 'trigger' | 'filter' | 'template' | 'settings'
 
@@ -220,7 +220,7 @@ const WIZARD_STEPS: { key: WizardStep; label: string; icon: React.ReactNode }[] 
   { key: 'settings', label: 'Cài đặt',   icon: <Settings2 className="h-4 w-4" /> },
 ]
 
-// ─── CustomRuleBuilder ────────────────────────────────────────────────────
+
 
 interface CustomRuleBuilderProps {
   rules: CustomRule[]
@@ -351,7 +351,7 @@ function CustomRuleBuilder({ rules, onChange }: CustomRuleBuilderProps) {
   )
 }
 
-// ─── Campaign Wizard ──────────────────────────────────────────────────────────
+
 
 interface CampaignWizardProps {
   open: boolean
@@ -377,7 +377,7 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
     custom_rules: [] as CustomRule[],
   })
 
-  // Reset wizard when opening
+
   useEffect(() => {
     if (!open) return
     setStep('trigger')
@@ -407,7 +407,7 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
         if (!form.custom_rules.length) return false
         return form.custom_rules.every(r => r.value.trim() !== '')
       }
-      return true // filter step is optional for non-custom
+      return true
     }
     if (step === 'template') return !!form.template_id
     if (step === 'settings') return !!form.name.trim()
@@ -492,7 +492,7 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
                   <button
                     type="button"
                     onClick={() => {
-                      // Allow going back to any completed step
+
                       if (isComplete) setStep(s.key)
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center
@@ -873,7 +873,7 @@ function CampaignWizard({ open, onClose, editCampaign, templates, onSaved }: Cam
   )
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+
 
 export function EmailManagementPage() {
   const [templates,   setTemplates]   = useState<EmailTemplate[]>([])

@@ -1,4 +1,4 @@
-// src/hooks/useCandidates.ts
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { saveCandidateSkills } from '@/utils/skillsHelper';
@@ -84,7 +84,6 @@ export function useCandidates() {
       let cvUrl = null;
       let cvFileName = null;
 
-      // Upload CV if provided
       if (cvFile) {
         const fileExt = cvFile.name.split('.').pop();
         const timestamp = Date.now();
@@ -110,7 +109,6 @@ export function useCandidates() {
         cvFileName = cvFile.name;
       }
 
-      // Insert candidate
       const { data, error } = await supabase
         .from('cv_candidates')
         .insert([
@@ -140,12 +138,10 @@ export function useCandidates() {
       if (data && data[0]) {
         const candidateId = data[0].id;
 
-        // Save skills
         if (formData.skills.length > 0) {
           await saveCandidateSkills(candidateId, formData.skills);
         }
 
-        // Fetch complete candidate data
         const { data: completeData } = await supabase
           .from('cv_candidates')
           .select(`
@@ -192,10 +188,8 @@ export function useCandidates() {
 
       if (error) throw error;
 
-      // Update skills
       await saveCandidateSkills(candidateId, formData.skills);
 
-      // Fetch complete data
       const { data: completeData } = await supabase
         .from('cv_candidates')
         .select(`
@@ -226,7 +220,7 @@ export function useCandidates() {
     cvUrl?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Delete CV file from storage
+
       if (cvUrl) {
         const fileName = cvUrl.split('/').pop();
         if (fileName) {
@@ -234,7 +228,6 @@ export function useCandidates() {
         }
       }
 
-      // Delete candidate (cascade will handle skills)
       const { error } = await supabase
         .from('cv_candidates')
         .delete()

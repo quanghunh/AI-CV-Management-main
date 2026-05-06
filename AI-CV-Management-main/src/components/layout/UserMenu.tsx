@@ -1,4 +1,4 @@
-// src/components/layout/UserMenu.tsx
+
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,6 @@ export const UserMenu = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // Đóng menu khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -39,10 +38,8 @@ export const UserMenu = () => {
 
   if (!user) return null;
 
-  // Check if this is custom auth user
   const isCustomAuth = 'isCustomAuth' in user && (user as any).isCustomAuth;
 
-  // Get user role
   let userRole = 'USER';
   if (isCustomAuth) {
     userRole = (user as any).role?.toUpperCase() || 'USER';
@@ -52,18 +49,17 @@ export const UserMenu = () => {
     userRole = profile.role.toUpperCase();
   }
 
-  // Get user info - handle both CustomUser and Supabase User types
   let displayName = 'User';
   let displayEmail = 'user@example.com';
   let avatarUrl: string | undefined;
 
   if (isCustomAuth) {
-    // Custom auth user
+
     displayName = profile?.full_name || (user as any).full_name || user.email?.split('@')[0] || 'User';
     displayEmail = user.email || 'user@example.com';
     avatarUrl = profile?.avatar_url || (user as any).avatar_url;
   } else {
-    // Supabase auth user
+
     displayName = profile?.full_name || 
                   ((user as any).user_metadata?.full_name) || 
                   user.email?.split('@')[0] || 
@@ -72,7 +68,6 @@ export const UserMenu = () => {
     avatarUrl = profile?.avatar_url || ((user as any).user_metadata?.avatar_url);
   }
 
-  // Lấy tên viết tắt
   const getInitials = () => {
     if (displayName) {
       const names = displayName.split(' ').filter((n: string) => n.length > 0);
@@ -83,7 +78,6 @@ export const UserMenu = () => {
     return displayEmail[0].toUpperCase();
   };
 
-  // Get role badge color
   const getRoleBadgeColor = (role: string) => {
     switch (role.toUpperCase()) {
       case 'ADMIN':
@@ -97,7 +91,6 @@ export const UserMenu = () => {
     }
   };
 
-  // Get role icon
   const getRoleIcon = (role: string) => {
     switch (role.toUpperCase()) {
       case 'ADMIN':

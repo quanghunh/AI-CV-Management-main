@@ -41,7 +41,6 @@ export function CandidateAutoComplete({
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Xử lý click outside để đóng dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -55,7 +54,6 @@ export function CandidateAutoComplete({
     }
   }, [])
 
-  // Tìm kiếm ứng viên
   const searchCandidates = async (searchValue: string) => {
     if (!searchValue.trim()) {
       setSuggestions([])
@@ -65,7 +63,7 @@ export function CandidateAutoComplete({
 
     setLoading(true)
     try {
-      // Kiểm tra xem input có phải là email không
+
       const isEmail = searchValue.includes('@')
 
       let query = supabase
@@ -83,7 +81,6 @@ export function CandidateAutoComplete({
         `)
         .limit(10)
 
-      // Tìm kiếm theo tên hoặc email
       if (isEmail) {
         query = query.ilike('email', `%${searchValue}%`)
       } else {
@@ -103,7 +100,6 @@ export function CandidateAutoComplete({
     }
   }
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       searchCandidates(inputValue)
@@ -112,19 +108,16 @@ export function CandidateAutoComplete({
     return () => clearTimeout(timer)
   }, [inputValue])
 
-  // Xử lý input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setInputValue(value)
 
-    // Nếu input rỗng, reset selection
     if (!value.trim()) {
       setSelectedCandidate(null)
       onCandidateSelect(null)
     }
   }
 
-  // Xử lý chọn ứng viên
   const handleSelectCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate)
     setInputValue(candidate.full_name)
@@ -132,16 +125,14 @@ export function CandidateAutoComplete({
     onCandidateSelect(candidate)
   }
 
-  // Xử lý khi có nhiều ứng viên cùng tên
   const handleShowEmailOptions = (name: string) => {
     const filteredSuggestions = suggestions.filter(s => s.full_name === name)
     if (filteredSuggestions.length > 1) {
-      // Hiển thị tất cả các ứng viên có cùng tên với email khác nhau
+
       setSuggestions(filteredSuggestions)
     }
   }
 
-  // Hiển thị gợi ý
   const renderSuggestionItem = (candidate: Candidate) => {
     const hasSameName = suggestions.some(s => s.full_name === candidate.full_name && s.email !== candidate.email)
 

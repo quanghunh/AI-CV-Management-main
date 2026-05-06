@@ -30,11 +30,10 @@ export interface CVData {
 export type SortOption = "score-desc" | "score-asc" | "match-desc" | "match-asc";
 
 export const cvService = {
-  // Lấy tất cả CVs với sorting
+
   async getAllCVs(sortBy: SortOption = "score-desc"): Promise<CVData[]> {
     let query = supabase.from("cvs").select("*");
 
-    // Apply sorting
     switch (sortBy) {
       case "score-desc":
         query = query.order("score", { ascending: false });
@@ -60,7 +59,6 @@ export const cvService = {
     return data || [];
   },
 
-  // Lấy CV theo ID
   async getCVById(id: string): Promise<CVData | null> {
     const { data, error } = await supabase
       .from("cvs")
@@ -76,7 +74,6 @@ export const cvService = {
     return data;
   },
 
-  // Lấy CVs theo status
   async getCVsByStatus(status: string): Promise<CVData[]> {
     const { data, error } = await supabase
       .from("cvs")
@@ -92,7 +89,6 @@ export const cvService = {
     return data || [];
   },
 
-  // Lọc CVs theo điểm số
   async getCVsByScoreRange(minScore: number, maxScore: number): Promise<CVData[]> {
     const { data, error } = await supabase
       .from("cvs")
@@ -109,7 +105,6 @@ export const cvService = {
     return data || [];
   },
 
-  // Thêm CV mới (sau khi parse)
   async createCV(cvData: Omit<CVData, "id" | "created_at" | "updated_at">): Promise<CVData> {
     const { data, error } = await supabase
       .from("cvs")
@@ -125,7 +120,6 @@ export const cvService = {
     return data;
   },
 
-  // Cập nhật CV
   async updateCV(id: string, cvData: Partial<CVData>): Promise<CVData> {
     const { data, error } = await supabase
       .from("cvs")
@@ -142,7 +136,6 @@ export const cvService = {
     return data;
   },
 
-  // Xóa CV
   async deleteCV(id: string): Promise<void> {
     const { error } = await supabase.from("cvs").delete().eq("id", id);
 
@@ -152,7 +145,6 @@ export const cvService = {
     }
   },
 
-  // Lấy thống kê
   async getStatistics() {
     const { data: allCVs, error } = await supabase.from("cvs").select("score, match_percentage, status");
 

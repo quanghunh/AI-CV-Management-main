@@ -209,7 +209,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // 🔧 CRITICAL FIX: Improved auth initialization
   useEffect(() => {
     if (initialized.current) {
       console.log("⏭️ Auth already initialized, skipping");
@@ -223,14 +222,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         console.log("🔐 Initializing auth...");
         
-        // Skip if signing in
+
         if (isSigningInRef.current) {
           console.log("⏭️ Sign-in in progress, skipping init");
           if (mounted) setLoading(false);
           return;
         }
         
-        // STEP 1: Check custom session FIRST
+
         const customSession = localStorage.getItem('user_session');
         const isAuthenticated = localStorage.getItem('is_authenticated');
 
@@ -246,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userData = JSON.parse(customSession);
             console.log('🔍 Found custom session for:', userData.email);
             
-            // Verify session validity
+
             const prof = await fetchProfileById(userData.id);
             
             if (prof && prof.status === 'active') {
@@ -265,7 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               
               console.log("✅ Custom auth session restored");
               
-              // 🔧 KEY FIX: Set loading false immediately for custom auth
+
               setLoading(false);
               return;
             } else {
@@ -280,10 +279,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         await clearAuthSessionWithTimeout();
         
-        // STEP 2: Check Supabase Auth session
+
         console.log('🔍 Checking Supabase Auth session...');
         
-        // 🔧 KEY FIX: Use getSession() with proper timeout
+
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Session check timeout')), 3000)
@@ -308,10 +307,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             authTypeRef.current = 'supabase';
             updateLastActiveAt();
             
-            // 🔧 KEY FIX: Set loading false BEFORE fetching profile
+
             setLoading(false);
             
-            // Fetch profile in background (non-blocking)
+
             fetchProfileByAuthId(session.user.id)
               .then(prof => {
                 if (mounted) {
@@ -329,7 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userRef.current = null;
             authTypeRef.current = null;
             
-            // 🔧 KEY FIX: Always set loading false
+
             setLoading(false);
           }
         } catch (timeoutError) {
@@ -349,23 +348,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // 🔧 KEY FIX: Remove timeout, rely on internal promise timeout
     initAuth();
 
-    // Listen to Supabase auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("🔄 Supabase Auth event:", event);
 
         if (!mounted) return;
 
-        // Ignore events during sign-in
         if (isSigningInRef.current) {
           console.log("⏭️ Ignoring event during sign-in");
           return;
         }
 
-        // Ignore Supabase events if using custom auth
         if (authTypeRef.current === 'custom') {
           console.log("⏭️ Ignoring Supabase event - using custom auth");
           return;
@@ -382,7 +377,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userRef.current = session.user;
           authTypeRef.current = 'supabase';
           
-          // Fetch profile in background
+
           fetchProfileByAuthId(session.user.id)
             .then(prof => {
               if (mounted) setProfile(prof);
@@ -391,7 +386,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.error("❌ Profile fetch error:", err);
             });
           
-          // Ensure loading is false
+
           setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           if (authTypeRef.current === 'supabase') {
@@ -424,7 +419,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isSigningInRef.current = true;
     
     try {
-      // STEP 1: Try custom authentication
+
       console.log("🔍 Trying custom authentication...");
       
       const { data: authData, error: customAuthError } = await supabase.rpc('authenticate_user', {
@@ -443,7 +438,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         }
 
-        // Sign out from Supabase Auth
         try {
           await supabase.auth.signOut({ scope: 'local' });
           console.log("✅ Cleared Supabase session");
@@ -451,7 +445,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn("⚠️ Error clearing Supabase session:", signOutError);
         }
 
-        // Fetch profile
         const prof = await fetchProfileById(authenticatedUser.user_id);
 
         const userData: CustomUser = {
@@ -464,14 +457,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isCustomAuth: true
         };
 
-        // Set state
         setUser(userData);
         setProfile(prof);
         userRef.current = userData;
         authTypeRef.current = 'custom';
         updateLastActiveAt();
 
-        // Save to localStorage
         localStorage.setItem('user_session', JSON.stringify(userData));
         localStorage.setItem('is_authenticated', 'true');
 
@@ -482,7 +473,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { data: { user: userData, session: null }, error: null };
       }
 
-      // STEP 2: Fallback to Supabase Auth
       console.log("🔍 Trying Supabase Auth...");
       
       const result = await supabase.auth.signInWithPassword({ 
@@ -502,7 +492,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userRef.current = result.data.user;
       updateLastActiveAt();
       
-      // Fetch profile
+
       fetchProfileByAuthId(result.data.user.id)
         .then(prof => setProfile(prof))
         .catch(err => console.error("❌ Profile fetch error:", err));
@@ -637,7 +627,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const matchColumn = isCustomAuthUser ? 'id' : 'auth_user_id';
 
-      // Perform a direct UPDATE instead of UPSERT to avoid constraint mismatch errors
       const { data: result, error } = await supabase
         .from("cv_profiles")
         .update({

@@ -25,10 +25,8 @@ export function useLayoutLM(): UseLayoutLMResult {
   const [extractedData, setExtractedData] = useState<ProcessedDocument | null>(null);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
 
-  // Load model on component mount (optional - can be lazy loaded)
   useEffect(() => {
-    // Uncomment below to preload model on mount
-    // loadModel();
+
   }, []);
 
   const loadModel = useCallback(async () => {
@@ -48,16 +46,14 @@ export function useLayoutLM(): UseLayoutLMResult {
     setError(null);
     
     try {
-      // Load model if not already loaded
+
       if (!isModelLoaded) {
         await loadModel();
       }
 
-      // Extract information from CV
       const data = await extractCVInformation(file);
       setExtractedData(data);
 
-      // Validate extracted data
       const validation = validateExtractedData(data.fields);
       setValidationResult(validation);
 
@@ -65,7 +61,7 @@ export function useLayoutLM(): UseLayoutLMResult {
         console.warn('Validation errors:', validation.errors);
       }
 
-      return data; // Return the extracted data
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to process CV';
       setError(errorMessage);

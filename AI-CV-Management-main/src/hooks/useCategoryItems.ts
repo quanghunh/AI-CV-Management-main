@@ -1,4 +1,4 @@
-// hooks/useCategoryItems.ts (thay thế toàn bộ code cũ)
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -44,7 +44,6 @@ export function useCategoryItems() {
   useEffect(() => {
     fetchCategoryItems();
 
-    // Realtime subscription để tự động refetch khi data thay đổi
     const channel = supabase.channel('category-items-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cv_categories' }, fetchCategoryItems)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cv_items' }, fetchCategoryItems)

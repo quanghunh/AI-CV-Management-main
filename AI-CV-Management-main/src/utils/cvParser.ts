@@ -1,9 +1,6 @@
-// src/utils/cvParser.ts - OPTIMIZED VERSION
-// Kết hợp tính năng tốt nhất từ cvParser.ts, cvParserService.ts, advancedCVParser.ts
+
 
 import mammoth from 'mammoth';
-
-// ==================== TYPES & INTERFACES ====================
 
 export interface ParsedCV {
   fullText: string;
@@ -18,13 +15,12 @@ export interface ParsedCV {
   certifications?: string[];
   languages?: string[];
   summary?: string;
-  // ✅ NEW: Thêm từ advancedCVParser
+
   parseQuality?: 'excellent' | 'good' | 'fair' | 'poor';
   extractedFields?: string[];
   warnings?: string[];
 }
 
-// ✅ NEW: Response interface từ backend
 interface BackendCVResponse {
   success: boolean;
   data: {
@@ -48,28 +44,21 @@ interface BackendCVResponse {
   message?: string;
 }
 
-// ==================== CONFIGURATION ====================
-
 const CONFIG = {
   API_URL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  AI_TIMEOUT: 90000, // 90 seconds (backend Gemini timeout is 120s)
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  AI_TIMEOUT: 90000,
+  MAX_FILE_SIZE: 5 * 1024 * 1024,
   SUPPORTED_FORMATS: ['.pdf', '.docx', '.txt'],
-  RETRY_ATTEMPTS: 2, // ✅ NEW: Retry logic
-  CACHE_DURATION: 5 * 60 * 1000, // ✅ NEW: 5 minutes cache
+  RETRY_ATTEMPTS: 2,
+  CACHE_DURATION: 5 * 60 * 1000,
 };
 
-// ✅ NEW: Simple cache để tránh parse lại cùng file
 const parseCache = new Map<string, { result: ParsedCV; timestamp: number }>();
 
-// ==================== UTILITY FUNCTIONS ====================
-
-// ✅ NEW: Generate file hash for caching
 function generateFileHash(file: File): string {
   return `${file.name}_${file.size}_${file.lastModified}`;
 }
 
-// ✅ NEW: Check cache
 function getCachedResult(file: File): ParsedCV | null {
   const hash = generateFileHash(file);
   const cached = parseCache.get(hash);
@@ -82,12 +71,11 @@ function getCachedResult(file: File): ParsedCV | null {
   return null;
 }
 
-// ✅ NEW: Save to cache
 function saveCacheResult(file: File, result: ParsedCV): void {
   const hash = generateFileHash(file);
   parseCache.set(hash, { result, timestamp: Date.now() });
   
-  // Clean old cache entries
+
   if (parseCache.size > 50) {
     const entries = Array.from(parseCache.entries());
     entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
@@ -95,7 +83,6 @@ function saveCacheResult(file: File, result: ParsedCV): void {
   }
 }
 
-// ✅ NEW: Health check từ cvParserService
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${CONFIG.API_URL}/health`, {
@@ -116,8 +103,6 @@ export async function checkBackendHealth(): Promise<boolean> {
     return false;
   }
 }
-
-// ==================== FILE PARSING FUNCTIONS ====================
 
 async function parsePDF(file: File): Promise<string> {
   try {
@@ -164,9 +149,6 @@ async function parseTXT(file: File): Promise<string> {
   }
 }
 
-// ==================== AI BACKEND INTEGRATION ====================
-
-// ✅ IMPROVED: Better error handling và retry logic
 async function extractInfoWithAI(file: File, retryCount = 0): Promise<ParsedCV> {
   console.log('🤖 Đang gọi AI backend để parse CV...', 
     retryCount > 0 ? `(Retry ${retryCount}/${CONFIG.RETRY_ATTEMPTS})` : '');
@@ -203,7 +185,7 @@ async function extractInfoWithAI(file: File, retryCount = 0): Promise<ParsedCV> 
       throw new Error('Backend parsing failed');
     }
     
-    // ✅ IMPROVED: Better mapping với validation
+
     const parsedCV: ParsedCV = {
       fullText: result.data.fullText || '',
       fullName: result.data.full_name || undefined,
@@ -217,7 +199,7 @@ async function extractInfoWithAI(file: File, retryCount = 0): Promise<ParsedCV> 
       summary: result.data.summary || undefined,
     };
     
-    // ✅ NEW: Calculate quality từ advancedCVParser
+
     const extractedFields: string[] = [];
     if (parsedCV.fullName) extractedFields.push('fullName');
     if (parsedCV.email) extractedFields.push('email');
@@ -243,10 +225,10 @@ async function extractInfoWithAI(file: File, retryCount = 0): Promise<ParsedCV> 
       console.error('❌ Lỗi khi gọi AI backend:', error);
     }
     
-    // ✅ NEW: Retry logic
+
     if (retryCount < CONFIG.RETRY_ATTEMPTS) {
       console.log(`🔄 Đang thử lại... (${retryCount + 1}/${CONFIG.RETRY_ATTEMPTS})`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
       return extractInfoWithAI(file, retryCount + 1);
     }
     
@@ -254,7 +236,6 @@ async function extractInfoWithAI(file: File, retryCount = 0): Promise<ParsedCV> 
   }
 }
 
-// ✅ NEW: Calculate parse quality từ advancedCVParser
 function calculateParseQuality(fieldsCount: number): 'excellent' | 'good' | 'fair' | 'poor' {
   if (fieldsCount >= 8) return 'excellent';
   if (fieldsCount >= 5) return 'good';
@@ -262,19 +243,16 @@ function calculateParseQuality(fieldsCount: number): 'excellent' | 'good' | 'fai
   return 'poor';
 }
 
-// ==================== REGEX EXTRACTION FUNCTIONS ====================
-// ✅ IMPROVED: Kết hợp logic tốt nhất từ cả 2 file
-
 function extractFullName(text: string): string | undefined {
   console.log('🔍 Extracting full name...');
   
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  // Strategy 1: Tìm ở 15 dòng đầu tiên
+
   for (let i = 0; i < Math.min(15, lines.length); i++) {
     const line = lines[i].trim();
     
-    // Skip keywords
+
     const skipKeywords = [
       'curriculum', 'vitae', 'resume', 'cv', 'profile', 'contact',
       'personal', 'information', 'objective', 'summary', 'education',
@@ -286,21 +264,21 @@ function extractFullName(text: string): string | undefined {
       continue;
     }
     
-    // Skip lines with email, numbers, or special chars
+
     if (/@/.test(line) || /\d{3,}/.test(line) || /[#$%^&*()[\]{}]/.test(line)) {
       continue;
     }
     
     const words = line.split(/\s+/);
     
-    // Check: 2-5 words, proper capitalization
+
     if (words.length >= 2 && words.length <= 5) {
       if (line.length < 5 || line.length > 60) continue;
       
       const isValidName = words.every(word => {
-        // Allow lowercase conjunctions like "van", "de", "von"
+
         if (word.length <= 3 && /^[a-z]+$/.test(word)) return true;
-        // Other words must be capitalized (Unicode support for Vietnamese)
+
         return /^[\p{Lu}][\p{Ll}\p{M}]*$/u.test(word);
       });
       
@@ -311,7 +289,7 @@ function extractFullName(text: string): string | undefined {
     }
   }
   
-  // Strategy 2: Pattern "Name:" or "Họ tên:"
+
   const namePatterns = [
     /(?:name|họ\s*tên|full\s*name|tên)[\s:：]+([^\n]{5,60})/gi,
   ];
@@ -334,7 +312,7 @@ function extractFullName(text: string): string | undefined {
 }
 
 function extractEmail(text: string): string | undefined {
-  // ✅ IMPROVED: Better regex
+
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
   const emails = text.match(emailRegex);
   
@@ -349,13 +327,13 @@ function extractEmail(text: string): string | undefined {
 }
 
 function extractPhone(text: string): string | undefined {
-  // ✅ IMPROVED: Better Vietnamese phone patterns
+
   const phonePatterns = [
-    // Vietnamese formats: +84, 84, 0
+
     /(?:\+84|84|0)[\s.-]?([0-9]{2,3})[\s.-]?([0-9]{3})[\s.-]?([0-9]{3,4})/g,
     /\b0[0-9]{9,10}\b/g,
     /\b\+84[0-9]{9,10}\b/g,
-    // International formats
+
     /\(?\+?[0-9]{1,3}\)?[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}/g,
   ];
   
@@ -375,7 +353,7 @@ function extractPhone(text: string): string | undefined {
 function extractAddress(text: string): string | undefined {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  // Pattern 1: Lines with numbers and location keywords
+
   for (const line of lines) {
     const lowerLine = line.toLowerCase();
     
@@ -393,7 +371,7 @@ function extractAddress(text: string): string | undefined {
     }
   }
   
-  // Pattern 2: "Địa chỉ:" or "Address:"
+
   for (let i = 0; i < lines.length; i++) {
     const lowerLine = lines[i].toLowerCase();
     
@@ -426,13 +404,13 @@ function extractUniversity(text: string): string | undefined {
   
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  // Method 1: Find in Education section
+
   for (let i = 0; i < lines.length; i++) {
     const lowerLine = lines[i].toLowerCase();
     
     if (lowerLine === 'education' || lowerLine.startsWith('education') || 
         lowerLine === 'học vấn' || lowerLine.startsWith('học vấn')) {
-      // Check next 4 lines
+
       for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
         const nextLine = lines[j].trim();
         const nextLower = nextLine.toLowerCase();
@@ -450,7 +428,7 @@ function extractUniversity(text: string): string | undefined {
     }
   }
   
-  // Method 2: Direct keyword search
+
   for (const line of lines) {
     const lowerLine = line.toLowerCase();
     
@@ -467,79 +445,78 @@ function extractUniversity(text: string): string | undefined {
   return undefined;
 }
 
-// ✅ IMPROVED: Kết hợp skill database từ cả 2 file
 function extractSkills(text: string): string[] {
   const skillDatabase = [
-    // Programming Languages
+
     'javascript', 'typescript', 'python', 'java', 'c#', 'c++', 'c', 
     'php', 'ruby', 'go', 'golang', 'rust', 'swift', 'kotlin', 'scala', 'dart', 'r',
     
-    // Frontend Frameworks & Libraries
+
     'react', 'reactjs', 'vue', 'vuejs', 'angular', 'svelte', 'nextjs', 'next.js', 
     'nuxt', 'nuxtjs', 'gatsby', 'ember', 'backbone', 'jquery',
     
-    // Styling
+
     'html', 'html5', 'css', 'css3', 'sass', 'scss', 'less', 'tailwind', 'tailwindcss',
     'bootstrap', 'material-ui', 'mui', 'chakra ui', 'ant design', 'styled components',
     
-    // Backend Frameworks
+
     'nodejs', 'node.js', 'express', 'expressjs', 'nestjs', 'nest.js', 'fastify',
     'django', 'flask', 'fastapi', 'spring', 'spring boot', 
     'laravel', 'symfony', 'rails', 'ruby on rails', 'asp.net', '.net',
     
-    // Databases
+
     'sql', 'mysql', 'postgresql', 'postgres', 'mongodb', 'redis', 
     'elasticsearch', 'cassandra', 'dynamodb', 'oracle', 'sqlite',
     'mariadb', 'firestore', 'couchdb', 'neo4j',
     
-    // Cloud & DevOps
+
     'aws', 'amazon web services', 'azure', 'gcp', 'google cloud', 'heroku', 
     'docker', 'kubernetes', 'k8s', 'jenkins', 'gitlab ci', 'github actions', 
     'circleci', 'travis ci', 'terraform', 'ansible', 'vagrant',
     'nginx', 'apache', 'cloudflare',
     
-    // Tools & Others
+
     'git', 'github', 'gitlab', 'bitbucket', 'svn', 'mercurial',
     'jira', 'confluence', 'trello', 'asana', 'slack',
     'figma', 'sketch', 'photoshop', 'illustrator', 'xd', 'invision',
     
-    // Mobile
+
     'react native', 'flutter', 'ionic', 'xamarin', 'android', 'ios',
     'swift ui', 'jetpack compose',
     
-    // AI/ML
+
     'tensorflow', 'pytorch', 'keras', 'sklearn', 'scikit-learn',
     'pandas', 'numpy', 'opencv', 'nlp', 'machine learning', 'deep learning',
     'computer vision', 'data science',
     
-    // API & Architecture
+
     'rest', 'restful', 'rest api', 'graphql', 'grpc', 'websocket',
     'microservices', 'api', 'soap', 'json', 'xml',
     
-    // Methodologies
+
     'agile', 'scrum', 'kanban', 'waterfall', 'tdd', 'bdd', 'ci/cd',
     'devops', 'clean code', 'solid', 'design patterns',
     
-    // State Management
+
     'redux', 'mobx', 'zustand', 'recoil', 'context api', 'pinia', 'vuex',
     
-    // Build Tools
+
     'webpack', 'vite', 'rollup', 'parcel', 'babel', 'gulp', 'grunt', 'esbuild',
     
-    // Testing
+
     'jest', 'mocha', 'chai', 'jasmine', 'cypress', 'selenium', 'playwright',
     'pytest', 'junit', 'testng', 'vitest',
     
-    // Backend as a Service
+
     'firebase', 'supabase', 'amplify', 'parse', 'backendless',
     
-    // ORM/ODM
+
     'prisma', 'typeorm', 'sequelize', 'mongoose', 'hibernate', 'entity framework',
     
-    // Message Queues
+
     'rabbitmq', 'kafka', 'redis pub/sub', 'aws sqs', 'celery',
     
-    // Monitoring & Logging
+
     'prometheus', 'grafana', 'elk', 'datadog', 'new relic', 'sentry',
   ];
   
@@ -547,12 +524,12 @@ function extractSkills(text: string): string[] {
   const foundSkills = new Set<string>();
   
   for (const skill of skillDatabase) {
-    // ✅ IMPROVED: Better regex escaping
+
     const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
     
     if (regex.test(textLower)) {
-      // Capitalize first letter for display
+
       const displaySkill = skill.split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
@@ -571,7 +548,6 @@ function extractSkills(text: string): string[] {
   return skills;
 }
 
-// ✅ IMPROVED: Better section extraction từ advancedCVParser
 function extractExperience(text: string): string | undefined {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
@@ -588,13 +564,13 @@ function extractExperience(text: string): string | undefined {
     const line = lines[i];
     const lowerLine = line.toLowerCase().trim();
     
-    // Start capturing
+
     if (!capturing && experienceKeywords.some(kw => 
       lowerLine === kw || lowerLine.startsWith(kw + ':') || lowerLine.startsWith(kw)
     )) {
       capturing = true;
       
-      // If line is not just a header, include it
+
       const isJustHeader = experienceKeywords.some(kw => lowerLine === kw);
       if (!isJustHeader && line.length > 10) {
         experienceSection += line + '\n';
@@ -602,7 +578,7 @@ function extractExperience(text: string): string | undefined {
       continue;
     }
     
-    // Stop capturing
+
     if (capturing) {
       const stopKeywords = [
         'education', 'học vấn', 'skills', 'kỹ năng', 
@@ -620,7 +596,7 @@ function extractExperience(text: string): string | undefined {
       
       experienceSection += line + '\n';
       
-      // Stop if too long
+
       if (experienceSection.length > 1000) break;
     }
   }
@@ -651,7 +627,7 @@ function extractEducation(text: string): string | undefined {
     const line = lines[i];
     const lowerLine = line.toLowerCase().trim();
     
-    // Start capturing
+
     if (!capturing && educationKeywords.some(kw => 
       lowerLine === kw || lowerLine.startsWith(kw + ':') || lowerLine.startsWith(kw)
     )) {
@@ -664,7 +640,7 @@ function extractEducation(text: string): string | undefined {
       continue;
     }
     
-    // Stop capturing
+
     if (capturing) {
       const stopKeywords = [
         'experience', 'kinh nghiệm', 'projects', 'dự án',
@@ -827,7 +803,6 @@ function extractSummary(text: string): string | undefined {
   return undefined;
 }
 
-// ✅ IMPROVED: Complete regex parser
 function extractInfoWithRegex(text: string): ParsedCV {
   console.log('\n🔍 ===== REGEX PARSING START =====');
   console.log('📄 Text length:', text.length, 'characters');
@@ -894,20 +869,18 @@ function extractInfoWithRegex(text: string): ParsedCV {
   return parsed;
 }
 
-// ==================== MAIN PARSE FUNCTION ====================
-
 export async function parseCV(file: File): Promise<ParsedCV> {
   const fileType = file.type;
   const fileName = file.name.toLowerCase();
   
   try {
-    // ✅ NEW: Check cache first
+
     const cachedResult = getCachedResult(file);
     if (cachedResult) {
       return cachedResult;
     }
     
-    // Validate file type
+
     const validExtensions = CONFIG.SUPPORTED_FORMATS;
     const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
     
@@ -920,22 +893,22 @@ export async function parseCV(file: File): Promise<ParsedCV> {
     console.log('📋 Type:', fileType);
     console.log('💾 Size:', (file.size / 1024).toFixed(2), 'KB');
     
-    // ✅ STEP 1: Try AI Backend First
+
     try {
       console.log('\n🤖 Step 1: Trying AI Backend...');
       
       const aiResult = await extractInfoWithAI(file);
       
-      // Validate AI result - if missing too many critical fields, fallback to regex
+
       const criticalFields = ['fullName', 'email', 'phone'];
       const missingCritical = criticalFields.filter(field => !aiResult[field as keyof ParsedCV]);
       
       if (missingCritical.length <= 1 && aiResult.parseQuality !== 'poor') {
-        // AI result is good
+
         console.log('✅ AI parsing successful with good quality');
         console.log('===== CV PARSING END (AI) =====\n');
         
-        // ✅ NEW: Cache the result
+
         saveCacheResult(file, aiResult);
         
         return aiResult;
@@ -949,10 +922,10 @@ export async function parseCV(file: File): Promise<ParsedCV> {
       console.log('🔄 Falling back to regex parsing...');
     }
     
-    // ✅ STEP 2: Fallback to Regex Parsing
+
     console.log('\n📝 Step 2: Using Regex Parsing...');
     
-    // Extract text from file
+
     let text = '';
     if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
       console.log('📄 Parsing PDF...');
@@ -970,12 +943,12 @@ export async function parseCV(file: File): Promise<ParsedCV> {
     
     console.log('✅ Text extracted:', text.length, 'characters');
     
-    // Parse with regex
+
     const result = extractInfoWithRegex(text);
     
     console.log('===== CV PARSING END (REGEX) =====\n');
     
-    // ✅ NEW: Cache the result
+
     saveCacheResult(file, result);
     
     return result;
@@ -985,8 +958,6 @@ export async function parseCV(file: File): Promise<ParsedCV> {
     throw error;
   }
 }
-
-// ==================== VALIDATION FUNCTIONS ====================
 
 export function validateCVFile(file: File): { valid: boolean; error?: string } {
   const allowedTypes = [
@@ -1014,7 +985,6 @@ export function validateCVFile(file: File): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-// ✅ NEW: Batch parsing từ cvParserService (nếu backend support)
 export async function batchParseCV(files: File[]): Promise<Array<{
   filename: string;
   success: boolean;
@@ -1051,13 +1021,11 @@ export async function batchParseCV(files: File[]): Promise<Array<{
   );
 }
 
-// ✅ NEW: Clear cache utility
 export function clearParseCache(): void {
   parseCache.clear();
   console.log('✅ Parse cache cleared');
 }
 
-// ✅ NEW: Get cache stats
 export function getCacheStats(): { size: number; entries: string[] } {
   return {
     size: parseCache.size,

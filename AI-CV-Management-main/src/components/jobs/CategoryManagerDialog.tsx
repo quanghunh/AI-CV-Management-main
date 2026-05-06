@@ -22,8 +22,6 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 
-// ==================== TYPES ====================
-
 export interface JobCategory {
   id: string
   type: string
@@ -52,8 +50,6 @@ interface CategoryManagerDialogProps {
   onCategoriesUpdated: () => void
 }
 
-// ==================== CATEGORY TYPE CONFIG ====================
-
 const CATEGORY_TYPES: Record<string, { label: string; icon: string }> = {
   title: { label: "Vị trí công việc", icon: "💼" },
   department: { label: "Phòng ban", icon: "🏢" },
@@ -62,8 +58,6 @@ const CATEGORY_TYPES: Record<string, { label: string; icon: string }> = {
   job_type: { label: "Loại hình", icon: "⏰" },
   status: { label: "Trạng thái", icon: "🔖" },
 }
-
-// ==================== MAIN COMPONENT ====================
 
 export function CategoryManagerDialog({
   open,
@@ -94,8 +88,6 @@ export function CategoryManagerDialog({
   useEffect(() => {
     if (open) fetchCategories()
   }, [open])
-
-  // ==================== DATA FETCHING ====================
 
   async function fetchCategories() {
     setLoading(true)
@@ -145,8 +137,6 @@ export function CategoryManagerDialog({
     return { data, error }
   }
 
-  // ==================== GROUP BY TYPE ====================
-
   const groupedCategories: CategoryGroup[] = Object.entries(CATEGORY_TYPES).map(
     ([type, config]) => ({
       type,
@@ -156,13 +146,9 @@ export function CategoryManagerDialog({
     })
   )
 
-  // ==================== TOGGLE EXPAND ====================
-
   const toggleExpand = (type: string) => {
     setExpandedTypes((prev) => ({ ...prev, [type]: !prev[type] }))
   }
-
-  // ==================== ADD CATEGORY ====================
 
   const handleAdd = async (type: string) => {
     if (!newLabel.trim()) return
@@ -204,8 +190,6 @@ export function CategoryManagerDialog({
     setSaving(false)
   }
 
-  // ==================== EDIT CATEGORY ====================
-
   const handleEdit = async (id: string) => {
     if (!editingLabel.trim()) return
 
@@ -229,8 +213,6 @@ export function CategoryManagerDialog({
     setSaving(false)
   }
 
-  // ==================== DELETE CATEGORY ====================
-
   const handleDelete = async (item: JobCategory) => {
     if (item.is_default) {
       toast.warning('Không thể xóa danh mục mặc định!')
@@ -252,8 +234,6 @@ export function CategoryManagerDialog({
       toast.success(`Đã xóa "${item.label}" thành công!`)
     }
   }
-
-  // ==================== RENDER ====================
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -310,7 +290,7 @@ export function CategoryManagerDialog({
                         className="flex items-center gap-2 p-2 rounded-lg bg-white border border-gray-100 hover:border-gray-200"
                       >
                         {editingId === item.id ? (
-                          // Edit Mode
+
                           <>
                             <div className="flex-1 space-y-2">
                               <Input
@@ -409,7 +389,7 @@ export function CategoryManagerDialog({
                             </Button>
                           </>
                         ) : (
-                          // View Mode
+
                           <>
                             <span className="flex-1 text-sm text-gray-800">
                               {item.label}

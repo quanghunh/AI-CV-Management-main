@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 
-// ✅ THÊM IMPORT
 import { RoleManagerDialog } from "@/components/users/RoleManagerDialog"
 
 import {
@@ -87,7 +86,6 @@ export default function UsersPage() {
   } | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
 
-  // ✅ THÊM STATE - Role Manager
   const [isRoleManagerOpen, setIsRoleManagerOpen] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -428,7 +426,7 @@ export default function UsersPage() {
   }
 
   const getRoleIcon = (role: string) => {
-    // ✅ Ưu tiên icon từ cv_roles nếu có
+
     const roleData = roles.find(r => r.name.toUpperCase() === role.toUpperCase())
     if (roleData?.icon) return <span className="text-sm">{roleData.icon}</span>
 
@@ -456,8 +454,6 @@ export default function UsersPage() {
     }
     return labels[action] || action
   }
-
-  // ==================== RENDER ====================
 
   return (
     <>

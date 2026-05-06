@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 
 interface EmailRecipientSelectorProps {
-  value: string; // Comma separated string of emails or IDs
+  value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
@@ -29,22 +29,20 @@ export function EmailRecipientSelector({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // Track selected chips: { tempId: string, label: string, value: string, isCandidate: boolean }
+
   const [selectedChips, setSelectedChips] = useState<Array<{ id: string, label: string, value: string, isCandidate: boolean }>>([])
   
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize chips from existing string value (could be comma separated emails/ids)
   useEffect(() => {
-    // This simple parsed doesn't hit DB to resolve IDs back to names
-    // It just treats the comma separated string as separate chips
+
     if (!value) {
       if (selectedChips.length > 0) setSelectedChips([])
       return
     }
     
-    // Only parse if value string does not match our current chips' derived string
+
     const currentValues = selectedChips.map(c => c.value).join(',')
     if (value !== currentValues) {
       const parts = value.split(',').map(s => s.trim()).filter(Boolean)
@@ -52,11 +50,10 @@ export function EmailRecipientSelector({
         id: Math.random().toString(36).substring(2, 9),
         label: p,
         value: p,
-        isCandidate: !p.includes('@') // roughly if it doesn't have @ it's an ID
+        isCandidate: !p.includes('@')
       }))
       setSelectedChips(newChips)
 
-      // Fetch corresponding candidate details for raw IDs
       const candidateIds = newChips.filter(c => c.isCandidate).map(c => c.value);
       if (candidateIds.length > 0) {
         supabase
@@ -78,7 +75,6 @@ export function EmailRecipientSelector({
     }
   }, [value, selectedChips])
 
-  // Click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -96,7 +92,7 @@ export function EmailRecipientSelector({
   }
 
   const addChip = (chip: typeof selectedChips[0]) => {
-    // Prevent duplicates by value
+
     if (selectedChips.some(c => c.value === chip.value)) {
       setInputValue("")
       setIsDropdownOpen(false)

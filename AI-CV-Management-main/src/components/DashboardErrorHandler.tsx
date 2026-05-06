@@ -1,5 +1,4 @@
-// src/components/DashboardErrorHandler.tsx
-// Wrap this around your dashboard data fetching logic
+
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,7 +55,6 @@ export const DashboardErrorHandler: React.FC<DashboardErrorHandlerProps> = ({ ch
     window.location.href = "/login";
   };
 
-  // Still checking session
   if (checking || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -68,7 +66,6 @@ export const DashboardErrorHandler: React.FC<DashboardErrorHandlerProps> = ({ ch
     );
   }
 
-  // Session invalid - show error
   if (sessionValid === false) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -94,6 +91,5 @@ export const DashboardErrorHandler: React.FC<DashboardErrorHandlerProps> = ({ ch
     );
   }
 
-  // Session valid - render children
   return <>{children}</>;
 };

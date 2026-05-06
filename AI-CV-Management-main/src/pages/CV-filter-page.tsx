@@ -17,14 +17,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 
-// ==================== PROGRESS BAR ====================
 const Progress = ({ value, className = "" }: { value: number; className?: string }) => (
   <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${className}`}>
     <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
   </div>
 )
 
-// ==================== OPENROUTER SERVICE ====================
 interface JobMatchResult {
   job_id: string; job_title: string; match_score: number
   strengths: string[]; weaknesses: string[]; recommendation: string
@@ -70,7 +68,6 @@ async function analyzeWithGPT4o(
   throw new Error('Backend không trả về dữ liệu hợp lệ')
 }
 
-// ==================== HELPERS ====================
 const getScoreColor = (score: number) => {
   if (score >= 85) return "text-green-600"
   if (score >= 70) return "text-blue-600"
@@ -133,8 +130,6 @@ function RubricBadge({ hasRubric, passingScore }: { hasRubric: boolean; passingS
   )
 }
 
-// ==================== RANKING TABLE COMPONENT ====================
-// NOTE: candidates prop ở đây chỉ nhận ứng viên ĐÃ được phân tích (analysis_result != null)
 type SortKey = 'rank' | 'name' | 'score' | 'job' | 'status'
 type SortDir = 'asc' | 'desc'
 
@@ -164,8 +159,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
     else { setSortKey(key); setSortDir(key === 'score' ? 'desc' : 'asc') }
   }
 
-  // candidates đã được lọc chỉ còn analyzed từ bên ngoài,
-  // rankMap tính thẳng từ candidates đã sort theo score
   const rankMap = React.useMemo(() => {
     const sorted = [...candidates].sort((a, b) => b.overall_score - a.overall_score)
     const m = new Map<string, number>()
@@ -527,7 +520,6 @@ function RankingTable({ candidates, jobs, rubricMap, onViewDetail, onCreateInter
   )
 }
 
-// ==================== BY-JOB VIEW COMPONENT ====================
 interface ByJobViewProps {
   candidates: any[]
   jobs: any[]
@@ -818,7 +810,6 @@ function ByJobView({ candidates, jobs, rubricMap, onViewDetail, onCreateIntervie
   )
 }
 
-// ==================== UNANALYZED CANDIDATES VIEW COMPONENT ====================
 interface UnanalyzedCandidatesViewProps {
   candidates: any[]
   jobs: any[]
@@ -1096,7 +1087,6 @@ function UnanalyzedCandidatesView({
   )
 }
 
-// ==================== MAIN COMPONENT ====================
 export default function PotentialCandidatesPage() {
   const navigate = useNavigate()
 
@@ -1297,13 +1287,11 @@ export default function PotentialCandidatesPage() {
     return { total, analyzed, unanalyzed, excellent, avgScore, perfectMatch, perfectMatchRate: analyzed > 0 ? Math.round((perfectMatch / analyzed) * 100) : 0, withRubric }
   }, [filteredCandidates, candidates, rubricMap])
 
-  // ── CHỈ truyền ứng viên ĐÃ phân tích vào RankingTable ──
   const analyzedCandidates = React.useMemo(
     () => candidates.filter(c => c.analysis_result),
     [candidates]
   )
 
-  // Shared props cho ByJobView và UnanalyzedCandidatesView (vẫn dùng toàn bộ candidates)
   const sharedProps = {
     candidates, jobs, rubricMap,
     onViewDetail: handleViewDetail,

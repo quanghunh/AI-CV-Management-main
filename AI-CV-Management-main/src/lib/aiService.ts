@@ -1,4 +1,4 @@
-// src/lib/aiService.ts
+
 import { supabase } from './supabaseClient';
 
 interface JobGenerationParams {
@@ -112,7 +112,6 @@ Hãy tạo nội dung bằng ${params.language === 'vietnamese' ? 'Tiếng Việ
 
 Định dạng mỗi phần với các bullet points rõ ràng, cụ thể và hấp dẫn.`;
 
-  // ✅ FIX: Sử dụng gemini-pro (stable, always available)
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
     {
@@ -157,14 +156,13 @@ Hãy tạo nội dung bằng ${params.language === 'vietnamese' ? 'Tiếng Việ
  * Parse nội dung được generate thành 3 phần
  */
 function parseGeneratedContent(content: string): GeneratedJobDescription {
-  // Tách nội dung thành 3 phần dựa trên các header
+
   const sections = {
     description: '',
     requirements: '',
     benefits: ''
   };
 
-  // Patterns để tìm các phần
   const descPattern = /(?:MÔ TẢ CÔNG VIỆC|JOB DESCRIPTION|TRÁCH NHIỆM)(.*?)(?=YÊU CẦU|REQUIREMENTS|$)/is;
   const reqPattern = /(?:YÊU CẦU|REQUIREMENTS)(.*?)(?=QUYỀN LỢI|BENEFITS|$)/is;
   const benPattern = /(?:QUYỀN LỢI|BENEFITS)(.*?)$/is;
@@ -177,7 +175,6 @@ function parseGeneratedContent(content: string): GeneratedJobDescription {
   sections.requirements = reqMatch ? reqMatch[1].trim() : content.split('\n\n')[1] || '';
   sections.benefits = benMatch ? benMatch[1].trim() : content.split('\n\n')[2] || '';
 
-  // Nếu không tách được, thử split theo các dấu ngắt tự nhiên
   if (!sections.description && !sections.requirements && !sections.benefits) {
     const parts = content.split(/\n\n+/);
     sections.description = parts[0] || '';
@@ -194,20 +191,19 @@ function parseGeneratedContent(content: string): GeneratedJobDescription {
 export async function generateJobDescription(
   params: JobGenerationParams
 ): Promise<GeneratedJobDescription> {
-  // Lấy cấu hình AI
+
   const config = await getAIConfig();
   
   if (!config) {
     throw new Error('Không tìm thấy cấu hình AI. Vui lòng cấu hình AI trong phần Settings.');
   }
 
-  // Ưu tiên sử dụng Gemini nếu được bật
   if (config.is_gemini_enabled && config.gemini_api_key) {
     try {
       return await generateWithGemini(params, config.gemini_api_key);
     } catch (error) {
       console.error('Gemini generation failed:', error);
-      // Fallback sang OpenAI nếu Gemini fail
+
       if (config.is_openai_enabled && config.openai_api_key) {
         return await generateWithOpenAI(
           params, 
@@ -219,7 +215,6 @@ export async function generateJobDescription(
     }
   }
 
-  // Sử dụng OpenAI nếu được bật
   if (config.is_openai_enabled && config.openai_api_key) {
     return await generateWithOpenAI(
       params,

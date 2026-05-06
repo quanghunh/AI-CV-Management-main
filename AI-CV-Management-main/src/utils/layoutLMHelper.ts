@@ -1,6 +1,5 @@
 import { pipeline } from '@xenova/transformers';
 
-// Cache the model instance
 let modelInstance: any = null;
 
 export interface LayoutLMResult {
@@ -31,7 +30,7 @@ export async function initLayoutLMModel() {
   try {
     console.log('Loading LayoutLM v3 model...');
     
-    // Use document-question-answering pipeline for LayoutLM
+
     modelInstance = await pipeline(
       'document-question-answering',
       'Xenova/layoutlmv3-base-finetuned-funsd'
@@ -62,12 +61,11 @@ export async function extractCVInformation(
   const model = await initLayoutLMModel();
 
   try {
-    // Convert file to base64 or blob URL for processing
+
     const imageUrl = URL.createObjectURL(imageFile);
     
     const results: LayoutLMResult[] = [];
 
-    // Process each question
     for (const question of questions) {
       try {
         const output = await model(imageUrl, question);
@@ -82,10 +80,8 @@ export async function extractCVInformation(
       }
     }
 
-    // Clean up the object URL
     URL.revokeObjectURL(imageUrl);
 
-    // Process and structure the results
     const fields = processResults(results);
 
     return {
@@ -107,7 +103,7 @@ function processResults(results: LayoutLMResult[]): ProcessedDocument['fields'] 
   for (const result of results) {
     let fieldName = 'unknown';
     
-    // Map questions to field names
+
     if (result.label.toLowerCase().includes('name')) {
       fieldName = 'name';
     } else if (result.label.toLowerCase().includes('email')) {
@@ -139,8 +135,7 @@ function processResults(results: LayoutLMResult[]): ProcessedDocument['fields'] 
  * This combines Tesseract OCR with LayoutLM for document understanding
  */
 export async function extractCVWithOCR(imageFile: File): Promise<ProcessedDocument> {
-  // This would require additional OCR library like tesseract.js
-  // For now, we'll use the basic extraction
+
   return extractCVInformation(imageFile);
 }
 
@@ -161,7 +156,6 @@ export function validateExtractedData(fields: ProcessedDocument['fields']): {
     errors.push('Email not found');
   }
 
-  // Email validation
   if (fields.email?.value) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(fields.email.value)) {
@@ -169,7 +163,6 @@ export function validateExtractedData(fields: ProcessedDocument['fields']): {
     }
   }
 
-  // Phone validation
   if (fields.phone?.value) {
     const phoneRegex = /[\d\s\-\+\(\)]{8,}/;
     if (!phoneRegex.test(fields.phone.value)) {

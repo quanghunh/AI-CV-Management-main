@@ -1,4 +1,4 @@
-// src/pages/LoginPage.tsx
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,15 +17,13 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ⚠️ FIX: Only redirect if already logged in AND not in the middle of auth loading
   useEffect(() => {
-    // Don't redirect during auth initialization
+
     if (authLoading) {
       console.log("⏳ Auth is initializing, waiting...");
       return;
     }
 
-    // Only redirect if we have a valid user
     if (user) {
       console.log("✅ User already logged in, redirecting to dashboard");
       const from = (location.state as any)?.from?.pathname || "/dashboard";
@@ -41,7 +39,6 @@ export const LoginPage: React.FC = () => {
     try {
       const trimmedEmail = email.trim();
 
-      // Validation
       if (!trimmedEmail || !password) {
         setError("Vui lòng điền đầy đủ thông tin");
         setLoading(false);
@@ -50,7 +47,6 @@ export const LoginPage: React.FC = () => {
 
       console.log("🔐 Attempting login:", trimmedEmail);
 
-      // Call signIn from AuthContext (handles both custom and Supabase auth)
       const result = await signIn(trimmedEmail, password);
 
       if (result?.error) {
@@ -60,7 +56,6 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      // Check if we have valid user data
       if (!result?.data?.user) {
         setError("Không thể đăng nhập. Vui lòng thử lại.");
         setLoading(false);
@@ -70,10 +65,8 @@ export const LoginPage: React.FC = () => {
       console.log("✅ Login successful!");
       console.log("👤 User:", result.data.user);
 
-      // ⚠️ FIX: Add a small delay to ensure state is updated
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Redirect to the page they tried to access, or dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       console.log("🔀 Redirecting to:", from);
       navigate(from, { replace: true });
@@ -85,7 +78,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Show loading screen during auth initialization
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">

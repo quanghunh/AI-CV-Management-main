@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import {
   Search, Plus, MoreHorizontal, FileText, CheckCircle, Users, Eye, Edit, Trash2,
   Share2, Copy, Sparkles, PenTool, X, Tag,
-  // ── NEW: Scoring Rubric icons
+
   BarChart2, GripVertical, ChevronDown, ChevronUp, Info, AlertTriangle,
   CheckCircle2, Sliders, Award, Percent,
 } from 'lucide-react'
@@ -36,24 +36,20 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 import { CategoryManagerDialog } from "@/components/jobs/CategoryManagerDialog"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCORING RUBRIC — Types & Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type ScoringLevel = string // Dynamic levels from categories
+export type ScoringLevel = string
 
 export interface RubricCriterion {
   id: string
-  name: string            // e.g. "Kỹ năng kỹ thuật"
-  description: string     // guidance for AI
-  weight: number          // 1-100, must sum to 100 across all criteria
-  level: ScoringLevel     // required / important / nice-to-have
-  max_score: number       // max points this criterion can contribute (derived from weight)
-  scoring_guide: {        // what each score means
-    excellent: string     // 85-100%
-    good: string          // 70-84%
-    average: string       // 50-69%
-    poor: string          // 0-49%
+  name: string
+  description: string
+  weight: number
+  level: ScoringLevel
+  max_score: number
+  scoring_guide: {
+    excellent: string
+    good: string
+    average: string
+    poor: string
   }
 }
 
@@ -61,14 +57,13 @@ export interface ScoringRubric {
   id?: string
   job_id: string
   criteria: RubricCriterion[]
-  total_weight: number        // sum of all weights (must = 100)
-  passing_score: number       // min score to pass (0-100)
-  notes: string               // general instructions to AI
+  total_weight: number
+  passing_score: number
+  notes: string
   created_at?: string
   updated_at?: string
 }
 
-// Dynamic level meta based on categories
 const DEFAULT_RUBRIC_LEVELS: CategoryItem[] = [
   {
     value: 'required',
@@ -211,10 +206,6 @@ const DEFAULT_CRITERIA: Omit<RubricCriterion, 'id'>[] = [
 
 const genId = () => Math.random().toString(36).slice(2, 9)
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCORING RUBRIC — Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface WeightBarProps { weight: number; total: number }
 function WeightBar({ weight, total }: WeightBarProps) {
   const pct = total > 0 ? Math.round((weight / total) * 100) : 0
@@ -342,10 +333,6 @@ function CriterionRow({ criterion, totalWeight, jobCategories, onUpdate, onDelet
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCORING RUBRIC DIALOG
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface ScoringRubricDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -363,7 +350,6 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [rubricId, setRubricId] = useState<string | undefined>()
 
-  // Load existing rubric when dialog opens
   useEffect(() => {
     if (open && job) loadRubric()
   }, [open, job])
@@ -384,7 +370,7 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
         setPassingScore(data.passing_score ?? 70)
         setNotes(data.notes || '')
       } else {
-        // No rubric yet — load defaults pre-populated from job requirements
+
         setRubricId(undefined)
         setCriteria(DEFAULT_CRITERIA.map(c => ({ ...c, id: genId() })))
         setPassingScore(70)
@@ -475,7 +461,6 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
     if (!weightOk) { toast.warning('Tổng trọng số phải bằng 100%. Hiện tại: ' + totalWeight + '%'); return }
     if (!criteria.length) { toast.warning('Vui lòng thêm ít nhất 1 tiêu chí'); return }
 
-    // Update max_score based on weight
     const finalCriteria = criteria.map(c => ({ ...c, max_score: c.weight }))
 
     setSaving(true)
@@ -510,7 +495,6 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
     }
   }
 
-  // Generate a rubric using job data + AI (optional enhancement)
   const generateFromJobAI = async () => {
     if (!job) return
     setSaving(true)
@@ -546,7 +530,7 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
         toast.success('AI đã tạo bảng tiêu chí phù hợp với JD!')
       }
     } catch (err: any) {
-      // Fallback to default if AI endpoint fails
+
       loadPreset()
       console.warn('AI rubric generation failed, using defaults:', err.message)
       toast.error(`Lỗi tạo tiêu chí bằng AI: ${err.message}`)
@@ -773,10 +757,6 @@ function ScoringRubricDialog({ open, onOpenChange, job, jobCategories }: Scoring
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER FUNCTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "Đã đăng":
@@ -789,10 +769,6 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="secondary">{status}</Badge>
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERFACES
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface Job {
   id: string; created_at: string; title: string; department: string
@@ -812,10 +788,6 @@ interface CategoryItem {
     default_weight?: number;
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AI SERVICE FUNCTIONS
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function generateJobDescriptionAI(data: {
   title: string; level: string; department: string
@@ -856,14 +828,9 @@ async function generateInterviewQuestionsAI(data: {
   throw new Error('Backend không trả về dữ liệu hợp lệ')
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function JobsPage() {
   const { t } = useTranslation()
 
-  // ── State ──────────────────────────────────────────────────────────────────
   const [jobs, setJobs] = useState<Job[]>([])
   const [totalCandidatesCount, setTotalCandidatesCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -877,10 +844,10 @@ export function JobsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAIQuestionsDialogOpen, setIsAIQuestionsDialogOpen] = useState(false)
   const [isCandidatesDialogOpen, setIsCandidatesDialogOpen] = useState(false)
-  // ── NEW: Scoring Rubric dialog
+
   const [isRubricDialogOpen, setIsRubricDialogOpen] = useState(false)
   const [rubricJob, setRubricJob] = useState<Job | null>(null)
-  // Track which jobs have a rubric set (for badge indicator)
+
   const [jobsWithRubric, setJobsWithRubric] = useState<Set<string>>(new Set())
 
   const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('manual')
@@ -908,13 +875,11 @@ export function JobsPage() {
   const [generatingQuestions, setGeneratingQuestions] = useState(false)
   const [aiQuestionLanguage, setAiQuestionLanguage] = useState<'vietnamese' | 'english'>('vietnamese')
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchJobs()
     fetchJobCategories()
   }, [])
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
   async function fetchJobCategories() {
     const { data, error } = await supabase
       .from('cv_job_categories').select('*').order('sort_order', { ascending: true })
@@ -940,7 +905,6 @@ export function JobsPage() {
     const { count } = await supabase.from('cv_candidates').select('*', { count: 'exact', head: true })
     if (count !== null) setTotalCandidatesCount(count)
 
-    // ── NEW: fetch which jobs have a rubric ─────────────────────────────────
     const { data: rubricData } = await supabase
       .from('cv_job_scoring_rubrics').select('job_id')
     if (rubricData) setJobsWithRubric(new Set(rubricData.map((r: any) => r.job_id)))
@@ -963,7 +927,6 @@ export function JobsPage() {
     finally { setLoadingCandidates(false) }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const getCategoryItems = (type: string, fallback: CategoryItem[]): CategoryItem[] =>
     jobCategories[type]?.length ? jobCategories[type] : fallback
 
@@ -1025,7 +988,6 @@ export function JobsPage() {
     ],
   }
 
-  // ── Form handlers ──────────────────────────────────────────────────────────
   const handleInputChange = (field: string, value: string) =>
     setFormData(prev => ({ ...prev, [field]: value }))
 
@@ -1041,7 +1003,6 @@ export function JobsPage() {
     })
   }
 
-  // ── AI handlers ────────────────────────────────────────────────────────────
   const handleAIGenerate = async () => {
     if (!formData.title || !formData.department) { toast.warning('Vui lòng điền đầy đủ: Tiêu đề vị trí và Phòng ban'); return }
     setGeneratingAI(true)
@@ -1086,13 +1047,11 @@ export function JobsPage() {
       .catch(() => toast.error('Không thể sao chép. Vui lòng thử lại.'))
   }
 
-  // ── NEW: Open Scoring Rubric ────────────────────────────────────────────────
   const handleOpenRubric = (job: Job) => {
     setRubricJob(job)
     setIsRubricDialogOpen(true)
   }
 
-  // ── CRUD ───────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!formData.title || !formData.department) {
       toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc: Tiêu đề vị trí và Phòng ban'); return
@@ -1172,21 +1131,21 @@ export function JobsPage() {
     setIsDeleting(true)
     
     try {
-      // 1. Lấy danh sách ID của các lịch phỏng vấn liên quan
+
       const { data: ivs } = await supabase.from('cv_interviews').select('id').eq('job_id', selectedJob.id)
       if (ivs && ivs.length > 0) {
         const ivIds = ivs.map(i => i.id)
-        // 2. Xóa các đánh giá (reviews) của những lịch phỏng vấn này trước
+
         await supabase.from('cv_interview_reviews').delete().in('interview_id', ivIds)
       }
       
-      // 3. Xóa các lịch phỏng vấn liên quan
+
       await supabase.from('cv_interviews').delete().eq('job_id', selectedJob.id)
       
-      // 4. Xóa bảng tiêu chí chấm điểm (rubrics) liên quan nếu có
+
       await supabase.from('cv_job_scoring_rubrics').delete().eq('job_id', selectedJob.id)
       
-      // 5. Cuối cùng mới xóa Job
+
       const { error } = await supabase.from('cv_jobs').delete().eq('id', selectedJob.id)
       
       if (error) {
@@ -1204,7 +1163,6 @@ export function JobsPage() {
     }
   }
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
   const filteredJobs = jobs.filter(job => {
     const q = searchQuery.toLowerCase()
     const matchesSearch =
@@ -1223,10 +1181,6 @@ export function JobsPage() {
     getCategoryItems(type, FALLBACK[type] || []).map(item => (
       <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
     ))
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -1842,7 +1796,7 @@ export function JobsPage() {
         open={isRubricDialogOpen}
         onOpenChange={(v) => {
           setIsRubricDialogOpen(v)
-          if (!v) fetchJobs()   // refresh rubric badges after close
+          if (!v) fetchJobs()
         }}
         job={rubricJob}
         jobCategories={jobCategories}

@@ -1,4 +1,4 @@
-// src/types/openrouter.ts
+
 export interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';
   content: string | Array<OpenRouterContent>;

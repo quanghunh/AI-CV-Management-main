@@ -23,7 +23,6 @@ export const RegisterPage = () => {
     setError('');
     setSuccess(false);
 
-    // Validation
     if (!fullName || !email || !password || !confirmPassword) {
       setError('Vui lòng điền đầy đủ thông tin');
       return;
@@ -42,7 +41,7 @@ export const RegisterPage = () => {
     setLoading(true);
     
     try {
-      // Pass fullName as metadata to signUp
+
       const { error } = await signUp(email, password, {
         data: {
           full_name: fullName

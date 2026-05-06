@@ -1,4 +1,4 @@
-// src/utils/cvMatchingService.ts
+
 
 export interface JobMatchResult {
   job_id: string
@@ -27,12 +27,12 @@ export async function analyzeWithGPT4o(
     console.log('📋 Jobs count:', jobs.length);
     console.log('⭐ Primary job:', primaryJobId);
     
-    // Lấy API URL từ .env
+
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     
     console.log('📡 API URL:', API_URL);
     
-    // Chuẩn bị payload
+
     const payload = {
       cv_text: cvText,
       cv_data: {
@@ -61,7 +61,6 @@ export async function analyzeWithGPT4o(
 
     console.log('📤 Sending request to backend...');
 
-    // Gọi backend API với timeout 60s
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 

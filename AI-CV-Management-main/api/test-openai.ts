@@ -1,12 +1,11 @@
-// @ts-nocheck
-// api/test-openai.js
+
 
 /**
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
 export default async function handler(req, res) {
-  // Enable CORS
+
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -33,10 +32,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Clean endpoint
     const cleanEndpoint = endpoint.replace(/\/$/, '');
 
-    // Test OpenAI API
     const response = await fetch(`${cleanEndpoint}/chat/completions`, {
       method: 'POST',
       headers: {

@@ -1,4 +1,4 @@
-// src/components/settings/AiSettings.tsx
+
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,6 @@ interface AIConfig {
   profile_id?: string;
 }
 
-// Custom Toggle Switch Component
 const ToggleSwitch = ({ 
   checked, 
   onChange, 
@@ -255,7 +254,7 @@ const AiSettings = () => {
     setTestingOpenRouter(true);
     
     try {
-      const response = await fetch('/api/test-openrouter', { // Assume a new backend endpoint for testing
+      const response = await fetch('/api/test-openrouter', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

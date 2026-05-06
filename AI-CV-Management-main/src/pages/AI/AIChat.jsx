@@ -7,12 +7,10 @@ export default function AIChat() {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    // add user message
     const newMessages = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
 
-    // call backend
     const res = await fetch("http://localhost:5000/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

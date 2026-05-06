@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input"
 import { ActivityLogger } from '@/lib/activityLogger'
 import { CandidateCategoryDialog } from "@/components/candidates/CandidateCategoryDialog"
 
-// ── Extend HTMLInputElement to support webkitdirectory (folder picker) ────────
 declare module 'react' {
   interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
     webkitdirectory?: string
@@ -56,8 +55,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 import { parseCV, validateCVFile, type ParsedCV } from "@/utils/cvParser"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface Candidate {
   id: string; created_at: string; full_name: string; email: string
   phone_number?: string; status: string; source: string; address?: string
@@ -76,8 +73,6 @@ interface Job {
 
 interface SourceItem { value: string; label: string }
 
-// ── CSV Import types ──────────────────────────────────────────────────────────
-
 interface CsvRow {
   full_name: string; email: string; phone_number?: string
   address?: string; university?: string; experience?: string
@@ -93,7 +88,6 @@ interface CsvRow {
   _cvUrl?: string
 }
 
-// ── Duplicate handling mode ───────────────────────────────────────────────────
 type DuplicateMode = 'smart' | 'skip' | 'overwrite' | 'allow'
 
 type ImportStatus = 'idle' | 'previewing' | 'importing' | 'done'
@@ -103,14 +97,11 @@ interface ImportResult {
   details: { row: number; name: string; status: 'success' | 'skip' | 'fail'; reason?: string }[]
 }
 
-// ── Existing candidate record for duplicate check ─────────────────────────────
 interface ExistingRecord {
   id: string
   created_at: string
   job_id: string | null
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const FALLBACK_SOURCES: SourceItem[] = [
   { value: 'Website', label: 'Website' },
@@ -138,7 +129,6 @@ const COL_MAP: Record<string, string> = {
   'tên file cv': 'cv_file_name', 'ten file cv': 'cv_file_name',
 }
 
-// ── Duplicate mode config ─────────────────────────────────────────────────────
 const DUPLICATE_MODES: { value: DuplicateMode; label: string; description: string; color: string }[] = [
   {
     value: 'smart',
@@ -166,10 +156,7 @@ const DUPLICATE_MODES: { value: DuplicateMode; label: string; description: strin
   },
 ]
 
-// ── Re-apply cooldown in days ─────────────────────────────────────────────────
 const REAPPLY_COOLDOWN_DAYS = 30
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getStatusBadge = (status: string) => {
   const map: Record<string, JSX.Element> = {
@@ -281,8 +268,6 @@ function validateRow(
   return row
 }
 
-// ─── ImportCsvDialog ──────────────────────────────────────────────────────────
-
 interface ImportCsvDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -297,7 +282,7 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
   const [selectedSource, setSelectedSource] = useState('')
   const [defaultJobId, setDefaultJobId] = useState('')
-  // ── Duplicate mode (replaces old skipDuplicates boolean) ──────────────────
+
   const [duplicateMode, setDuplicateMode] = useState<DuplicateMode>('smart')
   const [fileName, setFileName] = useState('')
 
@@ -311,7 +296,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   const [importProgress, setImportProgress] = useState(0)
   const [importDetail, setImportDetail] = useState('')
 
-  // ── CV folder state ───────────────────────────────────────────────────────
   const cvFolderRef = useRef<HTMLInputElement>(null)
   const [cvFileMap, setCvFileMap] = useState<Map<string, File>>(new Map())
   const [cvUniqueFiles, setCvUniqueFiles] = useState<File[]>([])
@@ -330,7 +314,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
 
   const handleClose = () => { reset(); onOpenChange(false) }
 
-  // ── File CSV selected ──────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -357,7 +340,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     reader.readAsText(file, 'UTF-8')
   }
 
-  // ── CV folder selected ────────────────────────────────────────────────────
   const handleCvFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const cvFiles = files.filter(f =>
@@ -427,7 +409,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     setStep(2)
   }
 
-  // ── Import ─────────────────────────────────────────────────────────────────
   const handleImport = async () => {
     setImporting(true)
     setStep(3)
@@ -437,8 +418,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     const res: ImportResult = { success: 0, skipped: 0, failed: 0, details: [] }
     const rows = validRows
 
-    // ── Build existing records map keyed by "email::job_id" ──────────────────
-    // Fetch with pagination to handle DB > 1000 rows safely
     type ExistingRecord = { id: string; email: string; job_id: string | null; created_at: string }
     let allExisting: ExistingRecord[] = []
 
@@ -465,7 +444,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       }
     }
 
-    // existingMap: "email_lower::job_id_or_empty" → array of records
     const existingMap = new Map<string, ExistingRecord[]>()
     for (const r of allExisting) {
       const key = `${r.email.toLowerCase()}::${r.job_id || ''}`
@@ -473,7 +451,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       existingMap.get(key)!.push(r)
     }
 
-    // emailJobIds: Set of all "email::job_id" keys that exist (for multi-apply detection)
     const allEmailKeys = new Set(allExisting.map(r => r.email.toLowerCase()))
 
     for (let i = 0; i < rows.length; i++) {
@@ -486,17 +463,15 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
       const dupKey = `${emailLower}::${jobId || ''}`
       const existingRecords = existingMap.get(dupKey) || []
 
-      // ── Determine source_note ─────────────────────────────────────────────
       let sourceNote: string | null = null
       const emailExistsAnyJob = allEmailKeys.has(emailLower)
       const sameJobExists = existingRecords.length > 0
 
       if (emailExistsAnyJob && !sameJobExists) {
-        // Cùng email nhưng khác job → Multi-apply
+
         sourceNote = 'Multi-apply'
       }
 
-      // ── Apply duplicate mode logic ────────────────────────────────────────
       if (duplicateMode === 'skip' && sameJobExists) {
         res.skipped++
         res.details.push({ row: row._rowIndex, name: row.full_name, status: 'skip', reason: 'Email + vị trí đã tồn tại' })
@@ -517,12 +492,12 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           })
           continue
         }
-        // Re-apply hợp lệ
+
         sourceNote = 'Re-apply'
       }
 
       if (duplicateMode === 'overwrite' && sameJobExists) {
-        // Update record cũ thay vì tạo mới
+
         const latest = [...existingRecords].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
@@ -591,7 +566,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
         continue
       }
 
-      // ── Default: INSERT new record ────────────────────────────────────────
       try {
         let cvUrl: string | null = null
         let cvFileName: string | null = null
@@ -661,7 +635,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
           } catch (skErr) { console.error('Lỗi lưu kỹ năng:', skErr) }
         }
 
-        // Update lookup sets so within-batch duplicates are also caught
         allEmailKeys.add(emailLower)
         const newRec: ExistingRecord = { id: data.id, email: row.email, job_id: jobId, created_at: new Date().toISOString() }
         if (!existingMap.has(dupKey)) existingMap.set(dupKey, [])
@@ -693,7 +666,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     if (res.success > 0) onImportDone()
   }
 
-  // ── Template download ──────────────────────────────────────────────────────
   const downloadTemplate = () => {
     const header = 'Họ tên,Email,Số điện thoại,Địa chỉ,Trường học,Kinh nghiệm,Học vấn,Vị trí,CV'
     const sample = 'Nguyễn Văn A,nguyenvana@email.com,0901234567,TP.HCM,ĐH Bách Khoa,3 năm Frontend,Cử nhân CNTT,Frontend Developer,nguyen_van_a_cv.pdf'
@@ -708,7 +680,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
     URL.revokeObjectURL(url)
   }
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
   const matchedCount = csvRows.filter(r => r._valid && r._cvFile).length
   const unmatchedCount = validRows.length - matchedCount
 
@@ -1412,8 +1383,6 @@ function ImportCsvDialog({ open, onOpenChange, jobs, sources, onImportDone }: Im
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
@@ -1654,23 +1623,23 @@ export function CandidatesPage() {
         if (fn) await supabase.storage.from('cv-files').remove([fn])
       }
       
-      // 1. Lấy danh sách ID của các lịch phỏng vấn liên quan
+
       const { data: ivs } = await supabase.from('cv_interviews').select('id').eq('candidate_id', deleteCandidate.id)
       if (ivs && ivs.length > 0) {
         const ivIds = ivs.map(i => i.id)
-        // 2. Xóa các đánh giá (reviews) của những lịch phỏng vấn này
+
         await supabase.from('cv_interview_reviews').delete().in('interview_id', ivIds)
       }
       
-      // 3. Xóa các interviews liên quan
+
       await supabase.from('cv_interviews').delete().eq('candidate_id', deleteCandidate.id)
       
-      // 4. Xóa skills của candidate
+
       await supabase.from('cv_candidate_skills').delete().eq('candidate_id', deleteCandidate.id)
       
-      // 5. Cập nhật activity logs (nếu delete gây lỗi foreign key trong logs, thường log sẽ lưu snapshot chứ không phải foreign key cứng, nếu có ta có thể xoá logs, nhưng ta giả sử log an toàn)
+
       
-      // 6. Xóa candidate
+
       const { error } = await supabase.from('cv_candidates').delete().eq('id', deleteCandidate.id)
       if (error) throw error
       
@@ -1714,7 +1683,6 @@ export function CandidatesPage() {
     )
   }).slice(0, 100)
 
-  // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
 

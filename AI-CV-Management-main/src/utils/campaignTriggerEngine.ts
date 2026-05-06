@@ -1,8 +1,4 @@
-// src/utils/campaignTriggerEngine.ts
-// =========================================================
-// Campaign Trigger Engine – Phương Án A (Frontend-driven)
-// Import module này vào các trang để kích hoạt campaign.
-// =========================================================
+
 
 import { supabase } from '@/lib/supabaseClient'
 
@@ -14,23 +10,20 @@ export type CampaignTrigger =
 
 export interface TriggerContext {
   candidateId?: string
-  candidateEmail?: string     // Nếu đã có email sẵn thì truyền vào để khỏi query lại
+  candidateEmail?: string
   candidateName?: string
   interviewId?: string
-  interviewDate?: string      // ISO string
-  interviewFormat?: string    // 'Trực tiếp' | 'Online' | ...
-  interviewLocation?: string  // Địa điểm / link
-  jobTitle?: string           // Vị trí ứng tuyển (= position)
+  interviewDate?: string
+  interviewFormat?: string
+  interviewLocation?: string
+  jobTitle?: string
   interviewerName?: string
-  result?: string             // 'Đạt' | 'Không đạt'
-  rating?: number             // Điểm số đánh giá (1-5)
-  feedback?: string           // Nhận xét của người phỏng vấn
-  newStatus?: string          // Dùng cho candidate_status_changed
+  result?: string
+  rating?: number
+  feedback?: string
+  newStatus?: string
 }
 
-// -------------------------------------------------------
-// Lấy thông tin công ty từ cv_company_profile
-// -------------------------------------------------------
 async function getCompanyProfile(): Promise<{ company_name: string; confirm_deadline?: string }> {
   try {
     const { data } = await supabase
@@ -45,24 +38,6 @@ async function getCompanyProfile(): Promise<{ company_name: string; confirm_dead
   }
 }
 
-// -------------------------------------------------------
-// Render template variables: thay {{variable}} bằng giá trị thực
-//
-// Biến hỗ trợ trong template:
-//   {{candidateName}}       – Tên ứng viên
-//   {{position}}            – Vị trí ứng tuyển
-//   {{companyName}}         – Tên công ty (lấy từ Settings → Company)
-//   {{interviewTime}}       – Ngày & giờ phỏng vấn (định dạng đẹp)
-//   {{interviewType}}       – Hình thức (Online / Trực tiếp / ...)
-//   {{interviewLocation}}   – Địa điểm hoặc link họp
-//   {{interviewerName}}     – Người phỏng vấn
-//   {{result}}              – Kết quả: 'Đạt' | 'Không đạt'
-//   {{confirmDeadline}}     – Ngày deadline xác nhận (= ngày phỏng vấn - 1 ngày)
-//   {{new_status}}          – Trạng thái mới (candidate_status_changed)
-//
-// Biến bị loại bỏ (xóa sạch khỏi nội dung):
-//   {{hrName}}, {{contactEmail}}, {{contactPhone}}
-// -------------------------------------------------------
 function renderTemplate(
   text: string,
   ctx: TriggerContext & { email?: string; companyName?: string }
@@ -83,7 +58,6 @@ function renderTemplate(
     }
   }
 
-  // Tính confirmDeadline: 1 ngày trước ngày phỏng vấn
   const confirmDeadline = (() => {
     if (!ctx.interviewDate) return ''
     try {
@@ -96,42 +70,34 @@ function renderTemplate(
   })()
 
   return text
-    // --- Biến ứng viên ---
+
     .replace(/\{\{candidateName\}\}/g,     ctx.candidateName    || '')
-    .replace(/\{\{candidate_name\}\}/g,    ctx.candidateName    || '')  // alias cũ
+    .replace(/\{\{candidate_name\}\}/g,    ctx.candidateName    || '')
     .replace(/\{\{candidate_email\}\}/g,   ctx.email            || '')
 
-    // --- Biến vị trí & công ty ---
     .replace(/\{\{position\}\}/g,          ctx.jobTitle         || '')
-    .replace(/\{\{job_title\}\}/g,         ctx.jobTitle         || '')  // alias cũ
+    .replace(/\{\{job_title\}\}/g,         ctx.jobTitle         || '')
     .replace(/\{\{companyName\}\}/g,       ctx.companyName      || '')
 
-    // --- Biến phỏng vấn ---
     .replace(/\{\{interviewTime\}\}/g,     formatDate(ctx.interviewDate))
-    .replace(/\{\{interview_date\}\}/g,    formatDate(ctx.interviewDate))  // alias cũ
+    .replace(/\{\{interview_date\}\}/g,    formatDate(ctx.interviewDate))
     .replace(/\{\{interviewType\}\}/g,     ctx.interviewFormat  || '')
     .replace(/\{\{interviewLocation\}\}/g, ctx.interviewLocation || '')
     .replace(/\{\{interviewerName\}\}/g,   ctx.interviewerName  || '')
-    .replace(/\{\{interviewer_name\}\}/g,  ctx.interviewerName  || '')  // alias cũ
+    .replace(/\{\{interviewer_name\}\}/g,  ctx.interviewerName  || '')
 
-    // --- Biến kết quả & đánh giá ---
     .replace(/\{\{result\}\}/g,            ctx.result           || '')
     .replace(/\{\{rating\}\}/g,            ctx.rating !== undefined ? String(ctx.rating) : '')
     .replace(/\{\{feedback\}\}/g,          ctx.feedback         || '')
     .replace(/\{\{new_status\}\}/g,        ctx.newStatus        || '')
 
-    // --- Biến deadline ---
     .replace(/\{\{confirmDeadline\}\}/g,   confirmDeadline)
 
-    // --- Loại bỏ hoàn toàn 3 biến không dùng nữa ---
     .replace(/\{\{hrName\}\}/g,            '')
     .replace(/\{\{contactEmail\}\}/g,      '')
     .replace(/\{\{contactPhone\}\}/g,      '')
 }
 
-// -------------------------------------------------------
-// Lấy email settings (app password, sender email, sender name)
-// -------------------------------------------------------
 async function getEmailSettings() {
   const { data } = await supabase
     .from('cv_email_settings')
@@ -142,9 +108,6 @@ async function getEmailSettings() {
   return data
 }
 
-// -------------------------------------------------------
-// Ghi log vào cv_campaign_logs
-// -------------------------------------------------------
 async function writeLog(params: {
   campaignId: string
   campaignName: string
@@ -166,9 +129,6 @@ async function writeLog(params: {
   }])
 }
 
-// -------------------------------------------------------
-// Định dạng HTML cho email
-// -------------------------------------------------------
 function formatEmailHtml(body: string, subject: string): string {
   const safeContent = body.replace(/\n/g, '<br/>')
   return `<!doctype html>
@@ -206,15 +166,12 @@ function formatEmailHtml(body: string, subject: string): string {
 </html>`
 }
 
-// -------------------------------------------------------
-// HÀM CHÍNH: fire() – Gọi từ các trang khi sự kiện xảy ra
-// -------------------------------------------------------
 export async function fireCampaign(
   trigger: CampaignTrigger,
   ctx: TriggerContext
 ): Promise<void> {
   try {
-    // 1. Lấy tất cả active campaign có trigger này
+
     const { data: campaigns, error: campaignError } = await supabase
       .from('cv_email_campaigns')
       .select(`
@@ -237,7 +194,6 @@ export async function fireCampaign(
       return
     }
 
-    // 2. Resolve email & tên ứng viên (nếu chưa có)
     let candidateEmail = ctx.candidateEmail
     let candidateName = ctx.candidateName
 
@@ -268,17 +224,14 @@ export async function fireCampaign(
       return
     }
 
-    // 3. Lấy email settings
     const settings = await getEmailSettings()
     if (!settings?.resend_api_key || !settings?.sending_email) {
       console.warn('[CampaignEngine] Email chưa được cấu hình – bỏ qua campaign')
       return
     }
 
-    // 4. Lấy thông tin công ty từ Settings
     const companyProfile = await getCompanyProfile()
 
-    // 5. Build enriched context
     const enrichedCtx = {
       ...ctx,
       candidateEmail,
@@ -287,7 +240,6 @@ export async function fireCampaign(
       companyName: companyProfile.company_name,
     }
 
-    // 6. Gửi email cho từng campaign
     for (const campaign of campaigns) {
       const template = (campaign as any).cv_email_templates
       if (!template) {
@@ -303,7 +255,6 @@ export async function fireCampaign(
         continue
       }
 
-      // Kiểm tra điều kiện (conditions) – nếu campaign có constraint thì phải khớp
       const conditions = (campaign as any).conditions as Record<string, string> | null
       if (conditions && Object.keys(conditions).length > 0) {
         let matched = true
@@ -360,7 +311,6 @@ export async function fireCampaign(
           throw new Error((err as any).detail || 'Failed to send')
         }
 
-        // Ghi vào lịch sử email
         await supabase.from('cv_emails').insert([{
           candidate_id: ctx.candidateId || null,
           template_id:  template.id,

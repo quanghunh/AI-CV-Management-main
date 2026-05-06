@@ -1,4 +1,4 @@
-// src/utils/skillsHelper.ts
+
 import { supabase } from '@/lib/supabaseClient';
 
 export interface Skill {
@@ -12,7 +12,6 @@ export interface CandidateSkill {
   proficiency_level?: string;
 }
 
-// Parse skills từ string thành array
 export function parseSkillsString(skillsStr: string): string[] {
   if (!skillsStr) return [];
   return skillsStr
@@ -21,12 +20,10 @@ export function parseSkillsString(skillsStr: string): string[] {
     .filter(s => s.length > 0);
 }
 
-// Lấy hoặc tạo mới skill
 export async function getOrCreateSkill(skillName: string): Promise<string | null> {
   const trimmedName = skillName.trim();
   if (!trimmedName) return null;
 
-  // Tìm skill đã tồn tại
   const { data: existingSkill } = await supabase
     .from('cv_skills')
     .select('id')
@@ -37,7 +34,6 @@ export async function getOrCreateSkill(skillName: string): Promise<string | null
     return existingSkill.id;
   }
 
-  // Tạo skill mới nếu chưa tồn tại
   const { data: newSkill, error } = await supabase
     .from('cv_skills')
     .insert({ name: trimmedName })
@@ -52,19 +48,17 @@ export async function getOrCreateSkill(skillName: string): Promise<string | null
   return newSkill?.id || null;
 }
 
-// Lưu skills cho candidate
 export async function saveCandidateSkills(
   candidateId: string, 
   skillNames: string[]
 ): Promise<boolean> {
   try {
-    // Xóa skills cũ
+
     await supabase
       .from('cv_candidate_skills')
       .delete()
       .eq('candidate_id', candidateId);
 
-    // Thêm skills mới
     const skillIds: string[] = [];
     for (const skillName of skillNames) {
       const skillId = await getOrCreateSkill(skillName);
@@ -96,7 +90,6 @@ export async function saveCandidateSkills(
   }
 }
 
-// Lấy skills của candidate
 export async function getCandidateSkills(candidateId: string): Promise<Skill[]> {
   const { data, error } = await supabase
     .from('cv_candidate_skills')
@@ -111,7 +104,6 @@ export async function getCandidateSkills(candidateId: string): Promise<Skill[]> 
   return data?.map((item: any) => item.cv_skills).filter(Boolean) || [];
 }
 
-// Lấy tất cả skills để autocomplete
 export async function getAllSkills(): Promise<Skill[]> {
   const { data, error } = await supabase
     .from('cv_skills')
@@ -126,7 +118,6 @@ export async function getAllSkills(): Promise<Skill[]> {
   return data || [];
 }
 
-// Tìm kiếm skills
 export async function searchSkills(query: string): Promise<Skill[]> {
   const { data, error } = await supabase
     .from('cv_skills')

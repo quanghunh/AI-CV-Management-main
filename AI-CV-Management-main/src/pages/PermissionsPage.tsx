@@ -1,4 +1,4 @@
-// src/pages/PermissionsPage.tsx - OPTIMIZED VERSION
+
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
@@ -19,9 +19,6 @@ import {
   ChevronRight
 } from "lucide-react"
 
-// ========================================
-// TYPE DEFINITIONS
-// ========================================
 type Role = {
   roles: number
   name: string
@@ -61,9 +58,6 @@ type MatrixItem = {
   has_permission: boolean
 }
 
-// ========================================
-// CONSTANTS
-// ========================================
 const ADMIN_ROLE_ID = 1
 
 const MODULE_METADATA: Record<string, { label: string; icon: string }> = {
@@ -88,9 +82,6 @@ const ACTION_LABELS: Record<string, string> = {
   delete: "Xóa",
 }
 
-// ========================================
-// CUSTOM TOGGLE SWITCH COMPONENT
-// ========================================
 const ToggleSwitch = ({
   checked,
   onChange,
@@ -153,9 +144,6 @@ const ToggleSwitch = ({
   )
 }
 
-// ========================================
-// ROLE SIDEBAR ITEM COMPONENT
-// ========================================
 const RoleSidebarItem = ({
   role,
   isSelected,
@@ -202,9 +190,6 @@ const RoleSidebarItem = ({
   </button>
 )
 
-// ========================================
-// PERMISSION PANEL FOR SELECTED ROLE
-// ========================================
 const RolePermissionPanel = ({
   role,
   groupedPermissions,
@@ -284,9 +269,6 @@ const RolePermissionPanel = ({
   )
 }
 
-// ========================================
-// MAIN COMPONENT
-// ========================================
 export default function PermissionsPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "matrix">("overview")
   const [roles, setRoles] = useState<Role[]>([])
@@ -298,16 +280,13 @@ export default function PermissionsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [pendingChanges, setPendingChanges] = useState(false)
-  // NEW: selected role for sidebar layout
+
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null)
 
   useEffect(() => {
     loadData()
   }, [])
 
-  // ========================================
-  // DATA LOADING
-  // ========================================
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
@@ -391,7 +370,6 @@ export default function PermissionsPage() {
       setPermissionMatrix(matrix)
       setPendingChanges(false)
 
-      // Auto-select first role when loading matrix tab
       if (rolesData && rolesData.length > 0 && !selectedRoleId) {
         setSelectedRoleId(rolesData[0].roles)
       }
@@ -403,9 +381,6 @@ export default function PermissionsPage() {
     }
   }, [selectedRoleId])
 
-  // ========================================
-  // PERMISSION TOGGLE HANDLER
-  // ========================================
   const togglePermission = useCallback((roleId: number, permissionId: number) => {
     if (roleId === ADMIN_ROLE_ID) {
       setError("⚠️ Không thể thay đổi quyền của Admin")
@@ -428,9 +403,6 @@ export default function PermissionsPage() {
     }
   }, [])
 
-  // ========================================
-  // SAVE ALL CHANGES
-  // ========================================
   const handleSaveAll = useCallback(async () => {
     try {
       setSaving(true)
@@ -478,9 +450,6 @@ export default function PermissionsPage() {
     }
   }, [roles, permissionMatrix, loadData])
 
-  // ========================================
-  // COMPUTED VALUES (MEMOIZED)
-  // ========================================
   const groupedPermissions = useMemo(() => {
     return permissions.reduce(
       (acc, perm) => {
@@ -495,7 +464,6 @@ export default function PermissionsPage() {
   const totalPermissions = useMemo(() => permissions.length, [permissions])
   const totalModules = useMemo(() => Object.keys(groupedPermissions).length, [groupedPermissions])
 
-  // Count enabled permissions per role (for sidebar display)
   const rolePermissionCounts = useMemo(() => {
     const counts: Record<number, number> = {}
     roles.forEach((role) => {
@@ -509,9 +477,6 @@ export default function PermissionsPage() {
     [roles, selectedRoleId]
   )
 
-  // ========================================
-  // LOADING STATE
-  // ========================================
   if (loading) {
     return (
       <div className="container mx-auto py-10 px-4">
@@ -525,9 +490,6 @@ export default function PermissionsPage() {
     )
   }
 
-  // ========================================
-  // MAIN RENDER
-  // ========================================
   return (
     <>
       {/* Mobile fallback */}

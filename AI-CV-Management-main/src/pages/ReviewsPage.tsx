@@ -1,4 +1,4 @@
-// src/pages/ReviewsPage.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 
-
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-1">
@@ -24,8 +23,6 @@ function StarRating({ rating }: { rating: number }) {
     </div>
   )
 }
-
-// --- Interfaces (Merged) ---
 
 interface Review {
   id: string;
@@ -66,22 +63,22 @@ interface PendingInterview {
 }
 
 export function ReviewsPage() {
-  // --- States ---
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [pendingInterviews, setPendingInterviews] = useState<PendingInterview[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalReviews: 0, averageRating: 0, recommendationRate: 0 });
   
-  // Dialog States
+
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isReratingDialogOpen, setIsReratingDialogOpen] = useState(false);
   const [isNewReviewDialogOpen, setIsNewReviewDialogOpen] = useState(false);
   
-  // Data Selection States
+
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [selectedPendingInterview, setSelectedPendingInterview] = useState<PendingInterview | null>(null);
   
-  // Form States
+
   const [newRating, setNewRating] = useState(0);
   const [newNote, setNewNote] = useState('');
   const [reviewOutcome, setReviewOutcome] = useState('Đạt');
@@ -90,11 +87,9 @@ useEffect(() => {
     getReviews();
   }, []);
 
-  // --- Data Fetching (Merged Logic) ---
   async function getReviews() {
     setLoading(true);
 
-    // 1. Get existing reviews
     const { data: reviewData, error: reviewError } = await supabase
       .from('cv_interview_reviews')
       .select(`
@@ -109,7 +104,6 @@ useEffect(() => {
       `)
       .order('created_at', { ascending: false });
 
-    // 2. Get pending interviews
     const { data: pendingData, error: pendingError } = await supabase
       .from('cv_interviews')
       .select(`
@@ -145,7 +139,6 @@ useEffect(() => {
 
       setReviews(uniqueReviews);
 
-      // Calculate Stats
       const total = uniqueReviews.length;
       const sumOfRatings = uniqueReviews.reduce((sum, review) => sum + review.rating, 0);
       const recommendedCount = uniqueReviews.filter(review => review.outcome === 'Đạt').length;
@@ -171,7 +164,6 @@ useEffect(() => {
     setIsDetailDialogOpen(true);
   };
 
-
   const handleCreateReview = (interview: PendingInterview) => {
     setSelectedPendingInterview(interview);
     setIsNewReviewDialogOpen(true);
@@ -179,7 +171,6 @@ useEffect(() => {
     setNewNote('');
     setReviewOutcome('Đạt');
   };
-
 
   const handleSubmitNewReview = async () => {
     if (!selectedPendingInterview || newRating === 0) {
@@ -266,7 +257,6 @@ useEffect(() => {
     }
   };
 
-  // Mở Dialog Đánh giá lại
   const handleRerating = (review: Review) => {
     setSelectedReview(review);
     setNewRating(review.rating);
@@ -283,7 +273,7 @@ useEffect(() => {
 
     setSubmitting(true);
     try {
-      //1. Update review
+
       const { error } = await supabase
         .from('cv_interview_reviews')
         .update({ 
@@ -296,7 +286,6 @@ useEffect(() => {
 
       if (error) throw error;
 
-      // 2. LOGIC: CẬP NHẬT TRẠNG THÁI ỨNG VIÊN 
       if (reviewOutcome === 'Đạt' || reviewOutcome === 'Không đạt') {
         const { data: interviewData } = await supabase
           .from('cv_interviews')
@@ -314,7 +303,6 @@ useEffect(() => {
         }
       }
 
-      // Refresh data
       await getReviews();
 
       setIsReratingDialogOpen(false);
@@ -535,7 +523,7 @@ useEffect(() => {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-blue-600"
-                              // @ts-ignore
+
                               onClick={() => window.location.href = `/quan-ly-email?compose=true&candidate_id=${(review.cv_interviews as any)?.candidate_id || ''}`}
                             >
                               Gửi mail thông báo

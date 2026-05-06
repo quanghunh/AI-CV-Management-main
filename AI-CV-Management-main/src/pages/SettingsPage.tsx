@@ -1,4 +1,4 @@
-// src/pages/SettingsPage.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -176,7 +176,6 @@ export default function SettingsPage() {
           )}
 
           {activeTab === "ai" && <AiSettings />}
-
 
           {activeTab === "email" && (
             <div>

@@ -1,4 +1,4 @@
-// src/components/ProtectedRoute.tsx - UPDATED VERSION
+
 import React from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 
 type Props = {
   children: React.ReactNode
-  requiredRole?: string | string[] // Giữ lại để backward compatible
-  requiredPermission?: { module: string; action: string } // NEW: Kiểm tra theo permission
+  requiredRole?: string | string[]
+  requiredPermission?: { module: string; action: string }
 }
 
 export const ProtectedRoute: React.FC<Props> = ({ 
@@ -21,7 +21,6 @@ export const ProtectedRoute: React.FC<Props> = ({
   const { hasPermission, loading: permLoading } = usePermissions()
   const location = useLocation()
 
-  // Initial loading (auth + permissions initialization)
   if (authLoading || permLoading) {
     console.log("⏳ Loading authentication and permissions...")
     return (
@@ -34,7 +33,6 @@ export const ProtectedRoute: React.FC<Props> = ({
     )
   }
 
-  // If not logged in, redirect to login
   if (!user) {
     console.log("❌ No user found, redirecting to login")
     return <Navigate to="/login" state={{ from: location }} replace />
@@ -42,11 +40,8 @@ export const ProtectedRoute: React.FC<Props> = ({
 
   console.log("✅ User authenticated:", user.email)
 
-  // ========================================
-  // 🔐 PERMISSION-BASED ACCESS CONTROL
-  // ========================================
   
-  // Check permission if required
+
   if (requiredPermission) {
     const { module, action } = requiredPermission
     const hasRequiredPermission = hasPermission(module, action)
@@ -111,10 +106,6 @@ export const ProtectedRoute: React.FC<Props> = ({
     console.log("✅ Access granted - user has required permission")
   }
 
-  // ========================================
-  // 🔓 ROLE-BASED ACCESS (BACKWARD COMPATIBLE)
-  // ========================================
-  // Giữ lại để không break existing code
   if (requiredRole) {
     let userRole: string | undefined
 

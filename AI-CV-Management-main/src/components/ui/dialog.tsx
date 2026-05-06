@@ -39,7 +39,7 @@ function DialogOverlay({
       data-slot="dialog-overlay"
       className={cn(
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", // THAY ĐỔI: bg-black/80 và backdrop-blur
+        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
         className
       )}
       {...props}
@@ -62,7 +62,7 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-[50%] left-[50%] z-50 flex flex-col w-full translate-x-[-50%] translate-y-[-50%]",
-          "gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-2xl duration-200", // THAY ĐỔI: bg-white thay vì bg-background
+          "gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-2xl duration-200",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -133,7 +133,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-gray-500", className)} // THAY ĐỔI: text-gray-500 thay vì text-muted-foreground
+      className={cn("text-sm text-gray-500", className)}
       {...props}
     />
   )
